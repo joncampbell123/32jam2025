@@ -1,0 +1,38 @@
+
+Basically, this will be a practice example of how to make 1990s style Windows
+games. The way they were made prior to DirectX, using only Windows GDI,
+with the 256-color graphics mode, multimedia timer, MIDI music, etc. Maybe
+other younger programmers can learn from this, not just the 32-bit games jam.
+And of course, it wouldn't be complete without showing how to code this to run
+on Windows 3.1, 95, 98, etc. Later in development some consideration may be made
+for Windows 2000, XP, Vista, 7, maybe all the way up to Windows 11, but that's
+not the target of this code.
+
+To make the game more accessible after development, port to other platforms like
+Linux using the SDL2 library. If MIDI is involved, Linux ports will have to use
+FluidSynth, and on Mac OS to use the appropriate APIs. You have DOSBox-X source
+code to study for that, of course.
+
+2025/10/28:
+Joke fighter game. Hell scenario. Background is basically an animated GIF of
+fire flames. Music in the background will be a MOD file using an evil choir,
+samples from The Prodigy "Fire" song, and samples like "Welcome to Hell"
+and "Fire and Brimstone", but in a cheesy early to mid 1990s demoscenish
+style. Maybe DnB. Make it a cheesy 1990s "ripoff" of Street Fighter, of course,
+in the style of something those shitty shareware games compilations would do.
+Make it worthy of something you'd see on Shovelware Diggers.
+
+[https://www.youtube.com/watch?v=DFppStNpssI]
+[https://www.youtube.com/watch?v=F1U0qvtQnE8]
+
+Idea: Bill Gates vs Tux the Penguin. If the penguin wins, he summons the
+GNU spirit which banishes Bill Gates to "his own hell you call Windows. Not
+the Windows of now, but the Windows of the future", then sends Bill to this
+hell. Bill appears in the hell, the screen pans out to show Bill standing on
+a Windows 11 desktop (make it obvious with that curved rainbow frilly... thing
+in the stock background and "Windows 11" printed on the deskstop).
+He screams "NOOOOOOOOOOOOOOOOOOO!!!!".
+
+"Chips Challenge" style overworld? If it wouldn't get you in trouble, you could
+even use that MIDI file from Chips Challenge. Maybe.
+
