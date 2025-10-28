@@ -27,7 +27,7 @@ Possible code required:
 - ICO loading
 - WAV loading (uncompressed, MS-ADPCM, borrow code from FFMPEG)
 - MIDI loading
-- AVI loading (uncompressed, Cinepak, borrow code from FFMPEG)
+- AVI loading (uncompressed, Microsoft Video 1, Cinepak, borrow code from FFMPEG)
 - MOD loading (for tracker music)
 - The palette generator from DOSLIB, the code to map to a color palette.
   This game will target 256-color mode because that was common in the
