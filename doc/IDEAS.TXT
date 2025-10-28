@@ -6,12 +6,36 @@ other younger programmers can learn from this, not just the 32-bit games jam.
 And of course, it wouldn't be complete without showing how to code this to run
 on Windows 3.1, 95, 98, etc. Later in development some consideration may be made
 for Windows 2000, XP, Vista, 7, maybe all the way up to Windows 11, but that's
-not the target of this code.
+not the target of this code. Maybe 32-bit MS-DOS? Maybe 16-bit DOS but will
+require extended or expanded memory to hold game data?
+
+This code will start out as 32-bit but write it so that perhaps it could be
+brought to 16-bit Windows 3.1.
 
 To make the game more accessible after development, port to other platforms like
 Linux using the SDL2 library. If MIDI is involved, Linux ports will have to use
 FluidSynth, and on Mac OS to use the appropriate APIs. You have DOSBox-X source
 code to study for that, of course.
+
+Learning lessons on game development, the core code will be a state machine,
+because that is how games are coded. Maybe that DOS games jam entry in 2020
+might have been better coded that way.
+
+Possible code required:
+- BMP loading
+- PNG loading
+- ICO loading
+- WAV loading (uncompressed, MS-ADPCM, borrow code from FFMPEG)
+- MIDI loading
+- AVI loading (uncompressed, Cinepak, borrow code from FFMPEG)
+- MOD loading (for tracker music)
+- The palette generator from DOSLIB, the code to map to a color palette.
+  This game will target 256-color mode because that was common in the
+  mid 1990s.
+- Text string resource loading. So that others can freely make translations
+  if they want.
+- zlib (for PNG decompression as well as any need to compress data, perhaps
+  when you save the game)
 
 2025/10/28:
 Joke fighter game. Hell scenario. Background is basically an animated GIF of
