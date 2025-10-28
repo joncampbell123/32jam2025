@@ -30,15 +30,17 @@
 #include <dos.h>
 #include "resource.h"
 
-#include <windows/apihelp.h>
-
 HWND near			hwndMain;
 const char near			WndProcClass[] = "HELLOWINDOWS";
 const char near			HelloWorldText[] = "Hello world!";
 HINSTANCE near			myInstance;
 HICON near			AppIcon;
 
-WindowProcType_NoLoadDS WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
+#if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
+LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
+#else
+LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
+#endif
 	if (message == WM_CREATE) {
 		return 0; /* Success */
 	}
@@ -135,15 +137,6 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 			return 1;
 		}
 	}
-	else {
-#if defined(WIN386)
-		/* FIXME: Win386 builds will CRASH if multiple instances try to run this way.
-		 *        Somehow, creating a window with a class registered by another Win386 application
-		 *        causes Windows to hang. */
-		if (MessageBox(NULL,"Win386 builds may crash if you run multiple instances. Continue?","",MB_YESNO|MB_ICONEXCLAMATION|MB_DEFBUTTON2) == IDNO)
-			return 1;
-#endif
-	}
 
 	hwndMain = CreateWindow(WndProcClass,"Hello!",
 		WS_OVERLAPPEDWINDOW,
@@ -157,7 +150,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	}
 
 	ShowWindow(hwndMain,nCmdShow);
-	UpdateWindow(hwndMain); /* FIXME: For some reason this only causes WM_PAINT to print gibberish and cause a GPF. Why? And apparently, Windows 3.0 repaints our window anyway! */
+	UpdateWindow(hwndMain);
 
 	while (GetMessage(&msg,NULL,0,0)) {
 		TranslateMessage(&msg);
