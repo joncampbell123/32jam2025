@@ -1,0 +1,117 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> <html xmlns=http://www.w3.org/1999/xhtml><!--
+ Page saved with SingleFile 
+ url: http://nas.jmc/jmcs/docs/raw/File%20formats/BMP%2c%20Windows%20Bitmap/BITMAPINFO%20structure%20%282010%2d10%2d29%29%2ehtml 
+ saved date: Tue Oct 28 2025 08:39:14 GMT-0700 (Pacific Daylight Time)
+--><meta charset=utf-8>
+<title>
+ 
+ BITMAPINFO Structure (Windows)
+ 
+ </title>
+<style>.cl_lw_toc_fade_top{background:url(data:,)no-repeat scroll -2623px -3px;width:1px;height:90px;overflow:hidden}body{margin:0;font-family:"Segoe UI",Verdana,Arial;font-size:.813em;color:#000;font-style:normal;padding-right:0;padding-left:0;word-wrap:break-word}a:link{color:#1364c4;text-decoration:none}a:hover{text-decoration:underline}a:visited{color:#960bb4;text-decoration:none}img{border:0}h3{font-family:"Segoe UI",Verdana,Arial;font-size:1.077em;color:#3f529c;font-weight:bold}.contentPlaceHolder{border-width:1px;text-align:left;width:100%;border-bottom-style:none;overflow:auto}.content{padding-top:13px;text-align:left;border-width:1px;overflow:auto;width:auto;border-left:1px solid #bbb;border-bottom:0}.topicContainer{padding-left:13px;padding-right:13px;padding-bottom:13px}.topicContainer .topic #mainSection{padding-top:5px}.topicContainer .topic .title{font-family:"Segoe UI",Verdana,Arial;font-size:1.769em;color:#3f529c;font-weight:bold}.LW_CodeSnippetContainer{min-width:260px}.LW_CodeSnippetToolBar{width:auto;height:auto;border-top:solid 3px #e5e5e5;border-left:solid 1px #bbb;border-right:solid 3px #e5e5e5}.LW_CodeSnippetContainerCodeCollection{border-left:solid 1px #bbb;border-bottom:solid 3px #e5e5e5;border-right:solid 1px #e5e5e5;clear:both;margin-bottom:12px;position:relative;top:-3px}.LW_CodeSnippetContainerCode{width:auto;margin:0;padding-right:21px;padding-left:21px}.LW_CodeSnippetContainerCode div{padding:0;margin:0}.LW_CodeSnippetContainerCode pre{padding:5px;margin:0;font-family:Consolas,Courier,monospace;word-break:break-all;word-wrap:break-word;font-style:normal;font-weight:normal;overflow:auto}.title{font-style:normal;font-variant:normal;line-height:normal;margin:0 0 10px}.TOC_Fade_Top{margin-left:-1px;position:absolute;margin-top:-13px}</style>
+<meta name=DCS.dcsuri content="/en-us/library/dd183375(d=lightweight,l=en-us,v=VS.85).aspx">
+<meta name=NormalizedUrl content="http://msdn.microsoft.com/en-us/library/dd183375(d=lightweight,l=en-us,v=VS.85).aspx">
+<meta name=VotingContextUrl content="http://msdn.microsoft.com/en-us/library/dd183375(l=en-us,v=VS.85).aspx">
+<meta name=MN content="D1DC116E-4:27:33 AM">
+<meta name=Search.ShortId content=dd183375>
+<meta name=Ms.Locale content=en-us>
+<meta name=referrer content=no-referrer><link rel=canonical href=http://nas.jmc/jmcs/docs/raw/File%20formats/BMP%2c%20Windows%20Bitmap/BITMAPINFO%20structure%20%282010%2d10%2d29%29%2ehtml><meta http-equiv=content-security-policy content="default-src 'none'; font-src 'self' data:; img-src 'self' data:; style-src 'unsafe-inline'; media-src 'self' data:; script-src 'unsafe-inline' data:; object-src 'self' data:; frame-src 'self' data:;"><style>img[src="data:,"],source[src="data:,"]{display:none!important}</style></head>
+<body>
+ <div class=header>
+ </div>
+ <div class=contentPlaceHolder>
+ <div class=content>
+ <img class="TOC_Fade_Top cl_lw_toc_fade_top" src=data:, alt><div class=topicContainer>
+ 
+ <div class=topic xmlns=http://www.w3.org/1999/xhtml>
+ <h1 class=title>BITMAPINFO Structure</h1>
+ 
+ <div id=mainSection>
+ <div class=clsServerSDKContent>
+ 
+ </div>
+ <p>
+ </p>
+ <p>The <strong>BITMAPINFO</strong> structure defines the dimensions 
+ and color information for a DIB.</p>
+ 
+ <h3>Syntax</h3>
+ <div class=LW_CodeSnippetContainer xmlns>
+ <a name=CodeSpippet0></a><div class=LW_CodeSnippetContainerCodeCollection>
+ <div class=LW_CodeSnippetToolBar></div>
+ <div id=CodeSnippetContainerCode0 class=LW_CodeSnippetContainerCode><div style=color:Black><pre>typedef struct tagBITMAPINFO {
+  BITMAPINFOHEADER bmiHeader;
+  RGBQUAD          bmiColors[1];
+} BITMAPINFO, *PBITMAPINFO;
+</pre></div></div>
+ </div>
+ </div>
+ <h3>Members</h3>
+ <dl>
+<dt><strong>bmiHeader</strong></dt>
+ <dd>
+ <p>A <a href="http://msdn.microsoft.com/en-us/library/dd183376%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFOHEADER</strong></a> 
+ structure that contains information about the dimensions of color 
+ format.</p>
+ <p>.</p>
+ </dd>
+ <dt><strong>bmiColors</strong></dt>
+ <dd>
+ <p>The <strong>bmiColors</strong> member contains one of the following:</p>
+ <ul>
+<li>An array of <a href="http://msdn.microsoft.com/en-us/library/dd162938%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>RGBQUAD</strong></a>. The elements
+ of the array that make up the color table.</li>
+ <li>An array of 16-bit unsigned integers that specifies indexes into the
+ currently realized logical palette. This use of <strong>bmiColors</strong>
+ is allowed for functions that use DIBs. When <strong>bmiColors</strong>
+ elements contain indexes to a realized logical palette, they must also 
+ call the following bitmap functions:<p>
+ <a href="http://msdn.microsoft.com/en-us/library/dd183491%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>CreateDIBitmap</strong></a>
+ </p>
+ <p>
+ <a href="http://msdn.microsoft.com/en-us/library/dd183492%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>CreateDIBPatternBrush</strong></a>
+ </p>
+ <p>
+ <a href="http://msdn.microsoft.com/en-us/library/dd183494%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>CreateDIBSection</strong></a>
+ </p>
+ <p>The <em>iUsage</em> parameter of <a href="http://msdn.microsoft.com/en-us/library/dd183494%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>CreateDIBSection</strong></a> must
+ be set to DIB_PAL_COLORS.</p>
+ </li>
+ </ul>
+<p>The number of entries in the array depends on the values of the <strong>biBitCount</strong>
+ and <strong>biClrUsed</strong> members of the <a href="http://msdn.microsoft.com/en-us/library/dd183376%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFOHEADER</strong></a> 
+ structure.</p>
+ <p>The colors in the <strong>bmiColors</strong> table appear in order of
+ importance. For more information, see the Remarks section.</p>
+ </dd>
+ </dl>
+<h3>Remarks</h3>
+ <p>A DIB consists of two distinct parts: a <strong>BITMAPINFO</strong> 
+ structure describing the dimensions and colors of the bitmap, and an 
+ array of bytes defining the pixels of the bitmap. The bits in the array 
+ are packed together, but each scan line must be padded with zeroes to 
+ end on a <strong>LONG</strong> data-type boundary. If the height of the 
+ bitmap is positive, the bitmap is a bottom-up DIB and its origin is the 
+ lower-left corner. If the height is negative, the bitmap is a top-down 
+ DIB and its origin is the upper left corner.</p>
+ <p>A bitmap is packed when the bitmap array immediately follows the <strong>BITMAPINFO</strong>
+ header. Packed bitmaps are referenced by a single pointer. For packed 
+ bitmaps, the <strong>biClrUsed</strong> member must be set to an even 
+ number when using the DIB_PAL_COLORS mode so that the DIB bitmap array 
+ starts on a <strong>DWORD</strong> boundary.</p>
+ <p class=note><strong>Note</strong>&nbsp;&nbsp;</p>
+ <p class=note>The
+ <strong>bmiColors</strong> member should not contain palette indexes if
+ the bitmap is to be stored in a file or transferred to another 
+ application.</p>
+ <p class=note>Unless the application has exclusive use and control of 
+ the bitmap, the bitmap color table should contain explicit RGB values.</p>
+ 
+ <p>Build date: 10/29/2010</p>
+ <div class=copyright>© 2010 Microsoft Corporation. All rights reserved.</div>
+ </div>
+ </div>
+ </div>
+ </div>
+ </div>
+ 

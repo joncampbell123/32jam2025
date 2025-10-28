@@ -1,0 +1,81 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> <html xmlns=http://www.w3.org/1999/xhtml><!--
+ Page saved with SingleFile 
+ url: http://nas.jmc/jmcs/docs/raw/File%20formats/BMP%2c%20Windows%20Bitmap/RGBQUAD%20structure%20%282010%2d10%2d29%29%2ehtml 
+ saved date: Tue Oct 28 2025 08:35:34 GMT-0700 (Pacific Daylight Time)
+--><meta charset=utf-8>
+<title>
+ 
+ RGBQUAD Structure (Windows)
+ 
+ </title>
+<style>.cl_lw_toc_fade_top{background:url(data:,)no-repeat scroll -2623px -3px;width:1px;height:90px;overflow:hidden}body{margin:0;font-family:"Segoe UI",Verdana,Arial;font-size:.813em;color:#000;font-style:normal;padding-right:0;padding-left:0;word-wrap:break-word}a:link{color:#1364c4;text-decoration:none}a:hover{text-decoration:underline}a:visited{color:#960bb4;text-decoration:none}img{border:0}h3{font-family:"Segoe UI",Verdana,Arial;font-size:1.077em;color:#3f529c;font-weight:bold}.contentPlaceHolder{border-width:1px;text-align:left;width:100%;border-bottom-style:none;overflow:auto}.content{padding-top:13px;text-align:left;border-width:1px;overflow:auto;width:auto;border-left:1px solid #bbb;border-bottom:0}.topicContainer{padding-left:13px;padding-right:13px;padding-bottom:13px}.topicContainer .topic #mainSection{padding-top:5px}.topicContainer .topic .title{font-family:"Segoe UI",Verdana,Arial;font-size:1.769em;color:#3f529c;font-weight:bold}.LW_CodeSnippetContainer{min-width:260px}.LW_CodeSnippetToolBar{width:auto;height:auto;border-top:solid 3px #e5e5e5;border-left:solid 1px #bbb;border-right:solid 3px #e5e5e5}.LW_CodeSnippetContainerCodeCollection{border-left:solid 1px #bbb;border-bottom:solid 3px #e5e5e5;border-right:solid 1px #e5e5e5;clear:both;margin-bottom:12px;position:relative;top:-3px}.LW_CodeSnippetContainerCode{width:auto;margin:0;padding-right:21px;padding-left:21px}.LW_CodeSnippetContainerCode div{padding:0;margin:0}.LW_CodeSnippetContainerCode pre{padding:5px;margin:0;font-family:Consolas,Courier,monospace;word-break:break-all;word-wrap:break-word;font-style:normal;font-weight:normal;overflow:auto}.title{font-style:normal;font-variant:normal;line-height:normal;margin:0 0 10px}.TOC_Fade_Top{margin-left:-1px;position:absolute;margin-top:-13px}</style>
+<meta name=DCS.dcsuri content="/en-us/library/dd162938(d=lightweight,l=en-us,v=VS.85).aspx">
+<meta name=NormalizedUrl content="http://msdn.microsoft.com/en-us/library/dd162938(d=lightweight,l=en-us,v=VS.85).aspx">
+<meta name=VotingContextUrl content="http://msdn.microsoft.com/en-us/library/dd162938(l=en-us,v=VS.85).aspx">
+<meta name=MN content="D1DC116E-4:28:30 AM">
+<meta name=Search.ShortId content=dd162938>
+<meta name=Ms.Locale content=en-us>
+<meta name=referrer content=no-referrer><link rel=canonical href=http://nas.jmc/jmcs/docs/raw/File%20formats/BMP%2c%20Windows%20Bitmap/RGBQUAD%20structure%20%282010%2d10%2d29%29%2ehtml><meta http-equiv=content-security-policy content="default-src 'none'; font-src 'self' data:; img-src 'self' data:; style-src 'unsafe-inline'; media-src 'self' data:; script-src 'unsafe-inline' data:; object-src 'self' data:; frame-src 'self' data:;"><style>img[src="data:,"],source[src="data:,"]{display:none!important}</style></head>
+ <body>
+ <div class=contentPlaceHolder>
+ <div class=content>
+ <img class="TOC_Fade_Top cl_lw_toc_fade_top" src=data:, alt><div class=topicContainer>
+ 
+ <div class=topic xmlns=http://www.w3.org/1999/xhtml>
+ <h1 class=title>RGBQUAD Structure</h1>
+ 
+ <div id=mainSection>
+ <div class=clsServerSDKContent>
+ 
+ </div>
+ <p>
+ </p>
+ <p>The <strong>RGBQUAD</strong> structure describes a color 
+ consisting of relative intensities of red, green, and blue.</p>
+ 
+ <h3>Syntax</h3>
+ <div class=LW_CodeSnippetContainer xmlns>
+ <a name=CodeSpippet0></a><div class=LW_CodeSnippetContainerCodeCollection>
+ <div class=LW_CodeSnippetToolBar></div>
+ <div id=CodeSnippetContainerCode0 class=LW_CodeSnippetContainerCode><div style=color:Black><pre>typedef struct tagRGBQUAD {
+  BYTE rgbBlue;
+  BYTE rgbGreen;
+  BYTE rgbRed;
+  BYTE rgbReserved;
+} RGBQUAD;
+</pre></div></div>
+ </div>
+ </div>
+ <h3>Members</h3>
+ <dl>
+ <dt><strong>rgbBlue</strong></dt>
+ <dd>
+ <p>The intensity of blue in the color.</p>
+ </dd>
+ <dt><strong>rgbGreen</strong></dt>
+ <dd>
+ <p>The intensity of green in the color.</p>
+ </dd>
+ <dt><strong>rgbRed</strong></dt>
+ <dd>
+ <p>The intensity of red in the color.</p>
+ </dd>
+ <dt><strong>rgbReserved</strong></dt>
+ <dd>
+ <p>This member is reserved and must be zero.</p>
+ </dd>
+ </dl>
+ <h3>Remarks</h3>
+ <p>The <strong>bmiColors</strong> member of the <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> structure 
+ consists of an array of <strong>RGBQUAD</strong> structures.</p>
+ <h3>Requirements</h3>
+ <p>Build date: 10/29/2010</p>
+ <div class=copyright>© 2010 Microsoft Corporation. All rights reserved.</div>
+ </div>
+ </div>
+ </div>
+ 
+ </div>
+ </div>
+ 
+ 

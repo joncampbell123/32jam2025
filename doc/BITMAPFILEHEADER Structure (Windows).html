@@ -1,0 +1,87 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> <html xmlns=http://www.w3.org/1999/xhtml><!--
+ Page saved with SingleFile 
+ url: http://nas.jmc/jmcs/docs/raw/File%20formats/BMP%2c%20Windows%20Bitmap/BITMAPFILEHEADER%20structure%20%282010%2d10%2d29%29%2ehtml 
+ saved date: Tue Oct 28 2025 08:39:14 GMT-0700 (Pacific Daylight Time)
+--><meta charset=utf-8>
+<title>
+ 
+ BITMAPFILEHEADER Structure (Windows)
+</title>
+<style>body{margin:0;font-family:"Segoe UI",Verdana,Arial;font-size:.813em;color:#000;font-style:normal;padding-right:0;padding-left:0;word-wrap:break-word}a:link{color:#1364c4;text-decoration:none}a:hover{text-decoration:underline}a:visited{color:#960bb4;text-decoration:none}h3{font-family:"Segoe UI",Verdana,Arial;font-size:1.077em;color:#3f529c;font-weight:bold}.contentPlaceHolder{border-width:1px;text-align:left;width:100%;border-bottom-style:none;overflow:auto}.content{padding-top:13px;text-align:left;border-width:1px;overflow:auto;width:auto;border-left:1px solid #bbb;border-bottom:0}.topicContainer{padding-left:13px;padding-right:13px;padding-bottom:13px}.topicContainer .topic #mainSection{padding-top:5px}.topicContainer .topic .title{font-family:"Segoe UI",Verdana,Arial;font-size:1.769em;color:#3f529c;font-weight:bold}.LW_CodeSnippetContainer{min-width:260px}.LW_CodeSnippetToolBar{width:auto;height:auto;border-top:solid 3px #e5e5e5;border-left:solid 1px #bbb;border-right:solid 3px #e5e5e5}.LW_CodeSnippetContainerCodeCollection{border-left:solid 1px #bbb;border-bottom:solid 3px #e5e5e5;border-right:solid 1px #e5e5e5;clear:both;margin-bottom:12px;position:relative;top:-3px}.LW_CodeSnippetContainerCode{width:auto;margin:0;padding-right:21px;padding-left:21px}.LW_CodeSnippetContainerCode div{padding:0;margin:0}.LW_CodeSnippetContainerCode pre{padding:5px;margin:0;font-family:Consolas,Courier,monospace;word-break:break-all;word-wrap:break-word;font-style:normal;font-weight:normal;overflow:auto}.title{font-style:normal;font-variant:normal;line-height:normal;margin:0 0 10px}</style>
+<meta name=DCS.dcsuri content="/en-us/library/dd183374(d=lightweight,l=en-us,v=VS.85).aspx">
+<meta name=NormalizedUrl content="http://msdn.microsoft.com/en-us/library/dd183374(d=lightweight,l=en-us,v=VS.85).aspx">
+<meta name=VotingContextUrl content="http://msdn.microsoft.com/en-us/library/dd183374(l=en-us,v=VS.85).aspx">
+<meta name=MN content="D1DC116E-4:27:11 AM">
+<meta name=Search.ShortId content=dd183374>
+<meta name=Ms.Locale content=en-us>
+<meta name=referrer content=no-referrer><link rel=canonical href=http://nas.jmc/jmcs/docs/raw/File%20formats/BMP%2c%20Windows%20Bitmap/BITMAPFILEHEADER%20structure%20%282010%2d10%2d29%29%2ehtml><meta http-equiv=content-security-policy content="default-src 'none'; font-src 'self' data:; img-src 'self' data:; style-src 'unsafe-inline'; media-src 'self' data:; script-src 'unsafe-inline' data:; object-src 'self' data:; frame-src 'self' data:;"></head>
+<body>
+ <div class=contentPlaceHolder>
+ <div class=content>
+ <div class=topicContainer>
+ 
+ <div class=topic xmlns=http://www.w3.org/1999/xhtml>
+ <h1 class=title>BITMAPFILEHEADER Structure</h1>
+ 
+ <div id=mainSection>
+ <div class=clsServerSDKContent>
+ 
+ </div>
+ <p>
+ </p>
+ <p>The <strong>BITMAPFILEHEADER</strong> structure contains 
+ information about the type, size, and layout of a file that contains a 
+ DIB.</p>
+ 
+ <h3>Syntax</h3>
+ <div class=LW_CodeSnippetContainer xmlns>
+ <a name=CodeSpippet0></a><div class=LW_CodeSnippetContainerCodeCollection>
+ <div class=LW_CodeSnippetToolBar></div>
+ <div id=CodeSnippetContainerCode0 class=LW_CodeSnippetContainerCode><div style=color:Black><pre>typedef struct tagBITMAPFILEHEADER {
+  WORD  bfType;
+  DWORD bfSize;
+  WORD  bfReserved1;
+  WORD  bfReserved2;
+  DWORD bfOffBits;
+} BITMAPFILEHEADER, *PBITMAPFILEHEADER;
+</pre></div></div>
+ </div>
+ </div>
+ <h3>Members</h3>
+ <dl>
+ <dt><strong>bfType</strong></dt>
+ <dd>
+ <p>The file type; must be BM.</p>
+ </dd>
+ <dt><strong>bfSize</strong></dt>
+ <dd>
+ <p>The size, in bytes, of the bitmap file.</p>
+ </dd>
+ <dt><strong>bfReserved1</strong></dt>
+ <dd>
+ <p>Reserved; must be zero.</p>
+ </dd>
+ <dt><strong>bfReserved2</strong></dt>
+ <dd>
+ <p>Reserved; must be zero.</p>
+ </dd>
+ <dt><strong>bfOffBits</strong></dt>
+ <dd>
+ <p>The offset, in bytes, from the beginning of the <strong>BITMAPFILEHEADER</strong>
+ structure to the bitmap bits.</p>
+ </dd>
+ </dl>
+ <h3>Remarks</h3>
+ <p>A <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> or <a href="http://msdn.microsoft.com/en-us/library/dd183373%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPCOREINFO</strong></a> 
+ structure immediately follows the <strong>BITMAPFILEHEADER</strong> 
+ structure in the DIB file. For more information, see <a href="http://msdn.microsoft.com/en-us/library/dd183391%28v=VS.85%29.aspx">Bitmap
+ Storage</a>.</p>
+ <p></p>
+ <p>Build date: 10/29/2010</p>
+ <div class=copyright>© 2010 Microsoft Corporation. All rights reserved.</div>
+ </div>
+ </div>
+ </div>
+ </div>
+ </div>
+ 

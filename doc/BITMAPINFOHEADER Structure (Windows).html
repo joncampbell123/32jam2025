@@ -1,0 +1,307 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> <html xmlns=http://www.w3.org/1999/xhtml style><!--
+ Page saved with SingleFile 
+ url: http://nas.jmc/jmcs/docs/raw/File%20formats/BMP%2c%20Windows%20Bitmap/BITMAPINFOHEADER%20structure%20%282010%2d10%2d29%29%2ehtml 
+ saved date: Tue Oct 28 2025 08:39:16 GMT-0700 (Pacific Daylight Time)
+--><meta charset=utf-8>
+<title>
+ 
+ BITMAPINFOHEADER Structure (Windows)
+ 
+ </title>
+<style>.cl_lw_toc_fade_top{background:url(data:,)no-repeat scroll -2623px -3px;width:1px;height:90px;overflow:hidden}body{margin:0;font-family:"Segoe UI",Verdana,Arial;font-size:.813em;color:#000;font-style:normal;padding-right:0;padding-left:0;word-wrap:break-word}a:link{color:#1364c4;text-decoration:none}a:hover{text-decoration:underline}a:visited{color:#960bb4;text-decoration:none}img{border:0}h3{font-family:"Segoe UI",Verdana,Arial;font-size:1.077em;color:#3f529c;font-weight:bold}table{border-style:solid;border-width:1px;border-color:#bbb;border-collapse:collapse}table th{border-style:solid;border-width:1px;border-color:#bbb}table td{border-style:solid;border-width:1px;border-color:#bbb}.contentPlaceHolder{border-width:1px;text-align:left;width:100%;border-bottom-style:none;overflow:auto}.content{padding-top:13px;text-align:left;border-width:1px;overflow:auto;width:auto;border-left:1px solid #bbb;border-bottom:0}.topicContainer{padding-left:13px;padding-right:13px;padding-bottom:13px}.topicContainer .topic #mainSection{padding-top:5px}.topicContainer .topic .title{font-family:"Segoe UI",Verdana,Arial;font-size:1.769em;color:#3f529c;font-weight:bold}.topicContainer table{width:100%}.topicContainer table th{background-color:#e5e5e5;padding-right:4px;padding-left:4px;padding-bottom:4px;padding-top:4px;text-align:left;height:21px;font-family:"Segoe UI",Verdana,Arial;font-size:1.077em;color:#000;font-style:normal;font-weight:normal}.topicContainer table tr{vertical-align:top}.topicContainer table td{background-color:#fff;line-height:140%;padding-right:4px;padding-left:4px;padding-bottom:4px;margin:1px;padding-top:4px}.LW_CodeSnippetContainer{min-width:260px}.LW_CodeSnippetToolBar{width:auto;height:auto;border-top:solid 3px #e5e5e5;border-left:solid 1px #bbb;border-right:solid 3px #e5e5e5}.LW_CodeSnippetToolBarText{float:right;top:-10px;position:relative;background-color:#fff;width:auto;padding-left:4px;padding-right:4px;height:0}.LW_CodeSnippetToolBarText a:link,.LW_CodeSnippetToolBarText a:visited,.LW_CodeSnippetToolBarText a:active{margin-left:5px;margin-right:5px;text-decoration:none;color:#1364c4;font-family:"Segoe UI",Verdana,Arial;font-size:10pt;background-color:White;padding-left:4px;padding-right:4px}.LW_CodeSnippetToolBarText a:hover{margin-left:5px;margin-right:5px;text-decoration:none;color:#e66a38;font-family:"Segoe UI",Verdana,Arial;font-size:10pt;padding-left:4px;padding-right:4px}.LW_CodeSnippetContainerCodeCollection{border-left:solid 1px #bbb;border-bottom:solid 3px #e5e5e5;border-right:solid 1px #e5e5e5;clear:both;margin-bottom:12px;position:relative;top:-3px}.LW_CodeSnippetContainerCode{width:auto;margin:0;padding-right:21px;padding-left:21px}.LW_CodeSnippetContainerCode div{padding:0;margin:0}.LW_CodeSnippetContainerCode pre{padding:5px;margin:0;font-family:Consolas,Courier,monospace;word-break:break-all;word-wrap:break-word;font-style:normal;font-weight:normal;overflow:auto}.title{font-style:normal;font-variant:normal;line-height:normal;margin:0 0 10px}.TOC_Fade_Top{margin-left:-1px;position:absolute;margin-top:-13px}</style>
+<meta name=DCS.dcsuri content="/en-us/library/dd183376(d=lightweight,l=en-us,v=VS.85).aspx">
+<meta name=NormalizedUrl content="http://msdn.microsoft.com/en-us/library/dd183376(d=lightweight,l=en-us,v=VS.85).aspx">
+<meta name=VotingContextUrl content="http://msdn.microsoft.com/en-us/library/dd183376(l=en-us,v=VS.85).aspx">
+<meta name=MN content="D1DC116E-4:26:37 AM">
+<meta name=Search.ShortId content=dd183376>
+<meta name=Ms.Locale content=en-us>
+<meta name=referrer content=no-referrer><link rel=canonical href=http://nas.jmc/jmcs/docs/raw/File%20formats/BMP%2c%20Windows%20Bitmap/BITMAPINFOHEADER%20structure%20%282010%2d10%2d29%29%2ehtml><meta http-equiv=content-security-policy content="default-src 'none'; font-src 'self' data:; img-src 'self' data:; style-src 'unsafe-inline'; media-src 'self' data:; script-src 'unsafe-inline' data:; object-src 'self' data:; frame-src 'self' data:;"><style>img[src="data:,"],source[src="data:,"]{display:none!important}</style></head>
+ <body>
+ <div class=contentPlaceHolder>
+ <div class=content>
+ <img class="TOC_Fade_Top cl_lw_toc_fade_top" src=data:, alt><div class=topicContainer>
+ 
+ <div class=topic xmlns=http://www.w3.org/1999/xhtml>
+ <h1 class=title>BITMAPINFOHEADER Structure</h1>
+ 
+ <div id=mainSection>
+ <div class=clsServerSDKContent>
+ 
+ </div>
+ <p>
+ </p>
+ <p>The <strong>BITMAPINFOHEADER</strong> structure contains 
+ information about the dimensions and color format of a DIB.</p>
+ 
+ <h3>Syntax</h3>
+ <div class=LW_CodeSnippetContainer xmlns>
+ <a name=CodeSpippet0></a><div class=LW_CodeSnippetContainerCodeCollection>
+ <div class=LW_CodeSnippetToolBar></div>
+ <div id=CodeSnippetContainerCode0 class=LW_CodeSnippetContainerCode><div style=color:Black><pre>typedef struct tagBITMAPINFOHEADER {
+  DWORD biSize;
+  LONG  biWidth;
+  LONG  biHeight;
+  WORD  biPlanes;
+  WORD  biBitCount;
+  DWORD biCompression;
+  DWORD biSizeImage;
+  LONG  biXPelsPerMeter;
+  LONG  biYPelsPerMeter;
+  DWORD biClrUsed;
+  DWORD biClrImportant;
+} BITMAPINFOHEADER, *PBITMAPINFOHEADER;
+</pre></div></div>
+ </div>
+ </div>
+ <h3>Members</h3>
+ <dl>
+ <dt><strong>biSize</strong></dt>
+ <dd>
+ <p>The number of bytes required by the structure.</p>
+ </dd>
+ <dt><strong>biWidth</strong></dt>
+ <dd>
+ <p>The width of the bitmap, in pixels.</p>
+ <p> If <strong>biCompression</strong> is BI_JPEG or BI_PNG, the <strong>biWidth</strong>
+ member specifies the width of the decompressed JPEG or PNG image file, 
+ respectively.</p>
+ </dd>
+ <dt><strong>biHeight</strong></dt>
+ <dd>
+ <p>The height of the bitmap, in pixels. If <strong>biHeight</strong> is 
+ positive, the bitmap is a bottom-up DIB and its origin is the lower-left
+ corner. If <strong>biHeight</strong> is negative, the bitmap is a 
+ top-down DIB and its origin is the upper-left corner.</p>
+ <p>If <strong>biHeight</strong> is negative, indicating a top-down DIB, <strong>biCompression</strong>
+ must be either BI_RGB or BI_BITFIELDS. Top-down DIBs cannot be 
+ compressed.</p>
+ <p> If <strong>biCompression</strong> is BI_JPEG or BI_PNG, the <strong>biHeight</strong>
+ member specifies the height of the decompressed JPEG or PNG image file,
+ respectively.</p>
+ </dd>
+ <dt><strong>biPlanes</strong></dt>
+ <dd>
+ <p>The number of planes for the target device. This value must be set to
+ 1.</p>
+ </dd>
+ <dt><strong>biBitCount</strong></dt>
+ <dd>
+ <p>The number of bits-per-pixel. The <strong>biBitCount</strong> member 
+ of the <strong>BITMAPINFOHEADER</strong> structure determines the number
+ of bits that define each pixel and the maximum number of colors in the 
+ bitmap. This member must be one of the following values.</p>
+ <table><tbody>
+ <tr>
+ <th>Value</th>
+ <th>Meaning</th>
+ </tr>
+ <tr>
+ <td>0</td>
+ <td> The number of bits-per-pixel is specified or is 
+ implied by the JPEG or PNG format.</td>
+ </tr>
+ <tr>
+ <td>1</td>
+ <td>The bitmap is monochrome, and the <strong>bmiColors</strong>
+ member of <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> contains 
+ two entries. Each bit in the bitmap array represents a pixel. If the bit
+ is clear, the pixel is displayed with the color of the first entry in 
+ the <strong>bmiColors</strong> table; if the bit is set, the pixel has 
+ the color of the second entry in the table.</td>
+ </tr>
+ <tr>
+ <td>4</td>
+ <td>The bitmap has a maximum of 16 colors, and the <strong>bmiColors</strong>
+ member of <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> contains 
+ up to 16 entries. Each pixel in the bitmap is represented by a 4-bit 
+ index into the color table. For example, if the first byte in the bitmap
+ is 0x1F, the byte represents two pixels. The first pixel contains the 
+ color in the second table entry, and the second pixel contains the color
+ in the sixteenth table entry.</td>
+ </tr>
+ <tr>
+ <td>8</td>
+ <td>The bitmap has a maximum of 256 colors, and the <strong>bmiColors</strong>
+ member of <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> contains 
+ up to 256 entries. In this case, each byte in the array represents a 
+ single pixel.</td>
+ </tr>
+ <tr>
+ <td>16</td>
+ <td>The bitmap has a maximum of 2^16 colors. If the <strong>biCompression</strong>
+ member of the <strong>BITMAPINFOHEADER</strong> is BI_RGB, the <strong>bmiColors</strong>
+ member of <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> is NULL. 
+ Each <strong>WORD</strong> in the bitmap array represents a single 
+ pixel. The relative intensities of red, green, and blue are represented 
+ with five bits for each color component. The value for blue is in the 
+ least significant five bits, followed by five bits each for green and 
+ red. The most significant bit is not used. The <strong>bmiColors</strong>
+ color table is used for optimizing colors used on palette-based 
+ devices, and must contain the number of entries specified by the <strong>biClrUsed</strong>
+ member of the <strong>BITMAPINFOHEADER</strong>.<p>If the <strong>biCompression</strong>
+ member of the <strong>BITMAPINFOHEADER</strong> is BI_BITFIELDS, the <strong>bmiColors</strong>
+ member contains three <strong>DWORD</strong> color masks that specify 
+ the red, green, and blue components, respectively, of each pixel. Each <strong>WORD</strong>
+ in the bitmap array represents a single pixel.</p>
+ <p> When the <strong>biCompression</strong> member is BI_BITFIELDS, bits
+ set in each <strong>DWORD</strong> mask must be contiguous and should 
+ not overlap the bits of another mask. All the bits in the pixel do not 
+ have to be used.</p>
+ </td>
+ </tr>
+ <tr>
+ <td>24</td>
+ <td>The bitmap has a maximum of 2^24 colors, and the <strong>bmiColors</strong>
+ member of <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> is NULL. 
+ Each 3-byte triplet in the bitmap array represents the relative 
+ intensities of blue, green, and red, respectively, for a pixel. The <strong>bmiColors</strong>
+ color table is used for optimizing colors used on palette-based 
+ devices, and must contain the number of entries specified by the <strong>biClrUsed</strong>
+ member of the <strong>BITMAPINFOHEADER</strong>.</td>
+ </tr>
+ <tr>
+ <td>32</td>
+ <td>The bitmap has a maximum of 2^32 colors. If the <strong>biCompression</strong>
+ member of the <strong>BITMAPINFOHEADER</strong> is BI_RGB, the <strong>bmiColors</strong>
+ member of <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> is NULL. 
+ Each <strong>DWORD</strong> in the bitmap array represents the relative 
+ intensities of blue, green, and red, respectively, for a pixel. The high
+ byte in each <strong>DWORD</strong> is not used. The <strong>bmiColors</strong>
+ color table is used for optimizing colors used on palette-based 
+ devices, and must contain the number of entries specified by the <strong>biClrUsed</strong>
+ member of the <strong>BITMAPINFOHEADER</strong>.<p>If the <strong>biCompression</strong>
+ member of the <strong>BITMAPINFOHEADER</strong> is BI_BITFIELDS, the <strong>bmiColors</strong>
+ member contains three <strong>DWORD</strong> color masks that specify 
+ the red, green, and blue components, respectively, of each pixel. Each <strong>DWORD</strong>
+ in the bitmap array represents a single pixel.</p>
+ <p> When the <strong>biCompression</strong> member is BI_BITFIELDS, bits
+ set in each <strong>DWORD</strong> mask must be contiguous and should 
+ not overlap the bits of another mask. All the bits in the pixel do not 
+ need to be used.</p>
+ </td>
+ </tr>
+ </table>
+ <p>&nbsp;</p>
+ </dd>
+ <dt><strong>biCompression</strong></dt>
+ <dd>
+ <p>The type of compression for a compressed bottom-up bitmap (top-down 
+ DIBs cannot be compressed). This member can be one of the following 
+ values.</p>
+ <table><tbody>
+ <tr>
+ <th>Value</th>
+ <th>Description</th>
+ </tr>
+ <tr>
+ <td>BI_RGB</td>
+ <td>An uncompressed format.</td>
+ </tr>
+ <tr>
+ <td>BI_RLE8</td>
+ <td>A run-length encoded (RLE) format for bitmaps 
+ with 8 bpp. The compression format is a 2-byte format consisting of a 
+ count byte followed by a byte containing a color index. For more 
+ information, see <a href="http://msdn.microsoft.com/en-us/library/dd183383%28v=VS.85%29.aspx">Bitmap
+ Compression</a>.</td>
+ </tr>
+ <tr>
+ <td>BI_RLE4</td>
+ <td>An RLE format for bitmaps with 4 bpp. The 
+ compression format is a 2-byte format consisting of a count byte 
+ followed by two word-length color indexes. For more information, see <a href="http://msdn.microsoft.com/en-us/library/dd183383%28v=VS.85%29.aspx">Bitmap
+ Compression</a>.</td>
+ </tr>
+ <tr>
+ <td>BI_BITFIELDS</td>
+ <td>Specifies that the bitmap is not compressed
+ and that the color table consists of three <strong>DWORD</strong> color
+ masks that specify the red, green, and blue components, respectively, 
+ of each pixel. This is valid when used with 16- and 32-bpp bitmaps.</td>
+ </tr>
+ <tr>
+ <td>BI_JPEG</td>
+ <td> Indicates that the image is a JPEG image.</td>
+ </tr>
+ <tr>
+ <td>BI_PNG</td>
+ <td> Indicates that the image is a PNG image.</td>
+ </tr>
+ </table>
+ <p>&nbsp;</p>
+ </dd>
+ <dt><strong>biSizeImage</strong></dt>
+ <dd>
+ <p>The size, in bytes, of the image. This may be set to zero for BI_RGB 
+ bitmaps.</p>
+ <p> If <strong>biCompression</strong> is BI_JPEG or BI_PNG, <strong>biSizeImage</strong>
+ indicates the size of the JPEG or PNG image buffer, respectively.</p>
+ </dd>
+ <dt><strong>biXPelsPerMeter</strong></dt>
+ <dd>
+ <p>The horizontal resolution, in pixels-per-meter, of the target device 
+ for the bitmap. An application can use this value to select a bitmap 
+ from a resource group that best matches the characteristics of the 
+ current device.</p>
+ </dd>
+ <dt><strong>biYPelsPerMeter</strong></dt>
+ <dd>
+ <p>The vertical resolution, in pixels-per-meter, of the target device 
+ for the bitmap.</p>
+ </dd>
+ <dt><strong>biClrUsed</strong></dt>
+ <dd>
+ <p>The number of color indexes in the color table that are actually used
+ by the bitmap. If this value is zero, the bitmap uses the maximum 
+ number of colors corresponding to the value of the <strong>biBitCount</strong>
+ member for the compression mode specified by <strong>biCompression</strong>.</p>
+ <p>If <strong>biClrUsed</strong> is nonzero and the <strong>biBitCount</strong>
+ member is less than 16, the <strong>biClrUsed</strong> member specifies
+ the actual number of colors the graphics engine or device driver 
+ accesses. If <strong>biBitCount</strong> is 16 or greater, the <strong>biClrUsed</strong>
+ member specifies the size of the color table used to optimize 
+ performance of the system color palettes. If <strong>biBitCount</strong>
+ equals 16 or 32, the optimal color palette starts immediately following
+ the three <strong>DWORD</strong> masks.</p>
+ <p>When the bitmap array immediately follows the <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> structure,
+ it is a packed bitmap. Packed bitmaps are referenced by a single 
+ pointer. Packed bitmaps require that the <strong>biClrUsed</strong> 
+ member must be either zero or the actual size of the color table.</p>
+ </dd>
+ <dt><strong>biClrImportant</strong></dt>
+ <dd>
+ <p>The number of color indexes that are required for displaying the 
+ bitmap. If this value is zero, all colors are required.</p>
+ </dd>
+ </dl>
+ <h3>Remarks</h3>
+ <p>The <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> structure 
+ combines the <strong>BITMAPINFOHEADER</strong> structure and a color 
+ table to provide a complete definition of the dimensions and colors of a
+ DIB. For more information about DIBs, see <a href="http://msdn.microsoft.com/en-us/library/dd183562%28v=VS.85%29.aspx">Device-Independent
+ Bitmaps</a> and <strong>BITMAPINFO</strong>.</p>
+ <p>An application should use the information stored in the <strong>biSize</strong>
+ member to locate the color table in a <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> structure,
+ as follows:</p>
+ <div class=LW_CodeSnippetContainer xmlns>
+ <a name=CodeSpippet1></a><div class=LW_CodeSnippetContainerCodeCollection>
+ <div class=LW_CodeSnippetToolBar><div class=LW_CodeSnippetToolBarText><a title="Copy to clipboard.">Copy</a></div></div>
+ <div id=CodeSnippetContainerCode1 class=LW_CodeSnippetContainerCode><div style=color:Black><pre>pColor = ((LPSTR)pBitmapInfo + (WORD)(pBitmapInfo-&gt;bmiHeader.biSize));
+
+
+</pre></div></div>
+ </div>
+ </div>
+ <p>
+ The <strong>BITMAPINFOHEADER</strong> structure is extended to 
+ allow a JPEG or PNG image to be passed as the source image to <a href="http://msdn.microsoft.com/en-us/library/dd145121%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>StretchDIBits</strong></a>.</p>
+ <h3>Requirements</h3>
+ <p>Build date: 10/29/2010</p>
+ <div class=copyright>© 2010 Microsoft Corporation. All rights reserved.</div>
+ </div>
+ </div>
+ </div>
+ </div>
+ </div>
+ 
+ 

@@ -1,0 +1,475 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> <html xmlns=http://www.w3.org/1999/xhtml style><!--
+ Page saved with SingleFile 
+ url: http://nas.jmc/jmcs/docs/raw/File%20formats/BMP%2c%20Windows%20Bitmap/BITMAPV5HEADER%20structure%20%282010%2d10%2d29%29%2ehtml 
+ saved date: Tue Oct 28 2025 08:39:16 GMT-0700 (Pacific Daylight Time)
+--><meta charset=utf-8>
+<title>
+ 
+ BITMAPV5HEADER Structure (Windows)
+ 
+ </title>
+<style>.cl_lw_toc_fade_top{background:url(data:,)no-repeat scroll -2623px -3px;width:1px;height:90px;overflow:hidden}body{margin:0;font-family:"Segoe UI",Verdana,Arial;font-size:.813em;color:#000;font-style:normal;padding-right:0;padding-left:0;word-wrap:break-word}a:link{color:#1364c4;text-decoration:none}a:hover{text-decoration:underline}a:visited{color:#960bb4;text-decoration:none}img{border:0}h3{font-family:"Segoe UI",Verdana,Arial;font-size:1.077em;color:#3f529c;font-weight:bold}table{border-style:solid;border-width:1px;border-color:#bbb;border-collapse:collapse}table th{border-style:solid;border-width:1px;border-color:#bbb}table td{border-style:solid;border-width:1px;border-color:#bbb}.contentPlaceHolder{border-width:1px;text-align:left;width:100%;border-bottom-style:none;overflow:auto}.content{padding-top:13px;text-align:left;border-width:1px;overflow:auto;width:auto;border-left:1px solid #bbb;border-bottom:0}.topicContainer{padding-left:13px;padding-right:13px;padding-bottom:13px}.topicContainer .topic #mainSection{padding-top:5px}.topicContainer .topic .title{font-family:"Segoe UI",Verdana,Arial;font-size:1.769em;color:#3f529c;font-weight:bold}.topicContainer table{width:100%}.topicContainer table th{background-color:#e5e5e5;padding-right:4px;padding-left:4px;padding-bottom:4px;padding-top:4px;text-align:left;height:21px;font-family:"Segoe UI",Verdana,Arial;font-size:1.077em;color:#000;font-style:normal;font-weight:normal}.topicContainer table tr{vertical-align:top}.topicContainer table td{background-color:#fff;line-height:140%;padding-right:4px;padding-left:4px;padding-bottom:4px;margin:1px;padding-top:4px}.LW_CodeSnippetContainer{min-width:260px}.LW_CodeSnippetToolBar{width:auto;height:auto;border-top:solid 3px #e5e5e5;border-left:solid 1px #bbb;border-right:solid 3px #e5e5e5}.LW_CodeSnippetContainerCodeCollection{border-left:solid 1px #bbb;border-bottom:solid 3px #e5e5e5;border-right:solid 1px #e5e5e5;clear:both;margin-bottom:12px;position:relative;top:-3px}.LW_CodeSnippetContainerCode{width:auto;margin:0;padding-right:21px;padding-left:21px}.LW_CodeSnippetContainerCode div{padding:0;margin:0}.LW_CodeSnippetContainerCode pre{padding:5px;margin:0;font-family:Consolas,Courier,monospace;word-break:break-all;word-wrap:break-word;font-style:normal;font-weight:normal;overflow:auto}.title{font-style:normal;font-variant:normal;line-height:normal;margin:0 0 10px}.TOC_Fade_Top{margin-left:-1px;position:absolute;margin-top:-13px}</style>
+<meta name=DCS.dcsuri content="/en-us/library/dd183381(d=lightweight,l=en-us,v=VS.85).aspx">
+<meta name=NormalizedUrl content="http://msdn.microsoft.com/en-us/library/dd183381(d=lightweight,l=en-us,v=VS.85).aspx">
+<meta name=VotingContextUrl content="http://msdn.microsoft.com/en-us/library/dd183381(l=en-us,v=VS.85).aspx">
+<meta name=MN content="D1DC116E-4:27:56 AM">
+<meta name=Search.ShortId content=dd183381>
+<meta name=Ms.Locale content=en-us>
+<meta name=referrer content=no-referrer><link rel=canonical href=http://nas.jmc/jmcs/docs/raw/File%20formats/BMP%2c%20Windows%20Bitmap/BITMAPV5HEADER%20structure%20%282010%2d10%2d29%29%2ehtml><meta http-equiv=content-security-policy content="default-src 'none'; font-src 'self' data:; img-src 'self' data:; style-src 'unsafe-inline'; media-src 'self' data:; script-src 'unsafe-inline' data:; object-src 'self' data:; frame-src 'self' data:;"><style>img[src="data:,"],source[src="data:,"]{display:none!important}</style></head>
+ <body>
+ <div class=contentPlaceHolder>
+ <div class=content>
+ <img class="TOC_Fade_Top cl_lw_toc_fade_top" src=data:, alt><div class=topicContainer>
+ 
+ <div class=topic xmlns=http://www.w3.org/1999/xhtml>
+ <h1 class=title>BITMAPV5HEADER Structure</h1>
+ 
+ <div id=mainSection>
+ <div class=clsServerSDKContent>
+ 
+ </div>
+ <p>
+ </p>
+ <p>The <strong>BITMAPV5HEADER</strong> structure is the bitmap 
+ information header file. It is an extended version of the <a href="http://msdn.microsoft.com/en-us/library/dd183376%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFOHEADER</strong></a> 
+ structure.</p>
+ 
+ <h3>Syntax</h3>
+ <div class=LW_CodeSnippetContainer xmlns>
+ <a name=CodeSpippet0></a><div class=LW_CodeSnippetContainerCodeCollection>
+ <div class=LW_CodeSnippetToolBar></div>
+ <div id=CodeSnippetContainerCode0 class=LW_CodeSnippetContainerCode><div style=color:Black><pre>typedef struct {
+  DWORD        bV5Size;
+  LONG         bV5Width;
+  LONG         bV5Height;
+  WORD         bV5Planes;
+  WORD         bV5BitCount;
+  DWORD        bV5Compression;
+  DWORD        bV5SizeImage;
+  LONG         bV5XPelsPerMeter;
+  LONG         bV5YPelsPerMeter;
+  DWORD        bV5ClrUsed;
+  DWORD        bV5ClrImportant;
+  DWORD        bV5RedMask;
+  DWORD        bV5GreenMask;
+  DWORD        bV5BlueMask;
+  DWORD        bV5AlphaMask;
+  DWORD        bV5CSType;
+  CIEXYZTRIPLE bV5Endpoints;
+  DWORD        bV5GammaRed;
+  DWORD        bV5GammaGreen;
+  DWORD        bV5GammaBlue;
+  DWORD        bV5Intent;
+  DWORD        bV5ProfileData;
+  DWORD        bV5ProfileSize;
+  DWORD        bV5Reserved;
+} BITMAPV5HEADER, *PBITMAPV5HEADER;
+</pre></div></div>
+ </div>
+ </div>
+ <h3>Members</h3>
+ <dl>
+ <dt><strong>bV5Size</strong></dt>
+ <dd>
+ <p>The number of bytes required by the structure. Applications should 
+ use this member to determine which bitmap information header structure 
+ is being used.</p>
+ </dd>
+ <dt><strong>bV5Width</strong></dt>
+ <dd>
+ <p>The width of the bitmap, in pixels.</p>
+ <p>If <strong>bV5Compression</strong> is BI_JPEG or BI_PNG, the <strong>bV5Width</strong>
+ member specifies the width of the decompressed JPEG or PNG image in 
+ pixels.</p>
+ </dd>
+ <dt><strong>bV5Height</strong></dt>
+ <dd>
+ <p>The height of the bitmap, in pixels. If the value of <strong>bV5Height</strong>
+ is positive, the bitmap is a bottom-up DIB and its origin is the 
+ lower-left corner. If <strong>bV5Height</strong> value is negative, the 
+ bitmap is a top-down DIB and its origin is the upper-left corner.</p>
+ <p>If <strong>bV5Height</strong> is negative, indicating a top-down DIB,
+ <strong>bV5Compression</strong> must be either BI_RGB or BI_BITFIELDS. 
+ Top-down DIBs cannot be compressed.</p>
+ <p>If <strong>bV5Compression</strong> is BI_JPEG or BI_PNG, the <strong>bV5Height</strong>
+ member specifies the height of the decompressed JPEG or PNG image in 
+ pixels.</p>
+ </dd>
+ <dt><strong>bV5Planes</strong></dt>
+ <dd>
+ <p>The number of planes for the target device. This value must be set to
+ 1.</p>
+ </dd>
+ <dt><strong>bV5BitCount</strong></dt>
+ <dd>
+ <p>The number of bits that define each pixel and the maximum number of 
+ colors in the bitmap.</p>
+ <p>This member can be one of the following values.</p>
+ <table><tbody>
+ <tr>
+ <th>Value</th>
+ <th>Meaning</th>
+ </tr>
+ <tr>
+ <td>0</td>
+ <td>The number of bits per pixel is specified or is 
+ implied by the JPEG or PNG file format.</td>
+ </tr>
+ <tr>
+ <td>1</td>
+ <td>The bitmap is monochrome, and the <strong>bmiColors</strong>
+ member of <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> contains 
+ two entries. Each bit in the bitmap array represents a pixel. If the bit
+ is clear, the pixel is displayed with the color of the first entry in 
+ the <strong>bmiColors</strong> color table. If the bit is set, the pixel
+ has the color of the second entry in the table.</td>
+ </tr>
+ <tr>
+ <td>4</td>
+ <td>The bitmap has a maximum of 16 colors, and the <strong>bmiColors</strong>
+ member of <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> contains 
+ up to 16 entries. Each pixel in the bitmap is represented by a 4-bit 
+ index into the color table. For example, if the first byte in the bitmap
+ is 0x1F, the byte represents two pixels. The first pixel contains the 
+ color in the second table entry, and the second pixel contains the color
+ in the sixteenth table entry.</td>
+ </tr>
+ <tr>
+ <td>8</td>
+ <td>The bitmap has a maximum of 256 colors, and the <strong>bmiColors</strong>
+ member of <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> contains 
+ up to 256 entries. In this case, each byte in the array represents a 
+ single pixel.</td>
+ </tr>
+ <tr>
+ <td>16</td>
+ <td>The bitmap has a maximum of 2^16 colors. If the <strong>bV5Compression</strong>
+ member of the <strong>BITMAPV5HEADER</strong> structure is BI_RGB, the <strong>bmiColors</strong>
+ member of <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> is NULL. 
+ Each <strong>WORD</strong> in the bitmap array represents a single 
+ pixel. The relative intensities of red, green, and blue are represented 
+ with five bits for each color component. The value for blue is in the 
+ least significant five bits, followed by five bits each for green and 
+ red. The most significant bit is not used. The <strong>bmiColors</strong>
+ color table is used for optimizing colors used on palette-based 
+ devices, and must contain the number of entries specified by the <strong>bV5ClrUsed</strong>
+ member of the <strong>BITMAPV5HEADER</strong>.<p>If the <strong>bV5Compression</strong>
+ member of the <strong>BITMAPV5HEADER</strong> is BI_BITFIELDS, the <strong>bmiColors</strong>
+ member contains three <strong>DWORD</strong> color masks that specify 
+ the red, green, and blue components, respectively, of each pixel. Each <strong>WORD</strong>
+ in the bitmap array represents a single pixel.</p>
+ <p>When the <strong>bV5Compression</strong> member is BI_BITFIELDS, bits
+ set in each <strong>DWORD</strong> mask must be contiguous and should 
+ not overlap the bits of another mask. All the bits in the pixel do not 
+ need to be used.</p>
+ </td>
+ </tr>
+ <tr>
+ <td>24</td>
+ <td>The bitmap has a maximum of 2^24 colors, and the <strong>bmiColors</strong>
+ member of <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> is NULL. 
+ Each 3-byte triplet in the bitmap array represents the relative 
+ intensities of blue, green, and red, respectively, for a pixel. The <strong>bmiColors</strong>
+ color table is used for optimizing colors used on palette-based 
+ devices, and must contain the number of entries specified by the <strong>bV5ClrUsed</strong>
+ member of the <strong>BITMAPV5HEADER</strong> structure.</td>
+ </tr>
+ <tr>
+ <td>32</td>
+ <td>The bitmap has a maximum of 2^32 colors. If the <strong>bV5Compression</strong>
+ member of the <strong>BITMAPV5HEADER</strong> is BI_RGB, the <strong>bmiColors</strong>
+ member of <a href="http://msdn.microsoft.com/en-us/library/dd183375%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>BITMAPINFO</strong></a> is NULL. 
+ Each <strong>DWORD</strong> in the bitmap array represents the relative 
+ intensities of blue, green, and red, respectively, for a pixel. The high
+ byte in each <strong>DWORD</strong> is not used. The <strong>bmiColors</strong>
+ color table is used for optimizing colors used on palette-based 
+ devices, and must contain the number of entries specified by the <strong>bV5ClrUsed</strong>
+ member of the <strong>BITMAPV5HEADER</strong>.<p>If the <strong>bV5Compression</strong>
+ member of the <strong>BITMAPV5HEADER</strong> is BI_BITFIELDS, the <strong>bmiColors</strong>
+ member contains three <strong>DWORD</strong> color masks that specify 
+ the red, green, and blue components of each pixel. Each <strong>DWORD</strong>
+ in the bitmap array represents a single pixel.</p>
+ </td>
+ </tr>
+ </table>
+ <p>&nbsp;</p>
+ </dd>
+ <dt><strong>bV5Compression</strong></dt>
+ <dd>
+ <p>Specifies that the bitmap is not compressed. The <strong>bV5RedMask</strong>,
+ <strong>bV5GreenMask</strong>, and <strong>bV5BlueMask</strong> members
+ specify the red, green, and blue components of each pixel. This is 
+ valid when used with 16- and 32-bpp bitmaps. This member can be one of 
+ the following values.</p>
+ <table><tbody>
+ <tr>
+ <th>Value</th>
+ <th>Meaning</th>
+ </tr>
+ <tr>
+ <td>BI_RGB</td>
+ <td>An uncompressed format.</td>
+ </tr>
+ <tr>
+ <td>BI_RLE8</td>
+ <td>A run-length encoded (RLE) format for bitmaps 
+ with 8 bpp. The compression format is a two-byte format consisting of a 
+ count byte followed by a byte containing a color index. If <strong>bV5Compression</strong>
+ is BI_RGB and the <strong>bV5BitCount</strong> member is 16, 24, or 32,
+ the bitmap array specifies the actual intensities of blue, green, and 
+ red rather than using color table indexes. For more information, see <a href="http://msdn.microsoft.com/en-us/library/dd183383%28v=VS.85%29.aspx">Bitmap
+ Compression</a>.</td>
+ </tr>
+ <tr>
+ <td>BI_RLE4</td>
+ <td>An RLE format for bitmaps with 4 bpp. The 
+ compression format is a two-byte format consisting of a count byte 
+ followed by two word-length color indexes. For more information, see <a href="http://msdn.microsoft.com/en-us/library/dd183383%28v=VS.85%29.aspx">Bitmap
+ Compression</a>.</td>
+ </tr>
+ <tr>
+ <td>BI_BITFIELDS</td>
+ <td>Specifies that the bitmap is not compressed
+ and that the color table consists of three <strong>DWORD</strong> color
+ masks that specify the red, green, and blue components of each pixel. 
+ Valid when used with 16- and 32-bpp bitmaps.</td>
+ </tr>
+ <tr>
+ <td>BI_JPEG</td>
+ <td>Specifies that the image is compressed using the
+ JPEG file Interchange Format. JPEG compression trades off compression 
+ against loss; it can achieve a compression ratio of 20:1 with little 
+ noticeable loss.</td>
+ </tr>
+ <tr>
+ <td>BI_PNG</td>
+ <td>Specifies that the image is compressed using the 
+ PNG file Interchange Format.</td>
+ </tr>
+ </table>
+ <p>&nbsp;</p>
+ </dd>
+ <dt><strong>bV5SizeImage</strong></dt>
+ <dd>
+ <p>The size, in bytes, of the image. This may be set to zero for BI_RGB 
+ bitmaps.</p>
+ <p>If <strong>bV5Compression</strong> is BI_JPEG or BI_PNG, <strong>bV5SizeImage</strong>
+ is the size of the JPEG or PNG image buffer.</p>
+ </dd>
+ <dt><strong>bV5XPelsPerMeter</strong></dt>
+ <dd>
+ <p>The horizontal resolution, in pixels-per-meter, of the target device 
+ for the bitmap. An application can use this value to select a bitmap 
+ from a resource group that best matches the characteristics of the 
+ current device.</p>
+ </dd>
+ <dt><strong>bV5YPelsPerMeter</strong></dt>
+ <dd>
+ <p>The vertical resolution, in pixels-per-meter, of the target device 
+ for the bitmap.</p>
+ </dd>
+ <dt><strong>bV5ClrUsed</strong></dt>
+ <dd>
+ <p>The number of color indexes in the color table that are actually used
+ by the bitmap. If this value is zero, the bitmap uses the maximum 
+ number of colors corresponding to the value of the <strong>bV5BitCount</strong>
+ member for the compression mode specified by <strong>bV5Compression</strong>.</p>
+ <p>If <strong>bV5ClrUsed</strong> is nonzero and <strong>bV5BitCount</strong>
+ is less than 16, the <strong>bV5ClrUsed</strong> member specifies the 
+ actual number of colors the graphics engine or device driver accesses. 
+ If <strong>bV5BitCount</strong> is 16 or greater, the <strong>bV5ClrUsed</strong>
+ member specifies the size of the color table used to optimize 
+ performance of the system color palettes. If <strong>bV5BitCount</strong>
+ equals 16 or 32, the optimal color palette starts immediately following
+ the <strong>BITMAPV5HEADER</strong>. If <strong>bV5ClrUsed</strong> is 
+ nonzero, the color table is used on palettized devices, and <strong>bV5ClrUsed</strong>
+ specifies the number of entries.</p>
+ </dd>
+ <dt><strong>bV5ClrImportant</strong></dt>
+ <dd>
+ <p>The number of color indexes that are required for displaying the 
+ bitmap. If this value is zero, all colors are required.</p>
+ </dd>
+ <dt><strong>bV5RedMask</strong></dt>
+ <dd>
+ <p>Color mask that specifies the red component of each pixel, valid only
+ if <strong>bV5Compression</strong> is set to BI_BITFIELDS.</p>
+ </dd>
+ <dt><strong>bV5GreenMask</strong></dt>
+ <dd>
+ <p>Color mask that specifies the green component of each pixel, valid 
+ only if <strong>bV5Compression</strong> is set to BI_BITFIELDS.</p>
+ </dd>
+ <dt><strong>bV5BlueMask</strong></dt>
+ <dd>
+ <p>Color mask that specifies the blue component of each pixel, valid 
+ only if <strong>bV5Compression</strong> is set to BI_BITFIELDS.</p>
+ </dd>
+ <dt><strong>bV5AlphaMask</strong></dt>
+ <dd>
+ <p>Color mask that specifies the alpha component of each pixel.</p>
+ </dd>
+ <dt><strong>bV5CSType</strong></dt>
+ <dd>
+ <p>The color space of the DIB.</p>
+ <p>The following table specifies the values for <strong>bV5CSType</strong>.</p>
+ <table><tbody>
+ <tr>
+ <th>Value</th>
+ <th>Meaning</th>
+ </tr>
+ <tr>
+ <td>LCS_CALIBRATED_RGB</td>
+ <td>This value implies that endpoints and
+ gamma values are given in the appropriate fields.</td>
+ </tr>
+ <tr>
+ <td>LCS_sRGB</td>
+ <td>Specifies that the bitmap is in sRGB color 
+ space.</td>
+ </tr>
+ <tr>
+ <td>LCS_WINDOWS_COLOR_SPACE</td>
+ <td>This value indicates that the 
+ bitmap is in the system default color space, sRGB.</td>
+ </tr>
+ <tr>
+ <td>PROFILE_LINKED</td>
+ <td>This value indicates that <strong>bV5ProfileData</strong>
+ points to the file name of the profile to use (gamma and endpoints 
+ values are ignored).</td>
+ </tr>
+ <tr>
+ <td>PROFILE_EMBEDDED</td>
+ <td>This value indicates that <strong>bV5ProfileData</strong>
+ points to a memory buffer that contains the profile to be used (gamma 
+ and endpoints values are ignored).</td>
+ </tr>
+ </table>
+ <p>&nbsp;</p>
+ <p>See the <a href="http://msdn.microsoft.com/en-us/library/dd372165%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>LOGCOLORSPACE</strong></a> 
+ structure for information that defines a logical color space.</p>
+ </dd>
+ <dt><strong>bV5Endpoints</strong></dt>
+ <dd>
+ <p>A <a href="http://msdn.microsoft.com/en-us/library/dd371833%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>CIEXYZTRIPLE</strong></a> 
+ structure that specifies the x, y, and z coordinates of the three colors
+ that correspond to the red, green, and blue endpoints for the logical 
+ color space associated with the bitmap. This member is ignored unless 
+ the <strong>bV5CSType</strong> member specifies LCS_CALIBRATED_RGB.</p>
+ </dd>
+ <dt><strong>bV5GammaRed</strong></dt>
+ <dd>
+ <p>Toned response curve for red. Used if <strong>bV5CSType</strong> is 
+ set to LCS_CALIBRATED_RGB. Specified in 16^16 format.</p>
+ </dd>
+ <dt><strong>bV5GammaGreen</strong></dt>
+ <dd>
+ <p>Toned response curve for green. Used if <strong>bV5CSType</strong> is
+ set to LCS_CALIBRATED_RGB. Specified in 16^16 format.</p>
+ </dd>
+ <dt><strong>bV5GammaBlue</strong></dt>
+ <dd>
+ <p>Toned response curve for blue. Used if <strong>bV5CSType</strong> is 
+ set to LCS_CALIBRATED_RGB. Specified in 16^16 format.</p>
+ </dd>
+ <dt><strong>bV5Intent</strong></dt>
+ <dd>
+ <p>Rendering intent for bitmap. This can be one of the following values.</p>
+ <table><tbody>
+ <tr>
+ <th>Value</th>
+ <th>Intent</th>
+ <th>ICC name</th>
+ <th>Meaning</th>
+ </tr>
+ <tr>
+ <td>LCS_GM_ABS_COLORIMETRIC</td>
+ <td>Match</td>
+ <td>Absolute 
+ Colorimetric</td>
+ <td>Maintains the white point. Matches the colors to 
+ their nearest color in the destination gamut.</td>
+ </tr>
+ <tr>
+ <td>LCS_GM_BUSINESS</td>
+ <td>Graphic</td>
+ <td>Saturation</td>
+ <td>Maintains
+ saturation. Used for business charts and other situations in which 
+ undithered colors are required.</td>
+ </tr>
+ <tr>
+ <td>LCS_GM_GRAPHICS</td>
+ <td>Proof</td>
+ <td>Relative Colorimetric</td>
+ <td>Maintains
+ colorimetric match. Used for graphic designs and named colors.</td>
+ </tr>
+ <tr>
+ <td>LCS_GM_IMAGES</td>
+ <td>Picture</td>
+ <td>Perceptual</td>
+ <td>Maintains
+ contrast. Used for photographs and natural images.</td>
+ </tr>
+ </table>
+ <p>&nbsp;</p>
+ </dd>
+ <dt><strong>bV5ProfileData</strong></dt>
+ <dd>
+ <p>The offset, in bytes, from the beginning of the <strong>BITMAPV5HEADER</strong>
+ structure to the start of the profile data. If the profile is embedded,
+ profile data is the actual profile, and it is linked. (The profile data
+ is the null-terminated file name of the profile.) This cannot be a 
+ Unicode string. It must be composed exclusively of characters from the 
+ Windows character set (code page 1252). These profile members are 
+ ignored unless the <strong>bV5CSType</strong> member specifies 
+ PROFILE_LINKED or PROFILE_EMBEDDED.</p>
+ </dd>
+ <dt><strong>bV5ProfileSize</strong></dt>
+ <dd>
+ <p>Size, in bytes, of embedded profile data.</p>
+ </dd>
+ <dt><strong>bV5Reserved</strong></dt>
+ <dd>
+ <p>This member has been reserved. Its value should be set to zero.</p>
+ </dd>
+ </dl>
+ <h3>Remarks</h3>
+ <p>If <strong>bV5Height</strong> is negative, indicating a top-down DIB,
+ <strong>bV5Compression</strong> must be either BI_RGB or BI_BITFIELDS. 
+ Top-down DIBs cannot be compressed.</p>
+ <p>The Independent Color Management interface (ICM) 2.0 allows 
+ International Color Consortium (ICC) color profiles to be linked or 
+ embedded in DIBs (DIBs). See <a href="http://msdn.microsoft.com/en-us/library/dd372216%28v=VS.85%29.aspx">Using
+ Structures</a> for more information.</p>
+ <p>When a DIB is loaded into memory, the profile data (if present) 
+ should follow the color table, and the <strong>bV5ProfileData</strong> 
+ should provide the offset of the profile data from the beginning of the <strong>BITMAPV5HEADER</strong>
+ structure. The value stored in <strong>bV5ProfileData</strong> will be 
+ different from the value returned by the <strong>sizeof</strong> 
+ operator given the <strong>BITMAPV5HEADER</strong> argument, because <strong>bV5ProfileData</strong>
+ is the offset in bytes from the beginning of the <strong>BITMAPV5HEADER</strong>
+ structure to the start of the profile data. (Bitmap bits do not follow 
+ the color table in memory). Applications should modify the <strong>bV5ProfileData</strong>
+ member after loading the DIB into memory.</p>
+ <p>For packed DIBs, the profile data should follow the bitmap bits 
+ similar to the file format. The <strong>bV5ProfileData</strong> member 
+ should still give the offset of the profile data from the beginning of 
+ the <strong>BITMAPV5HEADER</strong>.</p>
+ <p>Applications should access the profile data only when <strong>bV5Size</strong>
+ equals the size of the <strong>BITMAPV5HEADER</strong> and <strong>bV5CSType</strong>
+ equals PROFILE_EMBEDDED or PROFILE_LINKED.</p>
+ <p>If a profile is linked, the path of the profile can be any fully 
+ qualified name (including a network path) that can be opened using the <a href="http://msdn.microsoft.com/en-us/library/aa363858%28v=VS.85%29.aspx"><strong xmlns=http://www.w3.org/1999/xhtml>CreateFile</strong></a> function.</p>
+ <h3>Requirements</h3>
+ <p>Build date: 10/29/2010</p>
+ <div class=copyright>© 2010 Microsoft Corporation. All rights reserved.</div>
+ </div>
+ </div>
+ </div>
+ </div>
+ </div>
+ 
+ 
