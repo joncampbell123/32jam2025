@@ -42,6 +42,16 @@ POINT near			WndMinSize = { 0, 0 };
 POINT near			WndMaxSize = { 0, 0 };
 POINT near			WndDefSize = { 0, 0 };
 
+void WinClientSizeToWindowSize(POINT FAR *d,const POINT FAR *s,const DWORD style,const BOOL fMenu) {
+	RECT um;
+	memset(&um,0,sizeof(um));
+	um.right = s->x;
+	um.bottom = s->y;
+	AdjustWindowRect(&um,style,fMenu);
+	d->x = um.right - um.left;
+	d->y = um.bottom - um.top;
+}
+
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
 LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 #else
@@ -186,33 +196,9 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		const DWORD style = WS_OVERLAPPEDWINDOW;
 
 		/* must be computed BEFORE creating the window */
-		{
-			RECT um;
-			memset(&um,0,sizeof(um));
-			um.right = WndMinSizeClient.x;
-			um.bottom = WndMinSizeClient.y;
-			AdjustWindowRect(&um,style,fMenu);
-			WndMinSize.x = um.right - um.left;
-			WndMinSize.y = um.bottom - um.top;
-		}
-		{
-			RECT um;
-			memset(&um,0,sizeof(um));
-			um.right = WndMaxSizeClient.x;
-			um.bottom = WndMaxSizeClient.y;
-			AdjustWindowRect(&um,style,fMenu);
-			WndMaxSize.x = um.right - um.left;
-			WndMaxSize.y = um.bottom - um.top;
-		}
-		{
-			RECT um;
-			memset(&um,0,sizeof(um));
-			um.right = WndDefSizeClient.x;
-			um.bottom = WndDefSizeClient.y;
-			AdjustWindowRect(&um,style,fMenu);
-			WndDefSize.x = um.right - um.left;
-			WndDefSize.y = um.bottom - um.top;
-		}
+		WinClientSizeToWindowSize(&WndMinSize,&WndMinSizeClient,style,fMenu);
+		WinClientSizeToWindowSize(&WndMaxSize,&WndMaxSizeClient,style,fMenu);
+		WinClientSizeToWindowSize(&WndDefSize,&WndDefSizeClient,style,fMenu);
 
 		hwndMain = CreateWindow(WndProcClass,WndTitle,
 			style,
