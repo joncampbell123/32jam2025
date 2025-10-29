@@ -35,6 +35,13 @@ const char near			WndProcClass[] = "GAME32JAM2025";
 const char near			WndTitle[] = "Game";
 HINSTANCE near			myInstance;
 
+const POINT near		WndMinSizeClient = { 80, 60 };
+const POINT near		WndMaxSizeClient = { 640, 480 };
+const POINT near		WndDefSizeClient = { 480, 360 };
+POINT near			WndMinSize = { 0, 0 };
+POINT near			WndMaxSize = { 0, 0 };
+POINT near			WndDefSize = { 0, 0 };
+
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
 LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 #else
@@ -47,6 +54,24 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		PostQuitMessage(0);
 		return 0; /* OK */
 	}
+#ifdef WM_GETMINMAXINFO
+	else if (message == WM_GETMINMAXINFO) {
+		MINMAXINFO FAR *mmi = (MINMAXINFO FAR*)lparam;
+
+		if (mmi->ptMaxSize.x > WndMaxSize.x)
+			mmi->ptMaxSize.x = WndMaxSize.x;
+		if (mmi->ptMaxSize.y > WndMaxSize.y)
+			mmi->ptMaxSize.y = WndMaxSize.y;
+		if (mmi->ptMaxTrackSize.x > WndMaxSize.x)
+			mmi->ptMaxTrackSize.x = WndMaxSize.x;
+		if (mmi->ptMaxTrackSize.y > WndMaxSize.y)
+			mmi->ptMaxTrackSize.y = WndMaxSize.y;
+		if (mmi->ptMinTrackSize.x < WndMinSize.x)
+			mmi->ptMinTrackSize.x = WndMinSize.x;
+		if (mmi->ptMinTrackSize.y < WndMinSize.y)
+			mmi->ptMinTrackSize.y = WndMinSize.y;
+	}
+#endif
 #ifdef WM_SETCURSOR
 	else if (message == WM_SETCURSOR) {
 		if (LOWORD(lparam) == HTCLIENT) {
@@ -155,18 +180,53 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 #endif
 	}
 
-	hwndMain = CreateWindow(WndProcClass,WndTitle,
-		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT,CW_USEDEFAULT,
-		300,200,
-		NULL,NULL,
-		hInstance,NULL);
-	if (!hwndMain) {
-		MessageBox(NULL,"Unable to create window","Oops!",MB_OK);
-		return 1;
-	}
+	{
+		const HMENU menu = LoadMenu(hInstance,MAKEINTRESOURCE(IDM_MAINMENU));
+		const BOOL fMenu = menu!=NULL?TRUE:FALSE;
+		const DWORD style = WS_OVERLAPPEDWINDOW;
 
-	SetMenu(hwndMain,LoadMenu(hInstance,MAKEINTRESOURCE(IDM_MAINMENU)));
+		/* must be computed BEFORE creating the window */
+		{
+			RECT um;
+			memset(&um,0,sizeof(um));
+			um.right = WndMinSizeClient.x;
+			um.bottom = WndMinSizeClient.y;
+			AdjustWindowRect(&um,style,fMenu);
+			WndMinSize.x = um.right - um.left;
+			WndMinSize.y = um.bottom - um.top;
+		}
+		{
+			RECT um;
+			memset(&um,0,sizeof(um));
+			um.right = WndMaxSizeClient.x;
+			um.bottom = WndMaxSizeClient.y;
+			AdjustWindowRect(&um,style,fMenu);
+			WndMaxSize.x = um.right - um.left;
+			WndMaxSize.y = um.bottom - um.top;
+		}
+		{
+			RECT um;
+			memset(&um,0,sizeof(um));
+			um.right = WndDefSizeClient.x;
+			um.bottom = WndDefSizeClient.y;
+			AdjustWindowRect(&um,style,fMenu);
+			WndDefSize.x = um.right - um.left;
+			WndDefSize.y = um.bottom - um.top;
+		}
+
+		hwndMain = CreateWindow(WndProcClass,WndTitle,
+			style,
+			CW_USEDEFAULT,CW_USEDEFAULT,
+			WndDefSize.x,WndDefSize.y,
+			NULL,NULL,
+			hInstance,NULL);
+		if (!hwndMain) {
+			MessageBox(NULL,"Unable to create window","Oops!",MB_OK);
+			return 1;
+		}
+
+		SetMenu(hwndMain,menu);
+	}
 
 	ShowWindow(hwndMain,nCmdShow);
 	UpdateWindow(hwndMain);
