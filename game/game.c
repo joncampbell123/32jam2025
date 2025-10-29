@@ -79,6 +79,17 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 
 		return 1; /* Important: Returning 1 signals to Windows that we processed the message. Windows 3.0 gets really screwed up if we don't! */
 	}
+	else if (message == WM_COMMAND) {
+		switch (wparam) {
+			case IDC_QUIT:
+				PostMessage(hwnd,WM_CLOSE,0,0);
+				break;
+			default:
+				return DefWindowProc(hwnd,message,wparam,lparam);
+		}
+
+		return 1;
+	}
 	else if (message == WM_PAINT) {
 		RECT um;
 
@@ -154,6 +165,8 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		MessageBox(NULL,"Unable to create window","Oops!",MB_OK);
 		return 1;
 	}
+
+	SetMenu(hwndMain,LoadMenu(hInstance,MAKEINTRESOURCE(IDM_MAINMENU)));
 
 	ShowWindow(hwndMain,nCmdShow);
 	UpdateWindow(hwndMain);
