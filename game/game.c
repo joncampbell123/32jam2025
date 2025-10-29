@@ -32,9 +32,7 @@
 
 HWND near			hwndMain;
 const char near			WndProcClass[] = "HELLOWINDOWS";
-const char near			HelloWorldText[] = "Hello world!";
 HINSTANCE near			myInstance;
-HICON near			AppIcon;
 
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
 LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
@@ -87,8 +85,6 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			PAINTSTRUCT ps;
 
 			BeginPaint(hwnd,&ps);
-			TextOut(ps.hdc,0,0,HelloWorldText,strlen(HelloWorldText));
-			if (AppIcon != NULL) DrawIcon(ps.hdc,5,20,AppIcon);
 			EndPaint(hwnd,&ps);
 		}
 
@@ -110,9 +106,9 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	WNDCLASS wnd;
 	MSG msg;
 
-	myInstance = hInstance;
+	(void)lpCmdLine; /* unused */
 
-	AppIcon = LoadIcon(hInstance,MAKEINTRESOURCE(IDI_APPICON));
+	myInstance = hInstance;
 
 	/* NTS: In the Windows 3.1 environment all handles are global. Registering a class window twice won't work.
 	 *      It's only under 95 and later (win32 environment) where Windows always sets hPrevInstance to 0
@@ -126,7 +122,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		wnd.cbClsExtra = 0;
 		wnd.cbWndExtra = 0;
 		wnd.hInstance = hInstance;
-		wnd.hIcon = AppIcon;
+		wnd.hIcon = LoadIcon(hInstance,MAKEINTRESOURCE(IDI_APPICON));
 		wnd.hCursor = NULL;
 		wnd.hbrBackground = NULL;
 		wnd.lpszMenuName = NULL;
