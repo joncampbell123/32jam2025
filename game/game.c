@@ -31,7 +31,8 @@
 #include "resource.h"
 
 HWND near			hwndMain;
-const char near			WndProcClass[] = "HELLOWINDOWS";
+const char near			WndProcClass[] = "GAME32JAM2025";
+const char near			WndTitle[] = "Game";
 HINSTANCE near			myInstance;
 
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
@@ -143,7 +144,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 #endif
 	}
 
-	hwndMain = CreateWindow(WndProcClass,"Hello!",
+	hwndMain = CreateWindow(WndProcClass,WndTitle,
 		WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT,CW_USEDEFAULT,
 		300,200,
