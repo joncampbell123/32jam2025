@@ -101,7 +101,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			HPEN oldPen,newPen;
 
 			newPen = (HPEN)GetStockObject(NULL_PEN);
-			newBrush = (HBRUSH)GetStockObject(WHITE_BRUSH);
+			newBrush = (HBRUSH)GetStockObject(BLACK_BRUSH);
 
 			oldPen = SelectObject((HDC)wparam,newPen);
 			oldBrush = SelectObject((HDC)wparam,newBrush);
