@@ -5,6 +5,16 @@ TODO:
   WndFSFullscreenTopmost mode. Same as WndFSFullscreen but uses SetWindowPos to
   give it a HWND_TOPMOST z-order.
 
+- Windows 95 fullscreen mode: Add a fullscreen window flag. This flag, if set while
+  fullscreen, instructs the game to query Windows 95 for the desktop area NOT covered
+  by the taskbar so that the Windows 95 start menu/taskbar is always visible.
+  SystemParametersInfo() exists in Windows 3.1 and Win16 code under 95 can also use
+  it to query this area, so it's not something limited to 32-bit. Limit that code to
+  WINVER >= 0x30A (Windows 3.1), because SystemParametersInfo() did not exist until
+  Windows 3.1 and we're not going to go out of our way to GetProcAddress() it
+  dynamically unless there's a pressing need to do so. We're a game engine that needs
+  to run as light and tight as possible, not a DOSLIB demonstration program.
+
 DONE:
 
 - Windows 3.x: Reply to WM_GETMINMAXINFO to return a maximized window position such that
