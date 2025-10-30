@@ -74,6 +74,7 @@ POINT near			WndDefSize = { 0, 0 };
 RECT near			WndFullscreenSize = { 0, 0, 0, 0 };
 POINT near			WndCurrentSizeClient = { 0, 0 };
 POINT near			WndCurrentSize = { 0, 0 };
+POINT near			WndScreenSize = { 0, 0 };
 
 // Window state (WndState_...) bitfield
 BYTE near			WndStateFlags = 0;
@@ -211,6 +212,11 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 				mmi->ptMinTrackSize.x = WndMinSize.x;
 			if (mmi->ptMinTrackSize.y < WndMinSize.y)
 				mmi->ptMinTrackSize.y = WndMinSize.y;
+
+			/* if Windows maximizes our window, we want it centered on screen, not
+			 * put into the upper left hand corner like it does by default */
+			mmi->ptMaxPosition.x = (WndScreenSize.x - mmi->ptMaxSize.x) / 2;
+			mmi->ptMaxPosition.y = (WndScreenSize.y - mmi->ptMaxSize.y) / 2;
 		}
 	}
 #endif
@@ -378,6 +384,10 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		/* assume current size == def size */
 		WndCurrentSizeClient = WndDefSizeClient;
 		WndCurrentSize = WndDefSize;
+
+		/* screen size */
+		WndScreenSize.x = GetSystemMetrics(SM_CXSCREEN);
+		WndScreenSize.y = GetSystemMetrics(SM_CYSCREEN);
 
 #if WINVER >= 0x300
 		hwndMain = CreateWindowEx(style.styleEx,WndProcClass,WndTitle,style.style,
