@@ -1,9 +1,11 @@
 
-NOTE: Windows 3.0 is not a primary target for this game engine at this time.
-      This game engine currently targets and focuses on compatibility with
+NOTE: This game engine currently targets and focuses on compatibility with
       Windows 3.1 and Windows 95 only.
 
 Windows 3.0:
+
+* NOTE: Windows 3.0 is not a primary target for this game engine yet.
+
 - WM_GETMINMAXINFO is able to enforce fullscreen mode, but if you minimize, then
   restore the window to maximized, Windows 3.0 calls WM_GETMINMAXINFO but then
   ignores the window size info and shows the window as a normal maximized window
