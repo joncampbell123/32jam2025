@@ -21,6 +21,26 @@ TODO:
   drive. To make testing easier. Of course, game devs targeting Windows 3.1 are going
   to want to keep all filenames 8.3 because "long filenames" didn't exist until 95.
 
+- Begin GameFlags bitfield. Define first constant as one that determines whether or
+  not the game allows multiple instances. If not set, show an error message if
+  hPrevInstance != NULL. Win16 only (or Win32s?), for now.
+
+- Figure out how a Win32 version can detect another instance of itself. A recommended
+  method out there is to use CreateMutex with a name based on a unique identifier in
+  the application (a GUID, perhaps?). If Windows 95/NT target, assume CreateMutex
+  works and use it. If Win32s target, GetProcAddress it or use some other means that
+  works in Windows 3.1. Using FindWindow with the game's unique window class string might be
+  a good way to do it (FindWindow it seems has been in the Windows API since Windows 1.0).
+
+  CreateMutex by default in Windows NT puts them in the local kernel namespace, so,
+  that technique is not going to prevent the game from multiple instances across
+  multiple users. [https://www.codeproject.com/articles/Using-a-Win32-Mutex-to-Figure-Out-if-an-Applicatio#comments-section]
+  in which case perhaps another bit could be assigned to signal not to allow multiple
+  instances on Windows NT even across user accounts. According to the code sample,
+  that could be done by naming the mutex "global\{UNIQUE IDENTIFIER}" instead of just
+  "{UNIQUE IDENTIFIER}". Of course, knowing Microsoft, "global\" probably doesn't
+  work under Windows 95. We'll cross this bridge when it matters.
+
 DONE:
 
 - Windows 3.x: Reply to WM_GETMINMAXINFO to return a maximized window position such that

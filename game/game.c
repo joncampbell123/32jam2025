@@ -38,24 +38,33 @@
 #define WndState_Minimized	0x00000001u
 #define WndState_Active		0x00000002u
 
-HWND near			hwndMain;
-const char near			WndProcClass[] = "GAME32JAM2025";
-const char near			WndTitle[] = "Game";
-
 struct WndStyle_t {
 	DWORD			style;
 	DWORD			styleEx;
 };
 
-// style warnings:
-// - Do not combine WS_EX_DLGMODALFRAME with a menu
+// NTS: Please make this AS UNIQUE AS POSSIBLE to your game. You could use UUIDGEN and make this a GUID if uninspired or busy, even.
+const char near			WndProcClass[] = "GAME32JAM2025";
 
+// NTS: Change this, obviously.
+const char near			WndTitle[] = "Game";
+
+// NTS: This is the menu resource ID that defines what menu appears in your window.
+const UINT near			WndMenu = IDM_MAINMENU;
+
+// style warnings:
+// - Do not combine WS_EX_DLGMODALFRAME with a menu, minimize or maximize buttons
+// - Do not use WS_CHILD, this is a game, not a UI element
+
+// NTS: Your game's main window style. Not all styles are compatible with menus or other styles.
+//      For more information see Windows SDK documentation regarding CreateWindowEx().
+//      Extended styles are not availeble when targeting Windows 1.x and Windows 2.x.
 const struct WndStyle_t		WndStyle = { .style = WS_OVERLAPPEDWINDOW, .styleEx = 0 };
 //const struct WndStyle_t		WndStyle = { .style = WS_POPUPWINDOW|WS_MINIMIZEBOX|WS_MAXIMIZEBOX|WS_CAPTION, .styleEx = 0 };
 //const struct WndStyle_t		WndStyle = { .style = WS_DLGFRAME|WS_CAPTION|WS_SYSMENU|WS_BORDER, .styleEx = WS_EX_DLGMODALFRAME };
 
-const UINT near			WndMenu = IDM_MAINMENU;
 HINSTANCE near			myInstance = (HINSTANCE)NULL;
+HWND near			hwndMain = (HWND)NULL;
 HMENU near			SysMenu = (HMENU)NULL;
 
 // Window config (WndCFG_...) bitfield
