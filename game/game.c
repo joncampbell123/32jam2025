@@ -142,7 +142,6 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 
 		return 0;
 	}
-#ifdef WM_INITMENUPOPUP
 	else if (message == WM_INITMENUPOPUP) {
 		if ((HMENU)wparam == SysMenu) {
 			EnableMenuItem(SysMenu,SC_MOVE,MF_BYCOMMAND|(isMinimized?MF_ENABLED:(MF_DISABLED|MF_GRAYED)));
@@ -151,7 +150,6 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 
 		return DefWindowProc(hwnd,message,wparam,lparam);
 	}
-#endif
 #ifdef WM_WINDOWPOSCHANGING
 	else if (message == WM_WINDOWPOSCHANGING) {
 		WINDOWPOS FAR *wpc = (WINDOWPOS FAR*)lparam;
