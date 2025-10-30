@@ -346,6 +346,17 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		BOOL fMenu = (menu!=NULL && WndShowMenu)?TRUE:FALSE;
 		struct WndStyle_t style = WndStyle;
 
+#if WINVER < 0x200
+		if (WndFullscreen != WndFSNormal) {
+			/* Windows 1.0: WS_OVERLAPPED (aka WS_TILED) prevents fullscreen because we then
+			 *              cannot control the position of our window, change it to WS_POPUP */
+			if ((style.style & (WS_POPUP|WS_CHILD)) == WS_TILED) {
+				style.style &= ~(WS_POPUP|WS_CHILD);
+				style.style |= WS_POPUP;
+			}
+		}
+#endif
+
 		/* must be computed BEFORE creating the window */
 		WinClientSizeToWindowSize(&WndMinSize,&WndMinSizeClient,&style,fMenu);
 		WinClientSizeToWindowSize(&WndMaxSize,&WndMaxSizeClient,&style,fMenu);
@@ -373,8 +384,11 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		if (fMenu) SetMenu(hwndMain,menu);
 	}
 
-#if defined(SW_SHOW) && defined(SW_SHOWMAXIMIZED)
-	if (nCmdShow == SW_MINIMIZE) isMinimized = TRUE;
+#if WINVER >= 0x200
+	if (nCmdShow == SW_MINIMIZE || nCmdShow == SW_SHOWMINIMIZED || nCmdShow == SW_SHOWMINNOACTIVE) isMinimized = TRUE;
+#else
+	if (nCmdShow == SHOW_ICONWINDOW) isMinimized = TRUE; /* Windows 1.0 */
+#endif
 
 	/* NTS: Windows 3.1 will not send WM_WINDOWPOSCHANGING for window creation because,
 	 *      well, the window was just created and therefore didn't change position!
@@ -382,10 +396,27 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	 *      change is necessary! To make this work with any other Windows, also maximize
 	 *      the window. */
 	if (WndFullscreen != WndFSNormal && !isMinimized) {
+#if WINVER >= 0x200
 		SetWindowPos(hwndMain,HWND_TOP,0,0,0,0,SWP_NOZORDER|SWP_NOSIZE|SWP_NOACTIVATE);
-		if (nCmdShow == SW_SHOW || nCmdShow == SW_SHOWNA || nCmdShow == SW_SHOWNORMAL) nCmdShow = SW_SHOWMAXIMIZED;
-	}
+#else
+		/* NTS: Windows 1.0 WS_TILED aka WS_OVERLAPPED windows cannot be moved using MoveWindow.
+		 *      The above code for fullscreen should have changed the style to WS_POPUP so that
+		 *      we can control and place the window */
+		MoveWindow(hwndMain,
+			WndFullscreenSize.left,WndFullscreenSize.top,
+			WndFullscreenSize.right - WndFullscreenSize.left,
+			WndFullscreenSize.bottom - WndFullscreenSize.top,TRUE);
 #endif
+
+#if WINVER >= 0x200
+		if (nCmdShow == SW_SHOW || nCmdShow == SW_SHOWNA || nCmdShow == SW_SHOWNORMAL) nCmdShow = SW_SHOWMAXIMIZED;
+#else
+		/* FIXME: Why is Windows 1.04 giving us nCmdShow == 0x3300?? */
+		/* NTS: We could change nCmdShow to SHOW_FULLSCREEN but that seems to also take focus away from the window.
+		 *      It's really only useful if we keep the window as WS_OVERLAPPED aka WS_TILED to full the screen as a window.
+		 *      The WS_POPUP hack father up does a better job for what we are trying to do here. */
+#endif
+	}
 
 	SysMenu = GetSystemMenu(hwndMain,FALSE);
 	if (WndFullscreen != WndFSNormal) {
