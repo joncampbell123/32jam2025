@@ -33,7 +33,14 @@
 HWND near			hwndMain;
 const char near			WndProcClass[] = "GAME32JAM2025";
 const char near			WndTitle[] = "Game";
-const DWORD near		WndStyle = WS_OVERLAPPEDWINDOW;
+
+struct WndStyle_t {
+	DWORD			style;
+	DWORD			styleEx;
+};
+
+const struct WndStyle_t		WndStyle = { .style = WS_OVERLAPPEDWINDOW, .styleEx = 0 };
+
 const UINT near			WndMenu = IDM_MAINMENU;
 BOOL near			WndShowMenu = TRUE;
 HINSTANCE near			myInstance;
@@ -45,12 +52,12 @@ POINT near			WndMinSize = { 0, 0 };
 POINT near			WndMaxSize = { 0, 0 };
 POINT near			WndDefSize = { 0, 0 };
 
-void WinClientSizeToWindowSize(POINT FAR *d,const POINT FAR *s,const DWORD style,const BOOL fMenu) {
+void WinClientSizeToWindowSize(POINT FAR *d,const POINT FAR *s,const struct WndStyle_t *style,const BOOL fMenu) {
 	RECT um;
 	memset(&um,0,sizeof(um));
 	um.right = s->x;
 	um.bottom = s->y;
-	AdjustWindowRect(&um,style,fMenu);
+	AdjustWindowRectEx(&um,style->style,fMenu,style->styleEx);
 	d->x = um.right - um.left;
 	d->y = um.bottom - um.top;
 }
@@ -194,17 +201,16 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	}
 
 	{
-		const HMENU menu = WndMenu!=0u?LoadMenu(hInstance,MAKEINTRESOURCE(WndMenu)):((HMENU)NULL);
-		const BOOL fMenu = (menu!=NULL && WndShowMenu)?TRUE:FALSE;
-		const DWORD style = WndStyle;
+		HMENU menu = WndMenu!=0u?LoadMenu(hInstance,MAKEINTRESOURCE(WndMenu)):((HMENU)NULL);
+		BOOL fMenu = (menu!=NULL && WndShowMenu)?TRUE:FALSE;
+		struct WndStyle_t style = WndStyle;
 
 		/* must be computed BEFORE creating the window */
-		WinClientSizeToWindowSize(&WndMinSize,&WndMinSizeClient,style,fMenu);
-		WinClientSizeToWindowSize(&WndMaxSize,&WndMaxSizeClient,style,fMenu);
-		WinClientSizeToWindowSize(&WndDefSize,&WndDefSizeClient,style,fMenu);
+		WinClientSizeToWindowSize(&WndMinSize,&WndMinSizeClient,&style,fMenu);
+		WinClientSizeToWindowSize(&WndMaxSize,&WndMaxSizeClient,&style,fMenu);
+		WinClientSizeToWindowSize(&WndDefSize,&WndDefSizeClient,&style,fMenu);
 
-		hwndMain = CreateWindow(WndProcClass,WndTitle,
-			style,
+		hwndMain = CreateWindowEx(style.styleEx,WndProcClass,WndTitle,style.style,
 			CW_USEDEFAULT,CW_USEDEFAULT,
 			WndDefSize.x,WndDefSize.y,
 			NULL,NULL,
