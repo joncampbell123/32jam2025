@@ -1,1 +1,9 @@
 
+- Windows 3.x: Reply to WM_GETMINMAXINFO to return a maximized window position such that
+  maximizing the window centers it on the screen instead of positioning it in the upper
+  left corner as Windows likes to do by default.
+
+- Windows 3.x fullscreen mode: In addition to WndFSNone and WndFSFullscreen, add a
+  WndFSFullscreenTopmost mode. Same as WndFSFullscreen but uses SetWindowPos to
+  give it a HWND_TOPMOST z-order.
+
