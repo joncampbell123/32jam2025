@@ -102,6 +102,16 @@ void WinClientSizeToWindowSize(POINT *d,const POINT *s,const struct WndStyle_t *
 	d->y = um.bottom - um.top;
 }
 
+#if (WINVER >= 0x300)
+# define DeleteMenuGF DeleteMenu
+#else
+/* NTS: DeleteMenu() does exist in Windows 2.x but it only supports MF_BYPOSITION. This code needs MF_BYCOMMAND. */
+BOOL DeleteMenuGF(HMENU hMenu,UINT idItem,UINT fuFlags) {
+	/* Microsoft's Windows 3.1 SDK has forgotten about MF_REMOVE and does not mention it */
+	return ChangeMenu(hMenu,idItem,NULL,0,MF_DELETE | fuFlags);
+}
+#endif
+
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
 LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 #else
@@ -379,12 +389,10 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 
 	SysMenu = GetSystemMenu(hwndMain,FALSE);
 	if (WndFullscreen != WndFSNormal) {
-#if WINVER >= 0x300
 		// do not remove SC_MOVE, it makes it impossible in Windows 3.x to move the minimized icon.
 		// do not remove SC_RESTORE, it makes it impossible in Windows 3.x to restore the window by double-clicking the minimized icon.
-		RemoveMenu(SysMenu,SC_MAXIMIZE,MF_BYCOMMAND);
-		RemoveMenu(SysMenu,SC_SIZE,MF_BYCOMMAND);
-#endif
+		DeleteMenuGF(SysMenu,SC_MAXIMIZE,MF_BYCOMMAND);
+		DeleteMenuGF(SysMenu,SC_SIZE,MF_BYCOMMAND);
 	}
 
 	ShowWindow(hwndMain,nCmdShow);
