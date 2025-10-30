@@ -39,11 +39,6 @@ struct WndStyle_t {
 	DWORD			styleEx;
 };
 
-enum WndFullscreen_t {
-	WndFSNormal,
-	WndFSFullscreen
-};
-
 // style warnings:
 // - Do not combine WS_EX_DLGMODALFRAME with a menu
 
@@ -52,10 +47,7 @@ const struct WndStyle_t		WndStyle = { .style = WS_OVERLAPPEDWINDOW, .styleEx = 0
 //const struct WndStyle_t		WndStyle = { .style = WS_DLGFRAME|WS_CAPTION|WS_SYSMENU|WS_BORDER, .styleEx = WS_EX_DLGMODALFRAME };
 
 const UINT near			WndMenu = IDM_MAINMENU;
-
-const enum WndFullscreen_t	WndFullscreen = WndFSNormal;
-//const enum WndFullscreen_t	WndFullscreen = WndFSFullscreen;
-
+BOOL near			WndFullscreen = TRUE;
 BOOL near			WndShowMenu = TRUE;
 HINSTANCE near			myInstance;
 HMENU near			SysMenu = (HMENU)NULL;
@@ -158,7 +150,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		 * stay stuck in the upper left hand corner of the screen if fullscreen mode is active */
 		isMinimized = IsIconic(hwnd);
 
-		if (WndFullscreen != WndFSNormal && !isMinimized) {
+		if (WndFullscreen && !isMinimized) {
 			wpc->x = WndFullscreenSize.left;
 			wpc->y = WndFullscreenSize.top;
 		}
@@ -174,7 +166,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		 * stay stuck in the upper left hand corner of the screen if fullscreen mode is active */
 		isMinimized = IsIconic(hwnd);
 
-		if (WndFullscreen != WndFSNormal && !isMinimized) {
+		if (WndFullscreen && !isMinimized) {
 			mmi->ptMaxSize.x = WndFullscreenSize.right - WndFullscreenSize.left;
 			mmi->ptMaxSize.y = WndFullscreenSize.bottom - WndFullscreenSize.top;
 			mmi->ptMaxPosition.x = WndFullscreenSize.left;
@@ -233,10 +225,10 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 	else if (message == WM_SYSCOMMAND) {
 		switch (wparam) {
 			case SC_MOVE:
-				if (WndFullscreen != WndFSNormal && !isMinimized) return 0;
+				if (WndFullscreen && !isMinimized) return 0;
 				break;
 			case SC_MAXIMIZE:
-				if (WndFullscreen != WndFSNormal) {
+				if (WndFullscreen) {
 #if WINVER >= 0x200
 					// NTS: It is very important to SW_SHOWNORMAL then SW_SHOWMAXIMIZED or else Windows 3.0
 					//      will only show the window in normal maximized dimensions
@@ -247,7 +239,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 				}
 				break;
 			case SC_RESTORE:
-				if (WndFullscreen != WndFSNormal) {
+				if (WndFullscreen) {
 #if WINVER >= 0x200
 					// NTS: It is very important to SW_SHOWNORMAL then SW_SHOWMAXIMIZED or else Windows 3.0
 					//      will only show the window in normal maximized dimensions
@@ -345,7 +337,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		struct WndStyle_t style = WndStyle;
 
 #if WINVER < 0x200
-		if (WndFullscreen != WndFSNormal) {
+		if (WndFullscreen) {
 			/* Windows 1.0: WS_OVERLAPPED (aka WS_TILED) prevents fullscreen because we then
 			 *              cannot control the position of our window, change it to WS_POPUP */
 			if ((style.style & (WS_POPUP|WS_CHILD)) == WS_TILED/*which is zero--look at WINDOWS.H*/)
@@ -391,7 +383,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	 *      For fullscreen to work whether or not the window is maximized, position
 	 *      change is necessary! To make this work with any other Windows, also maximize
 	 *      the window. */
-	if (WndFullscreen != WndFSNormal && !isMinimized) {
+	if (WndFullscreen && !isMinimized) {
 #if WINVER >= 0x200
 		SetWindowPos(hwndMain,HWND_TOP,0,0,0,0,SWP_NOZORDER|SWP_NOSIZE|SWP_NOACTIVATE);
 #else
@@ -415,7 +407,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	}
 
 	SysMenu = GetSystemMenu(hwndMain,FALSE);
-	if (WndFullscreen != WndFSNormal) {
+	if (WndFullscreen) {
 		// do not remove SC_MOVE, it makes it impossible in Windows 3.x to move the minimized icon.
 		// do not remove SC_RESTORE, it makes it impossible in Windows 3.x to restore the window by double-clicking the minimized icon.
 		DeleteMenuGF(SysMenu,SC_MAXIMIZE,MF_BYCOMMAND);
