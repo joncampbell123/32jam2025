@@ -348,10 +348,8 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		if (WndFullscreen != WndFSNormal) {
 			/* Windows 1.0: WS_OVERLAPPED (aka WS_TILED) prevents fullscreen because we then
 			 *              cannot control the position of our window, change it to WS_POPUP */
-			if ((style.style & (WS_POPUP|WS_CHILD)) == WS_TILED) {
-				style.style &= ~(WS_POPUP|WS_CHILD);
-				style.style |= WS_POPUP;
-			}
+			if ((style.style & (WS_POPUP|WS_CHILD)) == WS_TILED/*which is zero--look at WINDOWS.H*/)
+				style.style |= WS_POPUP; /* WS_TILED is zero, so no need to mask off anything */
 		}
 #endif
 
