@@ -39,7 +39,12 @@ struct WndStyle_t {
 	DWORD			styleEx;
 };
 
+// style warnings:
+// - Do not combine WS_EX_DLGMODALFRAME with a menu
+
 const struct WndStyle_t		WndStyle = { .style = WS_OVERLAPPEDWINDOW, .styleEx = 0 };
+//const struct WndStyle_t		WndStyle = { .style = WS_POPUPWINDOW|WS_MINIMIZEBOX|WS_MAXIMIZEBOX|WS_CAPTION, .styleEx = 0 };
+//const struct WndStyle_t		WndStyle = { .style = WS_DLGFRAME|WS_CAPTION|WS_SYSMENU|WS_BORDER, .styleEx = WS_EX_DLGMODALFRAME };
 
 const UINT near			WndMenu = IDM_MAINMENU;
 BOOL near			WndShowMenu = TRUE;
@@ -57,7 +62,11 @@ void WinClientSizeToWindowSize(POINT FAR *d,const POINT FAR *s,const struct WndS
 	memset(&um,0,sizeof(um));
 	um.right = s->x;
 	um.bottom = s->y;
+#if WINVER >= 0x300
 	AdjustWindowRectEx(&um,style->style,fMenu,style->styleEx);
+#else
+	AdjustWindowRect(&um,style->style,fMenu);
+#endif
 	d->x = um.right - um.left;
 	d->y = um.bottom - um.top;
 }
@@ -210,11 +219,19 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		WinClientSizeToWindowSize(&WndMaxSize,&WndMaxSizeClient,&style,fMenu);
 		WinClientSizeToWindowSize(&WndDefSize,&WndDefSizeClient,&style,fMenu);
 
+#if WINVER >= 0x300
 		hwndMain = CreateWindowEx(style.styleEx,WndProcClass,WndTitle,style.style,
 			CW_USEDEFAULT,CW_USEDEFAULT,
 			WndDefSize.x,WndDefSize.y,
 			NULL,NULL,
 			hInstance,NULL);
+#else
+		hwndMain = CreateWindow(WndProcClass,WndTitle,style.style,
+			CW_USEDEFAULT,CW_USEDEFAULT,
+			WndDefSize.x,WndDefSize.y,
+			NULL,NULL,
+			hInstance,NULL);
+#endif
 		if (!hwndMain) {
 			MessageBox(NULL,"Unable to create window","Oops!",MB_OK);
 			return 1;
