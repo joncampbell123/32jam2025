@@ -33,6 +33,9 @@
 HWND near			hwndMain;
 const char near			WndProcClass[] = "GAME32JAM2025";
 const char near			WndTitle[] = "Game";
+const DWORD near		WndStyle = WS_OVERLAPPEDWINDOW;
+const UINT near			WndMenu = IDM_MAINMENU;
+BOOL near			WndShowMenu = TRUE;
 HINSTANCE near			myInstance;
 
 const POINT near		WndMinSizeClient = { 80, 60 };
@@ -191,9 +194,9 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	}
 
 	{
-		const HMENU menu = LoadMenu(hInstance,MAKEINTRESOURCE(IDM_MAINMENU));
-		const BOOL fMenu = menu!=NULL?TRUE:FALSE;
-		const DWORD style = WS_OVERLAPPEDWINDOW;
+		const HMENU menu = WndMenu!=0u?LoadMenu(hInstance,MAKEINTRESOURCE(WndMenu)):((HMENU)NULL);
+		const BOOL fMenu = (menu!=NULL && WndShowMenu)?TRUE:FALSE;
+		const DWORD style = WndStyle;
 
 		/* must be computed BEFORE creating the window */
 		WinClientSizeToWindowSize(&WndMinSize,&WndMinSizeClient,style,fMenu);
@@ -211,7 +214,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 			return 1;
 		}
 
-		SetMenu(hwndMain,menu);
+		if (fMenu) SetMenu(hwndMain,menu);
 	}
 
 	ShowWindow(hwndMain,nCmdShow);
