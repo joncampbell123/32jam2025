@@ -1,0 +1,9 @@
+
+Windows 3.0:
+- WM_GETMINMAXINFO is able to enforce fullscreen mode, but if you minimize, then
+  restore the window to maximized, Windows 3.0 calls WM_GETMINMAXINFO but then
+  ignores the window size info and shows the window as a normal maximized window
+  state (caption, sysmenu, etc. visible). Windows 3.1 actually obeys the result.
+  You can get Windows 3.0 to properly position and size the window if you manually
+  double click the title bar.
+
