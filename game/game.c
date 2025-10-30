@@ -39,6 +39,11 @@ struct WndStyle_t {
 	DWORD			styleEx;
 };
 
+enum WndFullscreen_t {
+	WndFSNormal,
+	WndFSFullscreen
+};
+
 // style warnings:
 // - Do not combine WS_EX_DLGMODALFRAME with a menu
 
@@ -47,6 +52,10 @@ const struct WndStyle_t		WndStyle = { .style = WS_OVERLAPPEDWINDOW, .styleEx = 0
 //const struct WndStyle_t		WndStyle = { .style = WS_DLGFRAME|WS_CAPTION|WS_SYSMENU|WS_BORDER, .styleEx = WS_EX_DLGMODALFRAME };
 
 const UINT near			WndMenu = IDM_MAINMENU;
+
+//const enum WndFullscreen_t	WndFullscreen = WndFSNormal;
+const enum WndFullscreen_t	WndFullscreen = WndFSFullscreen;
+
 BOOL near			WndShowMenu = TRUE;
 HINSTANCE near			myInstance;
 
@@ -56,8 +65,29 @@ const POINT near		WndDefSizeClient = { 480, 360 };
 POINT near			WndMinSize = { 0, 0 };
 POINT near			WndMaxSize = { 0, 0 };
 POINT near			WndDefSize = { 0, 0 };
+RECT near			WndFullscreenSize = { 0, 0, 0, 0 };
 
-void WinClientSizeToWindowSize(POINT FAR *d,const POINT FAR *s,const struct WndStyle_t *style,const BOOL fMenu) {
+BOOL near			isMinimized = FALSE;
+BOOL near			isActive = FALSE;
+
+void WinClientSizeInFullScreen(RECT *d,const struct WndStyle_t *style,const BOOL fMenu) {
+	(void)fMenu;
+
+	d->left = 0;
+	d->top = 0;
+	d->right = GetSystemMetrics(SM_CXSCREEN);
+	d->bottom = GetSystemMetrics(SM_CYSCREEN);
+	/* calculate the rect so that the window caption, sysmenu, and borders are just off the
+	 * edges of the screen, leaving the client area to cover the screen, BUT, disregard the
+	 * fMenu flag so that the menu bar, if any, is visible at the top of the screen. */
+#if WINVER >= 0x300
+	AdjustWindowRectEx(d,style->style,FALSE,style->styleEx);
+#else
+	AdjustWindowRect(d,style->style,FALSE);
+#endif
+}
+
+void WinClientSizeToWindowSize(POINT *d,const POINT *s,const struct WndStyle_t *style,const BOOL fMenu) {
 	RECT um;
 	memset(&um,0,sizeof(um));
 	um.right = s->x;
@@ -83,22 +113,70 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		PostQuitMessage(0);
 		return 0; /* OK */
 	}
+	else if (message == WM_SIZE) {
+		if (wparam == SIZE_MINIMIZED)
+			isMinimized = TRUE;
+		else
+			isMinimized = FALSE;
+
+		return 0;
+	}
+	else if (message == WM_ACTIVATE) {
+		if (wparam == WA_CLICKACTIVE)
+			isActive = TRUE;
+		else if (wparam == WA_ACTIVE)
+			isActive = TRUE;
+		else
+			isActive = FALSE;
+
+		return 0;
+	}
+#ifdef WM_WINDOWPOSCHANGING
+	else if (message == WM_WINDOWPOSCHANGING) {
+		WINDOWPOS FAR *wpc = (WINDOWPOS FAR*)lparam;
+
+		/* we must track if the window is minimized or else on Windows 3.1 our minimized icon will
+		 * stay stuck in the upper left hand corner of the screen if fullscreen mode is active */
+		isMinimized = IsIconic(hwnd);
+
+		if (WndFullscreen != WndFSNormal && !isMinimized) {
+			wpc->x = WndFullscreenSize.left;
+			wpc->y = WndFullscreenSize.top;
+		}
+
+		return DefWindowProc(hwnd,message,wparam,lparam);
+	}
+#endif
 #ifdef WM_GETMINMAXINFO
 	else if (message == WM_GETMINMAXINFO) {
 		MINMAXINFO FAR *mmi = (MINMAXINFO FAR*)lparam;
 
-		if (mmi->ptMaxSize.x > WndMaxSize.x)
-			mmi->ptMaxSize.x = WndMaxSize.x;
-		if (mmi->ptMaxSize.y > WndMaxSize.y)
-			mmi->ptMaxSize.y = WndMaxSize.y;
-		if (mmi->ptMaxTrackSize.x > WndMaxSize.x)
-			mmi->ptMaxTrackSize.x = WndMaxSize.x;
-		if (mmi->ptMaxTrackSize.y > WndMaxSize.y)
-			mmi->ptMaxTrackSize.y = WndMaxSize.y;
-		if (mmi->ptMinTrackSize.x < WndMinSize.x)
-			mmi->ptMinTrackSize.x = WndMinSize.x;
-		if (mmi->ptMinTrackSize.y < WndMinSize.y)
-			mmi->ptMinTrackSize.y = WndMinSize.y;
+		/* we must track if the window is minimized or else on Windows 3.1 our minimized icon will
+		 * stay stuck in the upper left hand corner of the screen if fullscreen mode is active */
+		isMinimized = IsIconic(hwnd);
+
+		if (WndFullscreen != WndFSNormal && !isMinimized) {
+			mmi->ptMaxSize.x = WndFullscreenSize.right - WndFullscreenSize.left;
+			mmi->ptMaxSize.y = WndFullscreenSize.bottom - WndFullscreenSize.top;
+			mmi->ptMaxPosition.x = WndFullscreenSize.left;
+			mmi->ptMaxPosition.y = WndFullscreenSize.top;
+			mmi->ptMaxTrackSize = mmi->ptMaxSize;
+			mmi->ptMinTrackSize = mmi->ptMaxSize;
+		}
+		else {
+			if (mmi->ptMaxSize.x > WndMaxSize.x)
+				mmi->ptMaxSize.x = WndMaxSize.x;
+			if (mmi->ptMaxSize.y > WndMaxSize.y)
+				mmi->ptMaxSize.y = WndMaxSize.y;
+			if (mmi->ptMaxTrackSize.x > WndMaxSize.x)
+				mmi->ptMaxTrackSize.x = WndMaxSize.x;
+			if (mmi->ptMaxTrackSize.y > WndMaxSize.y)
+				mmi->ptMaxTrackSize.y = WndMaxSize.y;
+			if (mmi->ptMinTrackSize.x < WndMinSize.x)
+				mmi->ptMinTrackSize.x = WndMinSize.x;
+			if (mmi->ptMinTrackSize.y < WndMinSize.y)
+				mmi->ptMinTrackSize.y = WndMinSize.y;
+		}
 	}
 #endif
 #ifdef WM_SETCURSOR
@@ -218,6 +296,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		WinClientSizeToWindowSize(&WndMinSize,&WndMinSizeClient,&style,fMenu);
 		WinClientSizeToWindowSize(&WndMaxSize,&WndMaxSizeClient,&style,fMenu);
 		WinClientSizeToWindowSize(&WndDefSize,&WndDefSizeClient,&style,fMenu);
+		WinClientSizeInFullScreen(&WndFullscreenSize,&style,fMenu);
 
 #if WINVER >= 0x300
 		hwndMain = CreateWindowEx(style.styleEx,WndProcClass,WndTitle,style.style,
@@ -240,8 +319,24 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		if (fMenu) SetMenu(hwndMain,menu);
 	}
 
+#if defined(SW_SHOW) && defined(SW_SHOWMAXIMIZED)
+	if (nCmdShow == SW_MINIMIZE) isMinimized = TRUE;
+
+	/* NTS: Windows 3.1 will not send WM_WINDOWPOSCHANGING for window creation because,
+	 *      well, the window was just created and therefore didn't change position!
+	 *      For fullscreen to work whether or not the window is maximized, position
+	 *      change is necessary! To make this work with any other Windows, also maximize
+	 *      the window. */
+	if (WndFullscreen != WndFSNormal && !isMinimized) {
+		SetWindowPos(hwndMain,HWND_TOP,0,0,0,0,SWP_NOZORDER|SWP_NOSIZE|SWP_NOACTIVATE);
+		if (nCmdShow == SW_SHOW || nCmdShow == SW_SHOWNA || nCmdShow == SW_SHOWNORMAL) nCmdShow = SW_SHOWMAXIMIZED;
+	}
+#endif
+
 	ShowWindow(hwndMain,nCmdShow);
 	UpdateWindow(hwndMain);
+
+	if (GetActiveWindow() == hwndMain) isActive = TRUE;
 
 	while (GetMessage(&msg,NULL,0,0)) {
 		TranslateMessage(&msg);
