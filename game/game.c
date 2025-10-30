@@ -53,11 +53,12 @@ const struct WndStyle_t		WndStyle = { .style = WS_OVERLAPPEDWINDOW, .styleEx = 0
 
 const UINT near			WndMenu = IDM_MAINMENU;
 
-const enum WndFullscreen_t	WndFullscreen = WndFSNormal;
-//const enum WndFullscreen_t	WndFullscreen = WndFSFullscreen;
+//const enum WndFullscreen_t	WndFullscreen = WndFSNormal;
+const enum WndFullscreen_t	WndFullscreen = WndFSFullscreen;
 
 BOOL near			WndShowMenu = TRUE;
 HINSTANCE near			myInstance;
+HMENU near			SysMenu = (HMENU)NULL;
 
 const POINT near		WndMinSizeClient = { 80, 60 };
 const POINT near		WndMaxSizeClient = { 640, 480 };
@@ -131,6 +132,16 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 
 		return 0;
 	}
+#ifdef WM_INITMENUPOPUP
+	else if (message == WM_INITMENUPOPUP) {
+		if ((HMENU)wparam == SysMenu) {
+			EnableMenuItem(SysMenu,SC_MOVE,MF_BYCOMMAND|(isMinimized?MF_ENABLED:(MF_DISABLED|MF_GRAYED)));
+			EnableMenuItem(SysMenu,SC_RESTORE,MF_BYCOMMAND|(isMinimized?MF_ENABLED:(MF_DISABLED|MF_GRAYED)));
+		}
+
+		return DefWindowProc(hwnd,message,wparam,lparam);
+	}
+#endif
 #ifdef WM_WINDOWPOSCHANGING
 	else if (message == WM_WINDOWPOSCHANGING) {
 		WINDOWPOS FAR *wpc = (WINDOWPOS FAR*)lparam;
@@ -210,6 +221,39 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		}
 
 		return 1; /* Important: Returning 1 signals to Windows that we processed the message. Windows 3.0 gets really screwed up if we don't! */
+	}
+	else if (message == WM_SYSCOMMAND) {
+		switch (wparam) {
+			case SC_MOVE:
+				if (WndFullscreen != WndFSNormal && !isMinimized) return 0;
+				break;
+			case SC_MAXIMIZE:
+				if (WndFullscreen != WndFSNormal) {
+#if WINVER >= 0x200
+					// NTS: It is very important to SW_SHOWNORMAL then SW_SHOWMAXIMIZED or else Windows 3.0
+					//      will only show the window in normal maximized dimensions
+					if (isMinimized) ShowWindow(hwnd,SW_SHOWNORMAL);
+					ShowWindow(hwnd,SW_SHOWMAXIMIZED);
+#endif
+					return 0;
+				}
+				break;
+			case SC_RESTORE:
+				if (WndFullscreen != WndFSNormal) {
+#if WINVER >= 0x200
+					// NTS: It is very important to SW_SHOWNORMAL then SW_SHOWMAXIMIZED or else Windows 3.0
+					//      will only show the window in normal maximized dimensions
+					if (isMinimized) ShowWindow(hwnd,SW_SHOWNORMAL);
+					ShowWindow(hwnd,SW_SHOWMAXIMIZED);
+#endif
+					return 0;
+				}
+				break;
+			default:
+				break;
+		}
+
+		return DefWindowProc(hwnd,message,wparam,lparam);
 	}
 	else if (message == WM_COMMAND) {
 		switch (wparam) {
@@ -332,6 +376,16 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		if (nCmdShow == SW_SHOW || nCmdShow == SW_SHOWNA || nCmdShow == SW_SHOWNORMAL) nCmdShow = SW_SHOWMAXIMIZED;
 	}
 #endif
+
+	SysMenu = GetSystemMenu(hwndMain,FALSE);
+	if (WndFullscreen != WndFSNormal) {
+#if WINVER >= 0x300
+		// do not remove SC_MOVE, it makes it impossible in Windows 3.x to move the minimized icon.
+		// do not remove SC_RESTORE, it makes it impossible in Windows 3.x to restore the window by double-clicking the minimized icon.
+		RemoveMenu(SysMenu,SC_MAXIMIZE,MF_BYCOMMAND);
+		RemoveMenu(SysMenu,SC_SIZE,MF_BYCOMMAND);
+#endif
+	}
 
 	ShowWindow(hwndMain,nCmdShow);
 	UpdateWindow(hwndMain);
