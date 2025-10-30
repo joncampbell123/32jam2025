@@ -34,6 +34,10 @@
 #define WndCFG_ShowMenu		0x00000001u
 #define WndCFG_Fullscreen	0x00000002u
 
+// WndStateFlags
+#define WndState_Minimized	0x00000001u
+#define WndState_Active		0x00000002u
+
 HWND near			hwndMain;
 const char near			WndProcClass[] = "GAME32JAM2025";
 const char near			WndTitle[] = "Game";
@@ -54,6 +58,7 @@ const UINT near			WndMenu = IDM_MAINMENU;
 HINSTANCE near			myInstance = (HINSTANCE)NULL;
 HMENU near			SysMenu = (HMENU)NULL;
 
+// Window config (WndCFG_...) bitfield
 BYTE near			WndConfigFlags = WndCFG_ShowMenu;
 //BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_Fullscreen;
 //BYTE near			WndConfigFlags = 0;
@@ -68,8 +73,8 @@ POINT near			WndDefSize = { 0, 0 };
 
 RECT near			WndFullscreenSize = { 0, 0, 0, 0 };
 
-BOOL near			isMinimized = FALSE;
-BOOL near			isActive = FALSE;
+// Window state (WndState_...) bitfield
+BYTE near			WndStateFlags = 0;
 
 void WinClientSizeInFullScreen(RECT *d,const struct WndStyle_t *style,const BOOL fMenu) {
 	(void)fMenu;
@@ -126,26 +131,24 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 	}
 	else if (message == WM_SIZE) {
 		if (wparam == SIZE_MINIMIZED)
-			isMinimized = TRUE;
+			WndStateFlags |= WndState_Minimized;
 		else
-			isMinimized = FALSE;
+			WndStateFlags &= ~WndState_Minimized;
 
 		return 0;
 	}
 	else if (message == WM_ACTIVATE) {
-		if (wparam == WA_CLICKACTIVE)
-			isActive = TRUE;
-		else if (wparam == WA_ACTIVE)
-			isActive = TRUE;
+		if (wparam == WA_CLICKACTIVE || wparam == WA_ACTIVE)
+			WndStateFlags |= WndState_Active;
 		else
-			isActive = FALSE;
+			WndStateFlags &= ~WndState_Active;
 
 		return 0;
 	}
 	else if (message == WM_INITMENUPOPUP) {
 		if ((HMENU)wparam == SysMenu) {
-			EnableMenuItem(SysMenu,SC_MOVE,MF_BYCOMMAND|(isMinimized?MF_ENABLED:(MF_DISABLED|MF_GRAYED)));
-			EnableMenuItem(SysMenu,SC_RESTORE,MF_BYCOMMAND|(isMinimized?MF_ENABLED:(MF_DISABLED|MF_GRAYED)));
+			EnableMenuItem(SysMenu,SC_MOVE,MF_BYCOMMAND|((WndStateFlags & WndState_Minimized)?MF_ENABLED:(MF_DISABLED|MF_GRAYED)));
+			EnableMenuItem(SysMenu,SC_RESTORE,MF_BYCOMMAND|((WndStateFlags & WndState_Minimized)?MF_ENABLED:(MF_DISABLED|MF_GRAYED)));
 		}
 
 		return DefWindowProc(hwnd,message,wparam,lparam);
@@ -156,9 +159,12 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 
 		/* we must track if the window is minimized or else on Windows 3.1 our minimized icon will
 		 * stay stuck in the upper left hand corner of the screen if fullscreen mode is active */
-		isMinimized = IsIconic(hwnd);
+		if (IsIconic(hwnd))
+			WndStateFlags |= WndState_Minimized;
+		else
+			WndStateFlags &= ~WndState_Minimized;
 
-		if ((WndConfigFlags & WndCFG_Fullscreen) && !isMinimized) {
+		if ((WndConfigFlags & WndCFG_Fullscreen) && !(WndStateFlags & WndState_Minimized)) {
 			wpc->x = WndFullscreenSize.left;
 			wpc->y = WndFullscreenSize.top;
 		}
@@ -172,9 +178,12 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 
 		/* we must track if the window is minimized or else on Windows 3.1 our minimized icon will
 		 * stay stuck in the upper left hand corner of the screen if fullscreen mode is active */
-		isMinimized = IsIconic(hwnd);
+		if (IsIconic(hwnd))
+			WndStateFlags |= WndState_Minimized;
+		else
+			WndStateFlags &= ~WndState_Minimized;
 
-		if ((WndConfigFlags & WndCFG_Fullscreen) && !isMinimized) {
+		if ((WndConfigFlags & WndCFG_Fullscreen) && !(WndStateFlags & WndState_Minimized)) {
 			mmi->ptMaxSize.x = WndFullscreenSize.right - WndFullscreenSize.left;
 			mmi->ptMaxSize.y = WndFullscreenSize.bottom - WndFullscreenSize.top;
 			mmi->ptMaxPosition.x = WndFullscreenSize.left;
@@ -233,14 +242,14 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 	else if (message == WM_SYSCOMMAND) {
 		switch (wparam) {
 			case SC_MOVE:
-				if ((WndConfigFlags & WndCFG_Fullscreen) && !isMinimized) return 0;
+				if ((WndConfigFlags & WndCFG_Fullscreen) && !(WndStateFlags & WndState_Minimized)) return 0;
 				break;
 			case SC_MAXIMIZE:
 				if (WndConfigFlags & WndCFG_Fullscreen) {
 #if WINVER >= 0x200
 					// NTS: It is very important to SW_SHOWNORMAL then SW_SHOWMAXIMIZED or else Windows 3.0
 					//      will only show the window in normal maximized dimensions
-					if (isMinimized) ShowWindow(hwnd,SW_SHOWNORMAL);
+					if (WndStateFlags & WndState_Minimized) ShowWindow(hwnd,SW_SHOWNORMAL);
 					ShowWindow(hwnd,SW_SHOWMAXIMIZED);
 #endif
 					return 0;
@@ -251,7 +260,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 #if WINVER >= 0x200
 					// NTS: It is very important to SW_SHOWNORMAL then SW_SHOWMAXIMIZED or else Windows 3.0
 					//      will only show the window in normal maximized dimensions
-					if (isMinimized) ShowWindow(hwnd,SW_SHOWNORMAL);
+					if (WndStateFlags & WndState_Minimized) ShowWindow(hwnd,SW_SHOWNORMAL);
 					ShowWindow(hwnd,SW_SHOWMAXIMIZED);
 #endif
 					return 0;
@@ -381,9 +390,9 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	}
 
 #if WINVER >= 0x200
-	if (nCmdShow == SW_MINIMIZE || nCmdShow == SW_SHOWMINIMIZED || nCmdShow == SW_SHOWMINNOACTIVE) isMinimized = TRUE;
+	if (nCmdShow == SW_MINIMIZE || nCmdShow == SW_SHOWMINIMIZED || nCmdShow == SW_SHOWMINNOACTIVE) WndStateFlags |= WndState_Minimized;
 #else
-	if (nCmdShow == SHOW_ICONWINDOW) isMinimized = TRUE; /* Windows 1.0 */
+	if (nCmdShow == SHOW_ICONWINDOW) WndStateFlags |= WndState_Minimized; /* Windows 1.0 */
 #endif
 
 	/* NTS: Windows 3.1 will not send WM_WINDOWPOSCHANGING for window creation because,
@@ -391,7 +400,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	 *      For fullscreen to work whether or not the window is maximized, position
 	 *      change is necessary! To make this work with any other Windows, also maximize
 	 *      the window. */
-	if ((WndConfigFlags & WndCFG_Fullscreen) && !isMinimized) {
+	if ((WndConfigFlags & WndCFG_Fullscreen) && !(WndStateFlags & WndState_Minimized)) {
 #if WINVER >= 0x200
 		SetWindowPos(hwndMain,HWND_TOP,0,0,0,0,SWP_NOZORDER|SWP_NOSIZE|SWP_NOACTIVATE);
 #else
@@ -425,7 +434,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	ShowWindow(hwndMain,nCmdShow);
 	UpdateWindow(hwndMain);
 
-	if (GetActiveWindow() == hwndMain) isActive = TRUE;
+	if (GetActiveWindow() == hwndMain) WndStateFlags |= WndState_Active;
 
 	while (GetMessage(&msg,NULL,0,0)) {
 		TranslateMessage(&msg);
