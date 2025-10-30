@@ -53,8 +53,8 @@ const struct WndStyle_t		WndStyle = { .style = WS_OVERLAPPEDWINDOW, .styleEx = 0
 
 const UINT near			WndMenu = IDM_MAINMENU;
 
-//const enum WndFullscreen_t	WndFullscreen = WndFSNormal;
-const enum WndFullscreen_t	WndFullscreen = WndFSFullscreen;
+const enum WndFullscreen_t	WndFullscreen = WndFSNormal;
+//const enum WndFullscreen_t	WndFullscreen = WndFSFullscreen;
 
 BOOL near			WndShowMenu = TRUE;
 HINSTANCE near			myInstance;
