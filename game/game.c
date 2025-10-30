@@ -72,6 +72,8 @@ const POINT near		WndDefSizeClient = { 480, 360 };
 POINT near			WndDefSize = { 0, 0 };
 
 RECT near			WndFullscreenSize = { 0, 0, 0, 0 };
+POINT near			WndCurrentSizeClient = { 0, 0 };
+POINT near			WndCurrentSize = { 0, 0 };
 
 // Window state (WndState_...) bitfield
 BYTE near			WndStateFlags = 0;
@@ -130,10 +132,15 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		return 0; /* OK */
 	}
 	else if (message == WM_SIZE) {
-		if (wparam == SIZE_MINIMIZED)
+		if (wparam == SIZE_MINIMIZED) {
 			WndStateFlags |= WndState_Minimized;
-		else
+		}
+		else {
 			WndStateFlags &= ~WndState_Minimized;
+			WndCurrentSizeClient.x = LOWORD(lparam);
+			WndCurrentSizeClient.y = HIWORD(lparam);
+			WinClientSizeToWindowSize(&WndCurrentSize,&WndCurrentSizeClient,&WndStyle,GetMenu(hwnd)!=NULL?TRUE:FALSE);
+		}
 
 		return 0;
 	}
@@ -368,6 +375,10 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		WinClientSizeToWindowSize(&WndDefSize,&WndDefSizeClient,&style,fMenu);
 		WinClientSizeInFullScreen(&WndFullscreenSize,&style,fMenu);
 
+		/* assume current size == def size */
+		WndCurrentSizeClient = WndDefSizeClient;
+		WndCurrentSize = WndDefSize;
+
 #if WINVER >= 0x300
 		hwndMain = CreateWindowEx(style.styleEx,WndProcClass,WndTitle,style.style,
 			CW_USEDEFAULT,CW_USEDEFAULT,
@@ -377,7 +388,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 #else
 		hwndMain = CreateWindow(WndProcClass,WndTitle,style.style,
 			CW_USEDEFAULT,CW_USEDEFAULT,
-			WndDefSize.x,WndDefSize.y,
+			WndDefSize.x,WndDefSize.y, // NTS: In Windows 1.0, unless the style is WS_POPUP, this is ignored
 			NULL,NULL,
 			hInstance,NULL);
 #endif
