@@ -66,9 +66,9 @@ BYTE near			WndConfigFlags = WndCFG_ShowMenu;
 // NOTE: To prevent resizing completely, set the min, max, and def sizes to the exact same value
 const POINT near		WndMinSizeClient = { 80, 60 };
 POINT near			WndMinSize = { 0, 0 };
-const POINT near		WndMaxSizeClient = { 640, 480 };
+const POINT near		WndMaxSizeClient = { 480, 360 };
 POINT near			WndMaxSize = { 0, 0 };
-const POINT near		WndDefSizeClient = { 480, 360 };
+const POINT near		WndDefSizeClient = { 320, 240 };
 POINT near			WndDefSize = { 0, 0 };
 
 RECT near			WndFullscreenSize = { 0, 0, 0, 0 };
