@@ -30,6 +30,10 @@
 #include <dos.h>
 #include "resource.h"
 
+// WndConfigFlags
+#define WndCFG_ShowMenu		0x00000001u
+#define WndCFG_Fullscreen	0x00000002u
+
 HWND near			hwndMain;
 const char near			WndProcClass[] = "GAME32JAM2025";
 const char near			WndTitle[] = "Game";
@@ -47,10 +51,12 @@ const struct WndStyle_t		WndStyle = { .style = WS_OVERLAPPEDWINDOW, .styleEx = 0
 //const struct WndStyle_t		WndStyle = { .style = WS_DLGFRAME|WS_CAPTION|WS_SYSMENU|WS_BORDER, .styleEx = WS_EX_DLGMODALFRAME };
 
 const UINT near			WndMenu = IDM_MAINMENU;
-BOOL near			WndFullscreen = TRUE;
-BOOL near			WndShowMenu = TRUE;
-HINSTANCE near			myInstance;
+HINSTANCE near			myInstance = (HINSTANCE)NULL;
 HMENU near			SysMenu = (HMENU)NULL;
+
+BYTE near			WndConfigFlags = WndCFG_ShowMenu;
+//BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_Fullscreen;
+//BYTE near			WndConfigFlags = 0;
 
 const POINT near		WndMinSizeClient = { 80, 60 };
 const POINT near		WndMaxSizeClient = { 640, 480 };
@@ -150,7 +156,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		 * stay stuck in the upper left hand corner of the screen if fullscreen mode is active */
 		isMinimized = IsIconic(hwnd);
 
-		if (WndFullscreen && !isMinimized) {
+		if ((WndConfigFlags & WndCFG_Fullscreen) && !isMinimized) {
 			wpc->x = WndFullscreenSize.left;
 			wpc->y = WndFullscreenSize.top;
 		}
@@ -166,7 +172,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		 * stay stuck in the upper left hand corner of the screen if fullscreen mode is active */
 		isMinimized = IsIconic(hwnd);
 
-		if (WndFullscreen && !isMinimized) {
+		if ((WndConfigFlags & WndCFG_Fullscreen) && !isMinimized) {
 			mmi->ptMaxSize.x = WndFullscreenSize.right - WndFullscreenSize.left;
 			mmi->ptMaxSize.y = WndFullscreenSize.bottom - WndFullscreenSize.top;
 			mmi->ptMaxPosition.x = WndFullscreenSize.left;
@@ -225,10 +231,10 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 	else if (message == WM_SYSCOMMAND) {
 		switch (wparam) {
 			case SC_MOVE:
-				if (WndFullscreen && !isMinimized) return 0;
+				if ((WndConfigFlags & WndCFG_Fullscreen) && !isMinimized) return 0;
 				break;
 			case SC_MAXIMIZE:
-				if (WndFullscreen) {
+				if (WndConfigFlags & WndCFG_Fullscreen) {
 #if WINVER >= 0x200
 					// NTS: It is very important to SW_SHOWNORMAL then SW_SHOWMAXIMIZED or else Windows 3.0
 					//      will only show the window in normal maximized dimensions
@@ -239,7 +245,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 				}
 				break;
 			case SC_RESTORE:
-				if (WndFullscreen) {
+				if (WndConfigFlags & WndCFG_Fullscreen) {
 #if WINVER >= 0x200
 					// NTS: It is very important to SW_SHOWNORMAL then SW_SHOWMAXIMIZED or else Windows 3.0
 					//      will only show the window in normal maximized dimensions
@@ -333,11 +339,11 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 
 	{
 		HMENU menu = WndMenu!=0u?LoadMenu(hInstance,MAKEINTRESOURCE(WndMenu)):((HMENU)NULL);
-		BOOL fMenu = (menu!=NULL && WndShowMenu)?TRUE:FALSE;
+		BOOL fMenu = (menu!=NULL && (WndConfigFlags & WndCFG_ShowMenu))?TRUE:FALSE;
 		struct WndStyle_t style = WndStyle;
 
 #if WINVER < 0x200
-		if (WndFullscreen) {
+		if (WndConfigFlags & WndCFG_Fullscreen) {
 			/* Windows 1.0: WS_OVERLAPPED (aka WS_TILED) prevents fullscreen because we then
 			 *              cannot control the position of our window, change it to WS_POPUP */
 			if ((style.style & (WS_POPUP|WS_CHILD)) == WS_TILED/*which is zero--look at WINDOWS.H*/)
@@ -383,7 +389,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	 *      For fullscreen to work whether or not the window is maximized, position
 	 *      change is necessary! To make this work with any other Windows, also maximize
 	 *      the window. */
-	if (WndFullscreen && !isMinimized) {
+	if ((WndConfigFlags & WndCFG_Fullscreen) && !isMinimized) {
 #if WINVER >= 0x200
 		SetWindowPos(hwndMain,HWND_TOP,0,0,0,0,SWP_NOZORDER|SWP_NOSIZE|SWP_NOACTIVATE);
 #else
@@ -407,7 +413,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	}
 
 	SysMenu = GetSystemMenu(hwndMain,FALSE);
-	if (WndFullscreen) {
+	if (WndConfigFlags & WndCFG_Fullscreen) {
 		// do not remove SC_MOVE, it makes it impossible in Windows 3.x to move the minimized icon.
 		// do not remove SC_RESTORE, it makes it impossible in Windows 3.x to restore the window by double-clicking the minimized icon.
 		DeleteMenuGF(SysMenu,SC_MAXIMIZE,MF_BYCOMMAND);
