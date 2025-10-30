@@ -22,9 +22,14 @@ Windows 3.0:
 Windows 2.0:
 * NOTE: Windows 2.0 is not a primary target for this game engine yet.
 
+[NONE]
+
+
+
+FIXED BUGS, Windows 2.0
+
 - Fullscreen mode works but it does not alter the system menu yet. It should use
   Windows 2.x level APIs to do the same changes to the sysmenu as it does Windows 3.x.
-
 
 FIXED BUGS, Windows 3.0
 
