@@ -17,22 +17,6 @@ TODO:
   drive. To make testing easier. Of course, game devs targeting Windows 3.1 are going
   to want to keep all filenames 8.3 because "long filenames" didn't exist until 95.
 
-- Figure out how a Win32 version can detect another instance of itself. A recommended
-  method out there is to use CreateMutex with a name based on a unique identifier in
-  the application (a GUID, perhaps?).
-
-  A cursory examination of old releases of Windows 3.1 Win32s shows that CreateMutex
-  exists in every Win32s release since the initial release, and should be safe to use.
-
-  CreateMutex by default in Windows NT puts them in the local kernel namespace, so,
-  that technique is not going to prevent the game from multiple instances across
-  multiple users. [https://www.codeproject.com/articles/Using-a-Win32-Mutex-to-Figure-Out-if-an-Applicatio#comments-section]
-  in which case perhaps another bit could be assigned to signal not to allow multiple
-  instances on Windows NT even across user accounts. According to the code sample,
-  that could be done by naming the mutex "global\{UNIQUE IDENTIFIER}" instead of just
-  "{UNIQUE IDENTIFIER}". Of course, knowing Microsoft, "global\" probably doesn't
-  work under Windows 95. We'll cross this bridge when it matters.
-
 DONE:
 
 - Begin GameFlags bitfield. Define first constant as one that determines whether or

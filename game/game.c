@@ -30,7 +30,7 @@
 #include <dos.h>
 #include "resource.h"
 
-#if (TARGET_MSDOS == 32 && defined(WIN386))
+#if TARGET_MSDOS == 32 && defined(WIN386)
 # include <win386.h>
 #endif
 
@@ -96,8 +96,30 @@ POINT near			WndCurrentSizeClient = { 0, 0 };
 POINT near			WndCurrentSize = { 0, 0 };
 POINT near			WndScreenSize = { 0, 0 };
 
+#if TARGET_MSDOS == 32 && !defined(WIN386)
+HANDLE				WndLocalAppMutex = NULL;
+#endif
+
 // Window state (WndState_...) bitfield
 BYTE near			WndStateFlags = 0;
+
+BOOL CheckMultiInstanceFindWindow(const BOOL mustError) {
+	if (!(WndConfigFlags & WndCFG_MultiInstance)) {
+		HWND hwnd = FindWindow(WndProcClass,NULL);
+		if (hwnd) {
+			SetActiveWindow(hwnd);
+			if (IsIconic(hwnd)) SendMessage(hwnd,WM_SYSCOMMAND,SC_RESTORE,0);
+			return TRUE;
+		}
+		else if (mustError) {
+			MessageBox(NULL,"This game is already running","Already running",MB_OK);
+			return TRUE;
+		}
+
+	}
+
+	return FALSE;
+}
 
 void WinClientSizeInFullScreen(RECT *d,const struct WndStyle_t *style,const BOOL fMenu) {
 	(void)fMenu;
@@ -385,6 +407,15 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 
 	myInstance = hInstance;
 
+#if TARGET_MSDOS == 32 && !defined(WIN386)
+	/* NTS: Use FindWindow because that lets us activate the window we find.
+	 *      CreateMutex doesn't do that. Also CreateMutex() in Windows 3.1 Win32s
+	 *      obviously only maintains them LOCAL to the Win32s application, they
+	 *      are not global. It's possible it doesn't even use the name at all. */
+	if (CheckMultiInstanceFindWindow(FALSE))
+		return 1;
+#endif
+
 	/* NTS: In the Windows 3.1 environment all handles are global. Registering a class window twice won't work.
 	 *      It's only under 95 and later (win32 environment) where Windows always sets hPrevInstance to 0
 	 *      and window classes are per-application.
@@ -409,6 +440,11 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		}
 	}
 	else {
+#if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
+		if (CheckMultiInstanceFindWindow(TRUE/*mustError*/))
+			return 1;
+#endif
+
 #if defined(WIN386)
 		/* FIXME: Win386 builds will CRASH if multiple instances try to run this way.
 		 *        Somehow, creating a window with a class registered by another Win386 application
@@ -416,19 +452,6 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		if (MessageBox(NULL,"Win386 builds may crash if you run multiple instances. Continue?","",MB_YESNO|MB_ICONEXCLAMATION|MB_DEFBUTTON2) == IDNO)
 			return 1;
 #endif
-
-		if (!(WndConfigFlags & WndCFG_MultiInstance)) {
-			HWND hwnd = FindWindow(WndProcClass,NULL);
-			if (hwnd) {
-				SetActiveWindow(hwnd);
-				if (IsIconic(hwnd)) SendMessage(hwnd,WM_SYSCOMMAND,SC_RESTORE,0);
-			}
-			else {
-				MessageBox(NULL,"This game is already running","Already running",MB_OK);
-			}
-
-			return 1;
-		}
 	}
 
 	{
