@@ -1,6 +1,8 @@
 
 TODO:
 
+DONE:
+
 - Windows 95 fullscreen mode: Add a fullscreen window flag. This flag, if set while
   fullscreen, instructs the game to query Windows 95 for the desktop area NOT covered
   by the taskbar so that the Windows 95 start menu/taskbar is always visible.
@@ -10,8 +12,6 @@ TODO:
   Windows 3.1 and we're not going to go out of our way to GetProcAddress() it
   dynamically unless there's a pressing need to do so. We're a game engine that needs
   to run as light and tight as possible, not a DOSLIB demonstration program.
-
-DONE:
 
 - "make.sh cdrom" to copy the game executables and all game files into an ISO image
   (make sure to pass -J for Joliet extensions so Windows 95 can see the full

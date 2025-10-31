@@ -45,11 +45,12 @@
 #define WndCFG_Fullscreen		0x00000002u /* run fullscreen */
 #define WndCFG_TopMost			0x00000004u /* run with "top most" status (overtop other applications) */
 #define WndCFG_DeactivateMinimize	0x00000008u /* minimize if the user switches away from the application */
-#define WndCFG_MultiInstance            0x00000010u /* allow multiple instances of this game */
+#define WndCFG_MultiInstance		0x00000010u /* allow multiple instances of this game */
+#define WndCFG_FullscreenWorkArea	0x00000020u /* limit fullscreen to the Windows 95 "work area", do not cover the task bar */
 
 // WndStateFlags
-#define WndState_Minimized	0x00000001u
-#define WndState_Active		0x00000002u
+#define WndState_Minimized		0x00000001u
+#define WndState_Active			0x00000002u
 
 struct WndStyle_t {
 	DWORD			style;
@@ -86,6 +87,7 @@ BYTE near			WndConfigFlags = WndCFG_ShowMenu;
 //BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_TopMost;
 //BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_Fullscreen;
 //BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_Fullscreen | WndCFG_TopMost;
+//BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_Fullscreen | WndCFG_FullscreenWorkArea;
 //BYTE near			WndConfigFlags = 0;
 //BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_DeactivateMinimize;
 
@@ -136,10 +138,16 @@ BOOL CheckMultiInstanceFindWindow(const BOOL mustError) {
 void WinClientSizeInFullScreen(RECT *d,const struct WndStyle_t *style,const BOOL fMenu) {
 	(void)fMenu;
 
-	d->left = 0;
-	d->top = 0;
-	d->right = GetSystemMetrics(SM_CXSCREEN);
-	d->bottom = GetSystemMetrics(SM_CYSCREEN);
+	if (WndConfigFlags & WndCFG_FullscreenWorkArea) {
+		*d = WndWorkArea;
+	}
+	else {
+		d->left = 0;
+		d->top = 0;
+		d->right = GetSystemMetrics(SM_CXSCREEN);
+		d->bottom = GetSystemMetrics(SM_CYSCREEN);
+	}
+
 	/* calculate the rect so that the window caption, sysmenu, and borders are just off the
 	 * edges of the screen, leaving the client area to cover the screen, BUT, disregard the
 	 * fMenu flag so that the menu bar, if any, is visible at the top of the screen. */
@@ -498,7 +506,6 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		WinClientSizeToWindowSize(&WndMinSize,&WndMinSizeClient,&style,fMenu);
 		WinClientSizeToWindowSize(&WndMaxSize,&WndMaxSizeClient,&style,fMenu);
 		WinClientSizeToWindowSize(&WndDefSize,&WndDefSizeClient,&style,fMenu);
-		WinClientSizeInFullScreen(&WndFullscreenSize,&style,fMenu);
 
 		/* assume current size == def size */
 		WndCurrentSizeClient = WndDefSizeClient;
@@ -521,6 +528,8 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 			if (SystemParametersInfo(SPI_GETWORKAREA,0,&um,0)) WndWorkArea = um;
 		}
 #endif
+
+		WinClientSizeInFullScreen(&WndFullscreenSize,&style,fMenu); /* requires WndWorkArea and WndScreenSize */
 
 #if WINVER >= 0x300
 		hwndMain = CreateWindowEx(style.styleEx,WndProcClass,WndTitle,style.style,
