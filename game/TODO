@@ -39,6 +39,10 @@ TODO:
 
 DONE:
 
+- Window config "minimize on deactivate" flag. If set, and the user navigates to another
+  Windows application, the game window will minimize itself (deactivate case of
+  WM_ACTIVATE).
+
 - Windows 3.x fullscreen mode: In addition to WndFSNone and WndFSFullscreen, add a
   WndFSFullscreenTopmost mode. Same as WndFSFullscreen but uses SetWindowPos to
   give it a HWND_TOPMOST z-order.

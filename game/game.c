@@ -35,9 +35,10 @@
 #endif
 
 // WndConfigFlags
-#define WndCFG_ShowMenu		0x00000001u
-#define WndCFG_Fullscreen	0x00000002u
-#define WndCFG_TopMost          0x00000004u
+#define WndCFG_ShowMenu			0x00000001u /* show the menu bar */
+#define WndCFG_Fullscreen		0x00000002u /* run fullscreen */
+#define WndCFG_TopMost			0x00000004u /* run with "top most" status (overtop other applications) */
+#define WndCFG_DeactivateMinimize	0x00000008u /* minimize if the user switches away from the application */
 
 // WndStateFlags
 #define WndState_Minimized	0x00000001u
@@ -78,6 +79,7 @@ BYTE near			WndConfigFlags = WndCFG_ShowMenu;
 //BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_Fullscreen;
 //BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_Fullscreen | WndCFG_TopMost;
 //BYTE near			WndConfigFlags = 0;
+//BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_DeactivateMinimize;
 
 // NOTE: To prevent resizing completely, set the min, max, and def sizes to the exact same value
 const POINT near		WndMinSizeClient = { 80, 60 };
@@ -174,10 +176,20 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		return 0;
 	}
 	else if (message == WM_ACTIVATE) {
-		if (wparam == WA_CLICKACTIVE || wparam == WA_ACTIVE)
+		if (wparam == WA_CLICKACTIVE || wparam == WA_ACTIVE) {
 			WndStateFlags |= WndState_Active;
-		else
+		}
+		else {
 			WndStateFlags &= ~WndState_Active;
+
+			if (WndConfigFlags & WndCFG_DeactivateMinimize) {
+#if WINVER >= 0x200
+				ShowWindow(hwnd,SW_SHOWMINNOACTIVE);
+#else
+				ShowWindow(hwnd,SHOW_ICONWINDOW); /* Windows 1.0 */
+#endif
+			}
+		}
 
 		return 0;
 	}
