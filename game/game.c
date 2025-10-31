@@ -575,15 +575,6 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 			WndFullscreenSize.right - WndFullscreenSize.left,
 			WndFullscreenSize.bottom - WndFullscreenSize.top,TRUE);
 #endif
-
-#if WINVER >= 0x200
-		if (nCmdShow == SW_SHOW || nCmdShow == SW_SHOWNA || nCmdShow == SW_SHOWNORMAL) nCmdShow = SW_SHOWMAXIMIZED;
-#else
-		/* FIXME: Why is Windows 1.04 giving us nCmdShow == 0x3300?? */
-		/* NTS: We could change nCmdShow to SHOW_FULLSCREEN but that seems to also take focus away from the window.
-		 *      It's really only useful if we keep the window as WS_OVERLAPPED aka WS_TILED to full the screen as a window.
-		 *      The WS_POPUP hack father up does a better job for what we are trying to do here. */
-#endif
 	}
 
 	SysMenu = GetSystemMenu(hwndMain,FALSE);
@@ -603,6 +594,13 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	UpdateWindow(hwndMain);
 
 	if (GetActiveWindow() == hwndMain) WndStateFlags |= WndState_Active;
+
+#if WINVER >= 0x200
+	/* Windows 95: Show the window normally, then maximize it, to encourage the task bar to hide itself when we go fullscreen.
+	 *             Without this, the task bar will SOMETIMES hide itself, and other times just stay there at the bottom of the screen. */
+	if ((WndConfigFlags & WndCFG_Fullscreen) && !(WndStateFlags & WndState_Minimized) && (WndStateFlags & WndState_Active))
+		ShowWindow(hwndMain,SW_MAXIMIZE);
+#endif
 
 #if TARGET_MSDOS == 32 && !defined(WIN386)
 	ReleaseMutex(WndLocalAppMutex);

@@ -10,8 +10,7 @@ Watcom Win386:
 
 
 Windows 95:
-- When triggering fullscreen mode (without the work area fullscreen mode),
-  the Windows 95 taskbar half the time does not disappear as it should.
+[NONE]
 
 
 
@@ -41,6 +40,10 @@ Windows 1.0:
   the existing instance.
 
 
+FIXED BUGS, Windows 95
+
+- When triggering fullscreen mode (without the work area fullscreen mode),
+  the Windows 95 taskbar half the time does not disappear as it should.
 
 FIXED BUGS, Windows Watcom Win386
 
