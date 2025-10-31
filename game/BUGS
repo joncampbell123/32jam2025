@@ -23,6 +23,14 @@ Windows 2.0:
 [NONE]
 
 
+
+Windows 1.0:
+* NOTE: Windows 1.0 is not a primary target for this game engine yet.
+
+- Minimize on deactivate (WM_ACTIVATE) doesn't work in Windows 1.0.
+
+
+
 FIXED BUGS, Windows Watcom Win386
 
 - Game engine as Win386 32-bit application causes crashes when it handles
