@@ -6,10 +6,8 @@ Watcom Win386:
 * NOTE: Even though Win386 can target Windows 3.1 and 95, this is not a primary
         target for the game engine yet.
 
-- Game engine as Win386 32-bit application causes crashes when it handles
-  WM_GETMINMAXINFO, WM_WINPOSCHANGING, and similar functions that typecast
-  lparam to a pointer. If there is a function in Win386 to covnert a 16:16
-  pointer to 32-bit in order to safely use it properly, I'd like to know.
+[NONE]
+
 
 
 Windows 3.0:
@@ -25,6 +23,12 @@ Windows 2.0:
 [NONE]
 
 
+FIXED BUGS, Windows Watcom Win386
+
+- Game engine as Win386 32-bit application causes crashes when it handles
+  WM_GETMINMAXINFO, WM_WINPOSCHANGING, and similar functions that typecast
+  lparam to a pointer. If there is a function in Win386 to covnert a 16:16
+  pointer to 32-bit in order to safely use it properly, I'd like to know.
 
 FIXED BUGS, Windows 2.0
 
