@@ -5,21 +5,29 @@ NOTE: This game engine currently targets and focuses on compatibility with
 Watcom Win386:
 * NOTE: Even though Win386 can target Windows 3.1 and 95, this is not a primary
         target for the game engine yet.
+[NONE]
 
+
+
+Windows 95:
+- When triggering fullscreen mode (without the work area fullscreen mode),
+  the Windows 95 taskbar half the time does not disappear as it should.
+
+
+
+Windows 3.1:
 [NONE]
 
 
 
 Windows 3.0:
 * NOTE: Windows 3.0 is not a primary target for this game engine yet.
-
 [NONE]
 
 
 
 Windows 2.0:
 * NOTE: Windows 2.0 is not a primary target for this game engine yet.
-
 [NONE]
 
 
