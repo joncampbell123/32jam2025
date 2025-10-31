@@ -421,7 +421,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 			HWND hwnd = FindWindow(WndProcClass,NULL);
 			if (hwnd) {
 				SetActiveWindow(hwnd);
-				SendMessage(hwnd,WM_SYSCOMMAND,SC_RESTORE,0);
+				if (IsIconic(hwnd)) SendMessage(hwnd,WM_SYSCOMMAND,SC_RESTORE,0);
 			}
 			else {
 				MessageBox(NULL,"This game is already running","Already running",MB_OK);
