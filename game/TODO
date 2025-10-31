@@ -1,10 +1,6 @@
 
 TODO:
 
-- Windows 3.x fullscreen mode: In addition to WndFSNone and WndFSFullscreen, add a
-  WndFSFullscreenTopmost mode. Same as WndFSFullscreen but uses SetWindowPos to
-  give it a HWND_TOPMOST z-order.
-
 - Windows 95 fullscreen mode: Add a fullscreen window flag. This flag, if set while
   fullscreen, instructs the game to query Windows 95 for the desktop area NOT covered
   by the taskbar so that the Windows 95 start menu/taskbar is always visible.
@@ -42,6 +38,10 @@ TODO:
   work under Windows 95. We'll cross this bridge when it matters.
 
 DONE:
+
+- Windows 3.x fullscreen mode: In addition to WndFSNone and WndFSFullscreen, add a
+  WndFSFullscreenTopmost mode. Same as WndFSFullscreen but uses SetWindowPos to
+  give it a HWND_TOPMOST z-order.
 
 - Windows 3.x: Reply to WM_GETMINMAXINFO to return a maximized window position such that
   maximizing the window centers it on the screen instead of positioning it in the upper

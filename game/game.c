@@ -37,6 +37,7 @@
 // WndConfigFlags
 #define WndCFG_ShowMenu		0x00000001u
 #define WndCFG_Fullscreen	0x00000002u
+#define WndCFG_TopMost          0x00000004u
 
 // WndStateFlags
 #define WndState_Minimized	0x00000001u
@@ -73,7 +74,9 @@ HMENU near			SysMenu = (HMENU)NULL;
 
 // Window config (WndCFG_...) bitfield
 BYTE near			WndConfigFlags = WndCFG_ShowMenu;
+//BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_TopMost;
 //BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_Fullscreen;
+//BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_Fullscreen | WndCFG_TopMost;
 //BYTE near			WndConfigFlags = 0;
 
 // NOTE: To prevent resizing completely, set the min, max, and def sizes to the exact same value
@@ -471,6 +474,11 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		// do not remove SC_RESTORE, it makes it impossible in Windows 3.x to restore the window by double-clicking the minimized icon.
 		DeleteMenuGF(SysMenu,SC_MAXIMIZE,MF_BYCOMMAND);
 		DeleteMenuGF(SysMenu,SC_SIZE,MF_BYCOMMAND);
+	}
+	if (WndConfigFlags & WndCFG_TopMost) {
+#if WINVER >= 0x200
+		SetWindowPos(hwndMain,HWND_TOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE);
+#endif
 	}
 
 	ShowWindow(hwndMain,nCmdShow);
