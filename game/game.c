@@ -116,9 +116,11 @@ BOOL CheckMultiInstanceFindWindow(const BOOL mustError) {
 	if (!(WndConfigFlags & WndCFG_MultiInstance)) {
 		HWND hwnd = FindWindow(WndProcClass,NULL);
 		if (hwnd) {
+#if WINVER >= 0x200
 			/* NTS: Windows 95 and later might ignore SetActiveWindow(), use SetWindowPos() as a backup
 			 *      to at least make it visible. */
 			SetWindowPos(hwnd,0,0,0,0,0,SWP_NOZORDER|SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_NOMOVE|SWP_NOSIZE);
+#endif
 			SetActiveWindow(hwnd);
 
 			if (IsIconic(hwnd)) SendMessage(hwnd,WM_SYSCOMMAND,SC_RESTORE,0);
