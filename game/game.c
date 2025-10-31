@@ -107,8 +107,13 @@ BOOL CheckMultiInstanceFindWindow(const BOOL mustError) {
 	if (!(WndConfigFlags & WndCFG_MultiInstance)) {
 		HWND hwnd = FindWindow(WndProcClass,NULL);
 		if (hwnd) {
+			/* NTS: Windows 95 and later might ignore SetActiveWindow(), use SetWindowPos() as a backup
+			 *      to at least make it visible. */
+			SetWindowPos(hwnd,0,0,0,0,0,SWP_NOZORDER|SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_NOMOVE|SWP_NOSIZE);
 			SetActiveWindow(hwnd);
+
 			if (IsIconic(hwnd)) SendMessage(hwnd,WM_SYSCOMMAND,SC_RESTORE,0);
+
 			return TRUE;
 		}
 		else if (mustError) {
@@ -408,10 +413,24 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	myInstance = hInstance;
 
 #if TARGET_MSDOS == 32 && !defined(WIN386)
-	/* NTS: Use FindWindow because that lets us activate the window we find.
-	 *      CreateMutex doesn't do that. Also CreateMutex() in Windows 3.1 Win32s
-	 *      obviously only maintains them LOCAL to the Win32s application, they
-	 *      are not global. It's possible it doesn't even use the name at all. */
+	/* NTS: Mutexes in Windows 3.1 Win32s are local to the application, therefore you
+	 *      cannot synchronize across multiple Win32s applications with mutexes. I'm
+	 *      not even sure if the Win32s system is even paying attention to the name.
+	 *      However Windows 3.1 is cooperative multitasking and another Win32s program
+	 *      cannot run at the same time we are. This is needed to prevent concurrent
+	 *      issues on preemptive multitasking Windows 95/NT systems. */
+	{
+		char tmp[256];
+		if (snprintf(tmp,sizeof(tmp),"AppMutex_%s",WndProcClass) >= (sizeof(tmp)-1)) return 1;
+		WndLocalAppMutex = CreateMutexA(NULL,FALSE,tmp);
+		if (WndLocalAppMutex == NULL) return 1;
+	}
+
+	{
+		DWORD r = WaitForSingleObject(WndLocalAppMutex,INFINITE);
+		if (!(r == WAIT_OBJECT_0 || r == WAIT_ABANDONED)) return 1;
+	}
+
 	if (CheckMultiInstanceFindWindow(FALSE))
 		return 1;
 #endif
@@ -554,6 +573,10 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	UpdateWindow(hwndMain);
 
 	if (GetActiveWindow() == hwndMain) WndStateFlags |= WndState_Active;
+
+#if TARGET_MSDOS == 32 && !defined(WIN386)
+	ReleaseMutex(WndLocalAppMutex);
+#endif
 
 	while (GetMessage(&msg,NULL,0,0)) {
 		TranslateMessage(&msg);
