@@ -30,6 +30,10 @@
 #include <dos.h>
 #include "resource.h"
 
+#if (TARGET_MSDOS == 32 && defined(WIN386))
+# include <win386.h>
+#endif
+
 // WndConfigFlags
 #define WndCFG_ShowMenu		0x00000001u
 #define WndCFG_Fullscreen	0x00000002u
@@ -172,7 +176,11 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 	}
 #ifdef WM_WINDOWPOSCHANGING
 	else if (message == WM_WINDOWPOSCHANGING) {
+#if (TARGET_MSDOS == 32 && defined(WIN386))
+		WINDOWPOS FAR *wpc = (WINDOWPOS FAR*)MK_FP32((void*)lparam);
+#else
 		WINDOWPOS FAR *wpc = (WINDOWPOS FAR*)lparam;
+#endif
 
 		/* we must track if the window is minimized or else on Windows 3.1 our minimized icon will
 		 * stay stuck in the upper left hand corner of the screen if fullscreen mode is active */
@@ -191,7 +199,11 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 #endif
 #ifdef WM_GETMINMAXINFO
 	else if (message == WM_GETMINMAXINFO) {
+#if (TARGET_MSDOS == 32 && defined(WIN386))
+		MINMAXINFO FAR *mmi = (MINMAXINFO FAR*)MK_FP32((void*)lparam);
+#else
 		MINMAXINFO FAR *mmi = (MINMAXINFO FAR*)lparam;
+#endif
 
 		/* we must track if the window is minimized or else on Windows 3.1 our minimized icon will
 		 * stay stuck in the upper left hand corner of the screen if fullscreen mode is active */
