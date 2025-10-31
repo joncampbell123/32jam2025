@@ -11,13 +11,13 @@ TODO:
   dynamically unless there's a pressing need to do so. We're a game engine that needs
   to run as light and tight as possible, not a DOSLIB demonstration program.
 
+DONE:
+
 - "make.sh cdrom" to copy the game executables and all game files into an ISO image
   (make sure to pass -J for Joliet extensions so Windows 95 can see the full
   "long filenames"!) that any emulator can easily present to Windows 95 as a CD-ROM
   drive. To make testing easier. Of course, game devs targeting Windows 3.1 are going
   to want to keep all filenames 8.3 because "long filenames" didn't exist until 95.
-
-DONE:
 
 - Begin GameFlags bitfield. Define first constant as one that determines whether or
   not the game allows multiple instances. If not set, show an error message if

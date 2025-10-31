@@ -15,25 +15,20 @@ win38631=1 # Windows 3.1 + Watcom win386
 
 if [ "$1" == "clean" ]; then
     do_clean
-    rm -fv test.dsk v86kern.map
+    rm -fv test.dsk v86kern.map game*.iso
     exit 0
 fi
 
 if [ "$1" == "disk" ]; then
     # boot data disk
     make_msdos_data_disk test.dsk || exit 1
-    mcopy -i test.dsk win300l/hello.exe ::hel86_30.exe
-    mcopy -i test.dsk win302l/hello.exe ::he286_30.exe
-    mcopy -i test.dsk win303l/hello.exe ::he386_30.exe
-
-    mcopy -i test.dsk win312l/hello.exe ::he286_31.exe
-    mcopy -i test.dsk win313l/hello.exe ::he386_31.exe
-
-    mcopy -i test.dsk win32s3/hello.exe ::hewin32s.exe
-
-    mcopy -i test.dsk win32/hello.exe ::helwin32.exe
-
     mcopy -i test.dsk winnt/hello.exe ::helwinnt.exe
+fi
+
+if [ "$1" == "cdrom" ]; then
+    mkisofs -J -v -volid 'GAME2025_31' -o gamewin31.iso win313l || exit 1
+    mkisofs -J -v -volid 'GAME2025_32s' -o gamewin32s.iso win32s3 || exit 1
+    mkisofs -J -v -volid 'GAME2025_95' -o gamewin95.iso win32 || exit 1
 fi
 
 if [[ "$1" == "build" || "$1" == "" ]]; then
