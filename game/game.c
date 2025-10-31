@@ -151,12 +151,24 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 	else if (message == WM_SIZE) {
 		if (wparam == SIZE_MINIMIZED) {
 			WndStateFlags |= WndState_Minimized;
+
+			if (WndConfigFlags & WndCFG_TopMost) {
+#if WINVER >= 0x200
+				SetWindowPos(hwndMain,HWND_NOTOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE); // take away topmost
+#endif
+			}
 		}
 		else {
 			WndStateFlags &= ~WndState_Minimized;
 			WndCurrentSizeClient.x = LOWORD(lparam);
 			WndCurrentSizeClient.y = HIWORD(lparam);
 			WinClientSizeToWindowSize(&WndCurrentSize,&WndCurrentSizeClient,&WndStyle,GetMenu(hwnd)!=NULL?TRUE:FALSE);
+
+			if (WndConfigFlags & WndCFG_TopMost) {
+#if WINVER >= 0x200
+				SetWindowPos(hwndMain,HWND_TOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE);
+#endif
+			}
 		}
 
 		return 0;
@@ -280,6 +292,13 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		switch (wparam) {
 			case SC_MOVE:
 				if ((WndConfigFlags & WndCFG_Fullscreen) && !(WndStateFlags & WndState_Minimized)) return 0;
+				break;
+			case SC_MINIMIZE:
+				if (WndConfigFlags & WndCFG_TopMost) {
+#if WINVER >= 0x200
+					SetWindowPos(hwndMain,HWND_NOTOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE); // take away topmost
+#endif
+				}
 				break;
 			case SC_MAXIMIZE:
 				if (WndConfigFlags & WndCFG_Fullscreen) {
