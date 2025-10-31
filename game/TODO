@@ -17,10 +17,6 @@ TODO:
   drive. To make testing easier. Of course, game devs targeting Windows 3.1 are going
   to want to keep all filenames 8.3 because "long filenames" didn't exist until 95.
 
-- Begin GameFlags bitfield. Define first constant as one that determines whether or
-  not the game allows multiple instances. If not set, show an error message if
-  hPrevInstance != NULL. Win16 only (or Win32s?), for now.
-
 - Figure out how a Win32 version can detect another instance of itself. A recommended
   method out there is to use CreateMutex with a name based on a unique identifier in
   the application (a GUID, perhaps?). If Windows 95/NT target, assume CreateMutex
@@ -38,6 +34,10 @@ TODO:
   work under Windows 95. We'll cross this bridge when it matters.
 
 DONE:
+
+- Begin GameFlags bitfield. Define first constant as one that determines whether or
+  not the game allows multiple instances. If not set, show an error message if
+  hPrevInstance != NULL. Win16 only (or Win32s?), for now.
 
 - Window config "minimize on deactivate" flag. If set, and the user navigates to another
   Windows application, the game window will minimize itself (deactivate case of

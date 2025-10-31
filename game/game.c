@@ -39,6 +39,7 @@
 #define WndCFG_Fullscreen		0x00000002u /* run fullscreen */
 #define WndCFG_TopMost			0x00000004u /* run with "top most" status (overtop other applications) */
 #define WndCFG_DeactivateMinimize	0x00000008u /* minimize if the user switches away from the application */
+#define WndCFG_MultiInstance            0x00000010u /* allow multiple instances of this game */
 
 // WndStateFlags
 #define WndState_Minimized	0x00000001u
@@ -75,6 +76,7 @@ HMENU near			SysMenu = (HMENU)NULL;
 
 // Window config (WndCFG_...) bitfield
 BYTE near			WndConfigFlags = WndCFG_ShowMenu;
+//BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_MultiInstance;
 //BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_TopMost;
 //BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_Fullscreen;
 //BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_Fullscreen | WndCFG_TopMost;
@@ -414,6 +416,13 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		if (MessageBox(NULL,"Win386 builds may crash if you run multiple instances. Continue?","",MB_YESNO|MB_ICONEXCLAMATION|MB_DEFBUTTON2) == IDNO)
 			return 1;
 #endif
+
+		if (!(WndConfigFlags & WndCFG_MultiInstance)) {
+			HWND hwnd = FindWindow(WndProcClass,NULL);
+			if (hwnd) SetActiveWindow(hwnd);
+			else MessageBox(NULL,"This game is already running","Already running",MB_OK);
+			return 1;
+		}
 	}
 
 	{
