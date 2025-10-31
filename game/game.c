@@ -30,6 +30,12 @@
 #include <dos.h>
 #include "resource.h"
 
+#if WINVER >= 0x30A
+# ifndef SPI_GETWORKAREA
+#  define SPI_GETWORKAREA 0x0030
+# endif
+#endif
+
 #if TARGET_MSDOS == 32 && defined(WIN386)
 # include <win386.h>
 #endif
@@ -95,6 +101,7 @@ RECT near			WndFullscreenSize = { 0, 0, 0, 0 };
 POINT near			WndCurrentSizeClient = { 0, 0 };
 POINT near			WndCurrentSize = { 0, 0 };
 POINT near			WndScreenSize = { 0, 0 };
+RECT near			WndWorkArea = { 0, 0, 0, 0 };
 
 #if TARGET_MSDOS == 32 && !defined(WIN386)
 HANDLE				WndLocalAppMutex = NULL;
@@ -292,8 +299,8 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 
 			/* if Windows maximizes our window, we want it centered on screen, not
 			 * put into the upper left hand corner like it does by default */
-			mmi->ptMaxPosition.x = (WndScreenSize.x - mmi->ptMaxSize.x) / 2;
-			mmi->ptMaxPosition.y = (WndScreenSize.y - mmi->ptMaxSize.y) / 2;
+			mmi->ptMaxPosition.x = (((WndWorkArea.right - WndWorkArea.left) - mmi->ptMaxSize.x) / 2) + WndWorkArea.left;
+			mmi->ptMaxPosition.y = (((WndWorkArea.bottom - WndWorkArea.top) - mmi->ptMaxSize.y) / 2) + WndWorkArea.top;
 		}
 	}
 #endif
@@ -500,6 +507,20 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		/* screen size */
 		WndScreenSize.x = GetSystemMetrics(SM_CXSCREEN);
 		WndScreenSize.y = GetSystemMetrics(SM_CYSCREEN);
+
+		/* work area, which by default, is screen area */
+		WndWorkArea.left = 0;
+		WndWorkArea.top = 0;
+		WndWorkArea.right = WndScreenSize.x;
+		WndWorkArea.bottom = WndScreenSize.y;
+
+#if WINVER >= 0x30A
+		// Windows 95: Get the work area, meaning, the area of the screen minus the area taken by the task bar.
+		{
+			RECT um;
+			if (SystemParametersInfo(SPI_GETWORKAREA,0,&um,0)) WndWorkArea = um;
+		}
+#endif
 
 #if WINVER >= 0x300
 		hwndMain = CreateWindowEx(style.styleEx,WndProcClass,WndTitle,style.style,
