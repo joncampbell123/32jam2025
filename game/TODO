@@ -19,10 +19,10 @@ TODO:
 
 - Figure out how a Win32 version can detect another instance of itself. A recommended
   method out there is to use CreateMutex with a name based on a unique identifier in
-  the application (a GUID, perhaps?). If Windows 95/NT target, assume CreateMutex
-  works and use it. If Win32s target, GetProcAddress it or use some other means that
-  works in Windows 3.1. Using FindWindow with the game's unique window class string might be
-  a good way to do it (FindWindow it seems has been in the Windows API since Windows 1.0).
+  the application (a GUID, perhaps?).
+
+  A cursory examination of old releases of Windows 3.1 Win32s shows that CreateMutex
+  exists in every Win32s release since the initial release, and should be safe to use.
 
   CreateMutex by default in Windows NT puts them in the local kernel namespace, so,
   that technique is not going to prevent the game from multiple instances across
