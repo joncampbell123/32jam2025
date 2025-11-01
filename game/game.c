@@ -57,6 +57,100 @@ struct WndStyle_t {
 	DWORD			styleEx;
 };
 
+struct WndScreenInfo_t {
+	BYTE			BitsPerPixel;
+	BYTE			BitPlanes;
+	BYTE			TotalBitsPerPixel; // combined bitplanes * bpp
+	BYTE			ColorBitsPerPixel; // bits per color [1]
+	BYTE			RenderBitsPerPixel; // normally TotalBitsPerPixel but can be 1 if the code cannot figure out the DDB format
+	WORD			PaletteSize;
+	WORD			PaletteReserved;
+	struct {
+		WORD		x,y; // forms a ratio x/y describing the shape of a pixel [2]
+	} AspectRatio;
+	BYTE			Flags;
+};
+// [1] ColorBitsPerPixel This is the total bits per color on the device. For example, VGA/SVGA drivers in Windows 3.1 will
+//     typically report 18 because VGA palette registers are 6 bits per R/G/B, 6+6+6 = 18 bits. Presumably if a SVGA driver
+//     can run the DAC at 8 bits per R/G/B then this would report 8+8+8 24 bits.
+//
+//     Windows does not report this if RC_PALETTE is not set, if the driver is not considered to have a color palette.
+//     That means unfortunately the VGA driver which does use a color palette, does not report a GDI programmable color palette.
+//
+//     Windows 3.1 S3 drivers in 256-color mode: 18
+//
+// [2] The VGA driver (640x480) and most SVGA drivers provide the same value in both (10x10) because
+//     640x480, 800x600, and 1024x768 modes have square pixels
+//
+//     Windows 2.0 VGA driver: 36:36
+//
+//     Windows 3.0 CGA driver: 5:12 (makes sense, it's using 640x200 2-color mode)
+//
+//     Windows 3.1 VGA driver: 36:36 (640x480 16-color mode)
+//
+//     Windows 3.1 EGA driver: 38:48 (640x350 16-color mode)
+//
+// COMMON FORMATS REPORTED:
+//
+// Windows 3.1 S3 SVGA driver:
+//     BitsPerPixel=8
+//     BitPlanes=1
+//     TotalBitsPerPixel=8
+//     ColorBitsPerPixel=18
+//     PaletteSize=256
+//     PaletteReserved=20
+//     AspectRatio=10:10
+//     Palettte | BitmapBig
+//
+// Windows 3.1 VGA driver (16-color):
+//     BitsPerPixel=1
+//     BitPlanes=4
+//     TotalBitsPerPixel=4
+//     ColorBitsPerPixel=24 (guessed)
+//     PaletteSize=16 (guessed)
+//     PaletteReserved=16 (guessed)
+//     AspectRatio=36:36
+//     BitmapBig
+//
+// Windows 3.1 VGA driver (monochrome):
+//     BitsPerPixel=1
+//     BitPlanes=1
+//     TotalBitsPerPixel=1
+//     ColorBitsPerPixel=24 (guessed)
+//     PaletteSize=2 (guessed)
+//     PaletteReserved=2 (guessed)
+//     AspectRatio=36:36
+//     BitmapBig
+//
+// Windows 2.03 VGA driver (16-color):
+// * Notice that despite using 16-color VGA mode, Windows 2.x uses only 8 colors (hence, BitPlanes=3)!
+// * The colors are only the high intensity versions of RGB: [Black, Red, Green, Yellow, Blue, Purple, Cyan, White]
+// * Obviously doing this makes RGB to VGA mapping easier without having to worry about the intensity bit.
+//     BitsPerPixel=1
+//     BitPlanes=3
+//     TotalBitsPerPixel=3
+//     ColorBitsPerPixel=24 (guessed)
+//     PaletteSize=8 (guessed)
+//     PaletteReserved=8 (guessed)
+//     AspectRatio=36:36
+//     BitmapBig
+//
+// Windows 1.04 EGA driver (16-color):
+// * Notice that despite using 16-color EGA mode, Windows 1.x uses only 8 colors (hence, BitPlanes=3)!
+// * The colors are only the high intensity versions of RGB: [Black, Red, Green, Yellow, Blue, Purple, Cyan, White]
+// * Obviously doing this makes RGB to EGA mapping easier without having to worry about the intensity bit.
+//     BitsPerPixel=1
+//     BitPlanes=3
+//     TotalBitsPerPixel=3
+//     ColorBitsPerPixel=24 (guessed)
+//     PaletteSize=8 (guessed)
+//     PaletteReserved=8 (guessed)
+//     AspectRatio=38:48
+//     BitmapBig
+
+#define WndScreenInfoFlag_Palette	0x00000001u
+#define WndScreenInfoFlag_BitmapBig	0x00000002u /* supports >= 64KB bitmaps */
+
 // NTS: Please make this AS UNIQUE AS POSSIBLE to your game. You could use UUIDGEN and make this a GUID if uninspired or busy, even.
 const char near			WndProcClass[] = "GAME32JAM2025";
 
@@ -111,6 +205,8 @@ HANDLE				WndLocalAppMutex = NULL;
 
 // Window state (WndState_...) bitfield
 BYTE near			WndStateFlags = 0;
+
+struct WndScreenInfo_t near	WndScreenInfo = { 0, 0, 0, 0, 0, 0 };
 
 BOOL CheckMultiInstanceFindWindow(const BOOL mustError) {
 	if (!(WndConfigFlags & WndCFG_MultiInstance)) {
@@ -488,6 +584,77 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		if (MessageBox(NULL,"Win386 builds may crash if you run multiple instances. Continue?","",MB_YESNO|MB_ICONEXCLAMATION|MB_DEFBUTTON2) == IDNO)
 			return 1;
 #endif
+	}
+
+	{
+		DWORD t,w;
+		HDC screenDC = GetDC(NULL/*for the screen*/);
+
+		WndScreenInfo.BitsPerPixel = GetDeviceCaps(screenDC,BITSPIXEL);
+		if (WndScreenInfo.BitsPerPixel == 0) WndScreenInfo.BitsPerPixel = 1;
+		WndScreenInfo.BitPlanes = GetDeviceCaps(screenDC,PLANES);
+		if (WndScreenInfo.BitPlanes == 0) WndScreenInfo.BitPlanes = 1;
+
+		WndScreenInfo.ColorBitsPerPixel = 24; /* assume full RGB */
+
+		/* used for picking graphics */
+		WndScreenInfo.TotalBitsPerPixel =
+			WndScreenInfo.RenderBitsPerPixel = WndScreenInfo.BitsPerPixel * WndScreenInfo.BitPlanes;
+
+		/* unless RC_PALETTE is set, assume every color is reserved */
+		WndScreenInfo.PaletteSize = 1u << WndScreenInfo.TotalBitsPerPixel;
+		WndScreenInfo.PaletteReserved = 1u << WndScreenInfo.TotalBitsPerPixel;
+
+		WndScreenInfo.AspectRatio.x = 1;
+		w = GetDeviceCaps(screenDC,ASPECTX); if (w) WndScreenInfo.AspectRatio.x = w;
+		WndScreenInfo.AspectRatio.y = 1;
+		w = GetDeviceCaps(screenDC,ASPECTY); if (w) WndScreenInfo.AspectRatio.y = w;
+
+		/* TODO: VGA driver returns AspectRatio = 10:10 call a function to reduce the fraction i.e. to 1:1 */
+
+		t = GetDeviceCaps(screenDC,RASTERCAPS);
+#if WINVER >= 0x300
+		if (t & RC_PALETTE) {
+			WndScreenInfo.Flags |= WndScreenInfoFlag_Palette;
+			w = GetDeviceCaps(screenDC,SIZEPALETTE); if (w) WndScreenInfo.PaletteSize = w;
+			w = GetDeviceCaps(screenDC,COLORRES); if (w) WndScreenInfo.ColorBitsPerPixel = w;
+			WndScreenInfo.PaletteReserved = GetDeviceCaps(screenDC,NUMRESERVED);
+		}
+#endif
+		if (t & RC_BITMAP64) WndScreenInfo.Flags |= WndScreenInfoFlag_BitmapBig;
+
+		w = RC_BITBLT;
+#if WINVER >= 0x300
+		w |= RC_DI_BITMAP;
+#endif
+		if ((t&w) != w) {
+			ReleaseDC(NULL,screenDC);
+			MessageBox(NULL,"Your video driver is missing some important functions","",MB_OK);
+			return 1;
+		}
+
+#if 0//DEBUG
+		{
+			char tmp[350],*w=tmp;
+			w += sprintf(w,"bpp=%u bpln=%u tbpp=%u cbpp=%u rbpp=%u palsz=%u palrsv=%u a/r=%u:%u",
+				WndScreenInfo.BitsPerPixel,
+				WndScreenInfo.BitPlanes,
+				WndScreenInfo.TotalBitsPerPixel,
+				WndScreenInfo.ColorBitsPerPixel,
+				WndScreenInfo.RenderBitsPerPixel,
+				WndScreenInfo.PaletteSize,
+				WndScreenInfo.PaletteReserved,
+				WndScreenInfo.AspectRatio.x,
+				WndScreenInfo.AspectRatio.y);
+			if (WndScreenInfo.Flags & WndScreenInfoFlag_Palette)
+				w += sprintf(w," PAL");
+			if (WndScreenInfo.Flags & WndScreenInfoFlag_BitmapBig)
+				w += sprintf(w," BMPBIG");
+			MessageBox(NULL,tmp,"DEBUG ScreenInfo",MB_OK);
+		}
+#endif
+
+		ReleaseDC(NULL,screenDC);
 	}
 
 	{
