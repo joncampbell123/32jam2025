@@ -250,6 +250,7 @@ HANDLE				WndLocalAppMutex = NULL;
 
 // Window state (WndState_...) bitfield
 BYTE near			WndStateFlags = 0;
+WORD near			WindowsVersion = 0;
 
 struct WndScreenInfo_t near	WndScreenInfo = { 0, 0, 0, 0, 0, 0 };
 
@@ -700,6 +701,23 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 #endif
 
 		ReleaseDC(NULL,screenDC);
+	}
+
+	{
+		DWORD v = GetVersion();
+		/* [ MSDOS VERSION ] [ WINDOWS VERSION ]
+		 *  [ minor major ]    [ minor major ]
+		 *
+		 * We want:
+		 * [ major minor ] */
+		WindowsVersion = ((v >> 8u) & 0xFF) + ((v & 0xFFu) << 8u);
+#if 0//DEBUG
+		{
+			char tmp[256];
+			sprintf(tmp,"%x",WindowsVersion);
+			MessageBox(NULL,tmp,"",MB_OK);
+		}
+#endif
 	}
 
 	{
