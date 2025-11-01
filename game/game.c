@@ -52,9 +52,19 @@
 #define WndState_Minimized		0x00000001u
 #define WndState_Active			0x00000002u
 
+// WndGraphicsCaps.flags
+#define WndGraphicsCaps_Flags_DIBTopDown	0x00000001u /* Windows 95/NT4 top-down DIBs are supported */
+
+// WindowsVersionFlags
+#define WindowsVersionFlags_NT			0x00000001u /* Windows NT */
+
 struct WndStyle_t {
 	DWORD			style;
 	DWORD			styleEx;
+};
+
+struct WndGraphicsCaps_t {
+	BYTE			flags;
 };
 
 struct WndScreenInfo_t {
@@ -250,9 +260,12 @@ HANDLE				WndLocalAppMutex = NULL;
 
 // Window state (WndState_...) bitfield
 BYTE near			WndStateFlags = 0;
+WORD near			DOSVersion = 0; /* 0 if unable to determine */
 WORD near			WindowsVersion = 0;
+BYTE near			WindowsVersionFlags = 0;
 
 struct WndScreenInfo_t near	WndScreenInfo = { 0, 0, 0, 0, 0, 0 };
+struct WndGraphicsCaps_t near	WndGraphicsCaps = { 0 };
 
 BOOL CheckMultiInstanceFindWindow(const BOOL mustError) {
 	if (!(WndConfigFlags & WndCFG_MultiInstance)) {
@@ -704,21 +717,49 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	}
 
 	{
+		/* For 32-bit programs, Windows 95 reports 4.00 (0x400)
+		 * For 16-bit programs, Windows 95 reports 3.95 (0x35F) because something about Windows 3.1 application compatibility */
 		DWORD v = GetVersion();
-		/* [ MSDOS VERSION ] [ WINDOWS VERSION ]
-		 *  [ minor major ]    [ minor major ]
+		/* Win16 GetVersion()
+		 *
+		 * [ MSDOS VERSION ] [ WINDOWS VERSION ]
+		 *  [ major minor ]    [ minor major ]
+		 *
+		 * Win32 GetVersion()
+		 *
+		 * [bit 31: Windows Win32s/95/98/ME] [ WINDOWS VERSION ]
 		 *
 		 * We want:
 		 * [ major minor ] */
 		WindowsVersion = ((v >> 8u) & 0xFF) + ((v & 0xFFu) << 8u);
+
+#if TARGET_MSDOS == 32 && !defined(WIN386)
+		/* Win32 versions set bit 31 to indicate Windows 95/98/ME and Windows 3.1 Win32s */
+		DOSVersion = 0;
+		if (!(v & 0x80000000u))
+			WindowsVersionFlags |= WindowsVersionFlags_NT;
+#else
+		DOSVersion = (WORD)(v >> 16);
+
+		// TODO: If the MS-DOS version reported is 5.00, it might be Windows NT, and
+		//       an additional call is needed to get the "real" version number, which
+		//       if it is 5.50, means we're running under Windows NT
+#endif
+
 #if 0//DEBUG
 		{
-			char tmp[256];
-			sprintf(tmp,"%x",WindowsVersion);
+			char tmp[256],*w=tmp;
+			w += sprintf(w,"%x %x",WindowsVersion,DOSVersion);
+			if (WindowsVersionFlags & WindowsVersionFlags_NT)
+				w += sprintf(w," NT");
 			MessageBox(NULL,tmp,"",MB_OK);
 		}
 #endif
 	}
+
+	/* DIBs are always bottom up in Windows 3.1 and earlier.
+	 * Windows 95/NT4 allows top-down DIBs if the BITMAPINFOHEADER biHeight value is negative */
+	if (WindowsVersion >= 0x35F) WndGraphicsCaps.flags |= WndGraphicsCaps_Flags_DIBTopDown;
 
 	{
 		HMENU menu = WndMenu!=0u?LoadMenu(hInstance,MAKEINTRESOURCE(WndMenu)):((HMENU)NULL);
