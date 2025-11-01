@@ -90,6 +90,38 @@ struct WndScreenInfo_t {
 //
 //     Windows 3.1 EGA driver: 38:48 (640x350 16-color mode)
 //
+//     The aspect x/y values from Windows seem to represent the relative sizes of a pixel.
+//     Another way to refer to it, is a "pixel aspect ratio".
+//
+//     VGA 10:10             VGA 36:36
+//
+//       x=10                  x=36
+//     +-----+               +-----+
+//     |     | y=10          |     | y=36
+//     |     |               |     |
+//     +-----+               +-----+
+//
+//     EGA 38:48 in 640x350 mode the pixels are taller than wide as the monitor stretches it out to a 4:3 display
+//
+//       x=38
+//     +-----+
+//     |     |
+//     |     | y=48
+//     |     |
+//     +-----+
+//
+//     CGA 5:12 in 640x200 mode the pixels are much taller than wide, again stretching out to a 4:3 display
+//
+//       x=5
+//     +-----+
+//     |     |
+//     |     |
+//     |     | y=12
+//     |     |
+//     |     |
+//     +-----+
+//
+//
 // COMMON FORMATS REPORTED:
 //
 // Windows 3.1 S3 SVGA driver:
