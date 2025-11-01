@@ -179,6 +179,19 @@ struct WndScreenInfo_t {
 //     PaletteReserved=8 (guessed)
 //     AspectRatio=38:48
 //     BitmapBig
+//
+// Windows 2.03 Tandy 1000 driver (4-color 640x200):
+// * Why the 4-color mode? Was Microsoft unable to handle the extra 16KB of video RAM needed for the full 16-colors?
+// * The 4 colors chosen are [Blue, Red, Green, White]. It's hardly better than plain 4-color CGA, why bother?
+//     BitsPerPixel=1
+//     BitPlanes=2
+//     TotalBitsPerPixel=2
+//     ColorBitsPerPixel=24 (guessed)
+//     PaletteSize=4 (guessed)
+//     PaletteReserved=4 (guessed)
+//     AspectRatio=5:12
+//     BitmapBig
+//
 
 #define WndScreenInfoFlag_Palette	0x00000001u
 #define WndScreenInfoFlag_BitmapBig	0x00000002u /* supports >= 64KB bitmaps */
