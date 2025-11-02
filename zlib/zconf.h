@@ -275,7 +275,7 @@
     * This is not mandatory, but it offers a little performance increase.
     */
 #  ifdef ZLIB_DLL
-#    if defined(WIN32) && (!defined(__BORLANDC__) || (__BORLANDC__ >= 0x500))
+#    if (defined(WIN32) || (defined(WINDOWS) && defined(__WATCOMC__))) && (!defined(__BORLANDC__) || (__BORLANDC__ >= 0x500))
 #      ifdef ZLIB_INTERNAL
 #        define ZEXTERN extern __declspec(dllexport)
 #      else
@@ -287,6 +287,12 @@
     * define ZLIB_WINAPI.
     * Caution: the standard ZLIB1.DLL is NOT compiled using ZLIB_WINAPI.
     */
+
+/* in this case, we use the WINAPI always */
+#  if defined(WIN32) || defined(WINDOWS)
+#    define ZLIB_WINAPI
+#  endif
+
 #  ifdef ZLIB_WINAPI
 #    ifdef FAR
 #      undef FAR

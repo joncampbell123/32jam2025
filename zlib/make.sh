@@ -3,8 +3,15 @@ rel=..
 if [ x"$TOP" == x ]; then TOP=`pwd`/$rel; fi
 . $rel/linux-ow.sh
 
-dos=1
-doshuge=1
+win10=1 # Windows 1.0
+win20=1 # Windows 2.0
+win30=1 # Windows 3.0
+win31=1 # Windows 3.1
+winnt=1 # Windows NT
+win32=1 # Windows 9x/NT/XP/Vista/etc.
+win32s=1 # Windows 3.1 + Win32s
+win386=1 # Windows 3.0 + Watcom win386
+win38631=1 # Windows 3.1 + Watcom win386
 
 if [ "$1" == "clean" ]; then
 	do_clean
