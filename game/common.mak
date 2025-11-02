@@ -3,6 +3,8 @@
 NOW_BUILDING = GAME_EXE
 CFLAGS_THIS = -fr=nul -fo=$(SUBDIR)$(HPS).obj -i.. -i"../.."
 
+!include "../vars.mak"
+
 RCFLAGS_THIS = -i.. -i"../.."
 
 GAME_EXE =  $(SUBDIR)$(HPS)game.exe
@@ -32,6 +34,7 @@ $(GAME_EXE): $(SUBDIR)$(HPS)game.obj $(GAME_RES)
 # NTS: Real-mode Windows will NOT run our program unless segments are MOVEABLE DISCARDABLE. Especially Windows 2.x and 3.0.
 	%write tmp.cmd segment TYPE CODE PRELOAD MOVEABLE DISCARDABLE SHARED
 	%write tmp.cmd segment TYPE DATA PRELOAD MOVEABLE
+	%write tmp.cmd option MODNAME=$(MODULENAME_BASE)
 !endif
 	%write tmp.cmd option map=$(GAME_EXE).map
 !ifdef GAME_RES
