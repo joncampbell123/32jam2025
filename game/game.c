@@ -16,10 +16,6 @@
 # endif
 #endif
 
-#if TARGET_MSDOS == 32 && defined(WIN386)
-# include <win386.h>
-#endif
-
 // WndConfigFlags
 #define WndCFG_ShowMenu			0x00000001u /* show the menu bar */
 #define WndCFG_Fullscreen		0x00000002u /* run fullscreen */
