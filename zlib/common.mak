@@ -10,31 +10,36 @@ EXT_ZLIB_LIB_DLL=$(SUBDIR)$(HPS)zlib.lib # to avoid conflicts with DLL import li
 EXT_ZLIB_DLL=$(SUBDIR)$(HPS)zlib.dll
 EXT_ZLIB_EXAMPLE_EXE = $(SUBDIR)$(HPS)example.exe
 
-!ifeq TARGET_WINDOWS 10
-! define NO_TEST_EXE
-!endif
-!ifeq TARGET_WINDOWS 20
-! define NO_TEST_EXE
-!endif
-!ifeq TARGET_WINDOWS 31
-! ifeq TARGET_MSDOS 32 # aka Win32s
-!  define NO_TEST_EXE
-! endif
-!endif
-
 OBJS = $(SUBDIR)$(HPS)adler32.obj $(SUBDIR)$(HPS)compress.obj $(SUBDIR)$(HPS)crc32.obj $(SUBDIR)$(HPS)deflate.obj $(SUBDIR)$(HPS)infback.obj $(SUBDIR)$(HPS)inffast.obj $(SUBDIR)$(HPS)inflate.obj $(SUBDIR)$(HPS)inftrees.obj $(SUBDIR)$(HPS)trees.obj $(SUBDIR)$(HPS)uncompr.obj $(SUBDIR)$(HPS)zutil.obj $(SUBDIR)$(HPS)libmain.obj
 
 !ifndef NO_TEST_EXE
 ! ifdef WIN386
-$(EXT_ZLIB_EXAMPLE_EXE): $(EXT_ZLIB_LIB_STATIC) $(SUBDIR)$(HPS)example.obj
-	%write tmp.cmd option quiet system $(WLINK_SYSTEM) file $(SUBDIR)$(HPS)example.obj library $(EXT_ZLIB_LIB_STATIC) name $(EXT_ZLIB_EXAMPLE_EXE)
-	@wlink @tmp.cmd
-	@$(COPY) ..$(HPS)dos32a.dat $(SUBDIR)$(HPS)dos4gw.exe
+EXT_ZLIB_LIB_CHOICE=$(EXT_ZLIB_LIB_STATIC)
 ! else
-$(EXT_ZLIB_EXAMPLE_EXE): $(EXT_ZLIB_LIB_DLL) $(SUBDIR)$(HPS)example.obj
-	%write tmp.cmd option quiet system $(WLINK_SYSTEM) file $(SUBDIR)$(HPS)example.obj library $(EXT_ZLIB_LIB_DLL) name $(EXT_ZLIB_EXAMPLE_EXE)
+EXT_ZLIB_LIB_CHOICE=$(EXT_ZLIB_LIB_DLL)
+! endif
+
+$(EXT_ZLIB_EXAMPLE_EXE): $(EXT_ZLIB_LIB_CHOICE) $(SUBDIR)$(HPS)example.obj
+	%write tmp.cmd option quiet system $(WLINK_SYSTEM) file $(SUBDIR)$(HPS)example.obj library $(EXT_ZLIB_LIB_CHOICE) name $(EXT_ZLIB_EXAMPLE_EXE)
+! ifeq TARGET_MSDOS 16
+	%write tmp.cmd option MODNAME=$(MODULENAME_BASE)_ZLIB_EXAMPLE
+# NTS: Real-mode Windows will NOT run our program unless segments are MOVEABLE DISCARDABLE. Especially Windows 2.x and 3.0.
+	%write tmp.cmd segment TYPE CODE PRELOAD MOVEABLE DISCARDABLE SHARED
+	%write tmp.cmd segment TYPE DATA PRELOAD MOVEABLE
+! endif
+	%write tmp.cmd option map=$(EXT_ZLIB_EXAMPLE_EXE).map
 	@wlink @tmp.cmd
+! ifdef WIN386
+	@$(WIN386_EXE_TO_REX_IF_REX) $(EXT_ZLIB_EXAMPLE_EXE)
+	@wbind $(EXT_ZLIB_EXAMPLE_EXE) -q -n
+! endif
 	@$(COPY) ..$(HPS)dos32a.dat $(SUBDIR)$(HPS)dos4gw.exe
+! ifdef WIN_NE_SETVER_BUILD
+	$(WIN_NE_SETVER_BUILD) $(EXT_ZLIB_EXAMPLE_EXE)
+! endif
+! ifeq TARGET_WINDOWS 20
+	../tool/win2xhdrpatch.pl $(EXT_ZLIB_EXAMPLE_EXE)
+	../tool/win2xstubpatch.pl $(EXT_ZLIB_EXAMPLE_EXE)
 ! endif
 !endif
 
@@ -67,7 +72,7 @@ $(EXT_ZLIB_DLL) $(EXT_ZLIB_LIB_DLL): $(OBJS)
 	@$(CC) @tmp.cmd
 
 $(SUBDIR)$(HPS)example.obj: example.c
-	%write tmp.cmd $(CFLAGS_THIS) $(CFLAGS_CON) $[@
+	%write tmp.cmd $(CFLAGS_THIS) $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
 all: lib dll exe .symbolic

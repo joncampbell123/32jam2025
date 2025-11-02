@@ -18,18 +18,52 @@
 # include <i86.h>
 #endif
 
-#if defined(VMS) || defined(RISCOS)
-#  define TESTFILE "foo-gz"
-#else
-#  define TESTFILE "foo.gz"
-#endif
+#if defined(WINDOWS) || defined(WIN32) || defined(WIN386)
+#define CHECK_ERR(err, msg) { \
+    if (err != Z_OK) { \
+        char tmp[256]; \
+        snprintf(tmp, sizeof(tmp), "%s error: %d\n", msg, err); \
+        MessageBox((HWND)NULL,tmp,"ERROR:",MB_OK); \
+        exit(1); \
+    } \
+}
 
+#define fprintf __my_fprintf
+#define printf __my_printf
+
+#include <stdarg.h>
+#include <windows.h>
+
+void __my_fprintf(FILE *fake,const char *fmt,...) {
+	char tmp[256];
+	va_list va;
+
+	(void)fake;
+
+	va_start(va, fmt);
+	vsnprintf(tmp, sizeof(tmp), fmt, va);
+	MessageBox((HWND)NULL,tmp,"ERROR:",MB_OK);
+	va_end(va);
+}
+
+void __my_printf(const char *fmt,...) {
+	char tmp[256];
+	va_list va;
+
+	va_start(va, fmt);
+	vsnprintf(tmp, sizeof(tmp), fmt, va);
+	MessageBox((HWND)NULL,tmp,"",MB_OK);
+	va_end(va);
+}
+
+#else
 #define CHECK_ERR(err, msg) { \
     if (err != Z_OK) { \
         fprintf(stderr, "%s error: %d\n", msg, err); \
         exit(1); \
     } \
 }
+#endif
 
 const char hello[] = "hello, hello!";
 /* "hello world" would be more standard, but the repeated "hello"
@@ -337,17 +371,28 @@ void test_sync(compr, comprLen, uncompr, uncomprLen)
  * Usage:  example [output.gz  [input.gz]]
  */
 
+#if defined(WINDOWS) || defined(WIN32) || defined(WIN386)
+int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,int nCmdShow) {
+#else
 int main(argc, argv)
     int argc;
     char *argv[];
 {
+#endif
     Byte *compr, *uncompr;
     uLong comprLen = 10000*sizeof(int); /* don't overflow on MSDOS */
     uLong uncomprLen = comprLen;
     static const char* myVersion = ZLIB_VERSION;
 
+#if defined(WINDOWS) || defined(WIN32) || defined(WIN386)
+    (void)hInstance;
+    (void)hPrevInstance;
+    (void)lpCmdLine;
+    (void)nCmdShow;
+#else
     (void)argv;
     (void)argc;
+#endif
 
     if (zlibVersion()[0] != myVersion[0]) {
         fprintf(stderr, "incompatible zlib version\n");
