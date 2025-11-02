@@ -375,7 +375,7 @@ void test_sync(compr, comprLen, uncompr, uncomprLen)
  */
 
 #if defined(_WINDOWS) || defined(WIN32) || defined(WIN386)
-int PASCAL __loadds WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,int nCmdShow) {
+int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,int nCmdShow) {
 #else
 int main(argc, argv)
     int argc;
