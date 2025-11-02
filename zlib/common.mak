@@ -28,6 +28,7 @@ $(EXT_ZLIB_EXAMPLE_EXE): $(EXT_ZLIB_LIB_CHOICE) $(SUBDIR)$(HPS)example.obj
 	%write tmp.cmd segment TYPE DATA PRELOAD MOVEABLE
 ! endif
 	%write tmp.cmd option map=$(EXT_ZLIB_EXAMPLE_EXE).map
+	%write tmp.cmd option protmode # Protected mode Windows only, this shit won't run properly in real-mode Windows for weird arcane reasons!
 	@wlink @tmp.cmd
 ! ifdef WIN386
 	@$(WIN386_EXE_TO_REX_IF_REX) $(EXT_ZLIB_EXAMPLE_EXE)

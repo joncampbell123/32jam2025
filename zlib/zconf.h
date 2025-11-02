@@ -334,7 +334,7 @@
 /* ZFAR should match FAR except for Win386 where this code would fail
  * because it expects to use malloc/free which are intended for a flat
  * memory model internally */
-#if !defined(WIN386)
+#if !defined(WIN386) && (defined(_WINDOWS) || defined(WIN32))
 #  ifndef ZFAR
 #    define ZFAR FAR
 #  endif

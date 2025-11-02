@@ -3,8 +3,13 @@ rel=..
 if [ x"$TOP" == x ]; then TOP=`pwd`/$rel; fi
 . $rel/linux-ow.sh
 
-win10=1 # Windows 1.0
-win20=1 # Windows 2.0
+# example.exe is compiling into a real-mode EXE that Windows can't seem to track the DS
+# segment properly. I'm sorry but it's hard to write code for an environment that randomly
+# depending on the compiled EXE, gives you a DS value that's 20-50 real-mode paragraphs
+# off from the real segment base. God damn. No wonder Microsoft was eager to drop real-mode
+# Windows. Real-mode Windows isn't even the target platform for this project, we're focused
+# on protected mode Windows 3.1/95 here. This isn't an academic DOSLIB exercise in writing
+# code for old Windows in general, this is more specific and I don't have time for bullshit.
 win30=1 # Windows 3.0
 win31=1 # Windows 3.1
 winnt=1 # Windows NT
@@ -15,25 +20,13 @@ win38631=1 # Windows 3.1 + Watcom win386
 
 if [ "$1" == "clean" ]; then
 	do_clean
-    rm -Rfv linux-host
+	rm -Rfv linux-host
 	rm -fv test.dsk test2.dsk nul.err tmp.cmd tmp1.cmd tmp2.cmd
 	exit 0
 fi
 
 if [ "$1" == "disk" ]; then
 	make_msdos_data_disk test.dsk || exit 1
-#	mcopy -i test.dsk dos86c/test.exe ::test86c.exe
-#	mcopy -i test.dsk dos86s/test.exe ::test86s.exe
-#	mcopy -i test.dsk dos86m/test.exe ::test86m.exe
-#	mcopy -i test.dsk dos86l/test.exe ::test86l.exe
-#	mcopy -i test.dsk dos286c/test.exe ::test286c.exe
-#	mcopy -i test.dsk dos286s/test.exe ::test286s.exe
-#	mcopy -i test.dsk dos286m/test.exe ::test286m.exe
-#	mcopy -i test.dsk dos286l/test.exe ::test286l.exe
-	mcopy -i test.dsk dos386f/test.exe ::test386.exe
-	mcopy -i test.dsk dos486f/test.exe ::test486.exe
-	mcopy -i test.dsk dos586f/test.exe ::test586.exe
-	mcopy -i test.dsk dos686f/test.exe ::test686.exe
 	mcopy -i test.dsk dos386f/dos4gw.exe ::dos4gw.exe
 fi
 
