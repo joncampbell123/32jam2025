@@ -5,6 +5,10 @@
 
 /* @(#) $Id$ */
 
+#if defined(WINDOWS) || defined(WIN32) || defined(WIN386)
+#include <windows.h>
+#endif
+
 #include "zlib.h"
 #include <stdio.h>
 
@@ -32,7 +36,6 @@
 #define printf __my_printf
 
 #include <stdarg.h>
-#include <windows.h>
 
 void __my_fprintf(FILE *fake,const char *fmt,...) {
 	char tmp[256];
