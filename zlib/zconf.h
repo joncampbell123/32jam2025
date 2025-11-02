@@ -243,29 +243,29 @@
 #  endif
 #endif
 
-/* The following definitions for FAR are needed only for MSDOS mixed
+/* The following definitions for ZFAR are needed only for MSDOS mixed
  * model programming (small or medium model with some far allocations).
  * This was tested only with MSC; for other MSDOS compilers you may have
  * to define NO_MEMCPY in zutil.h.  If you don't need the mixed model,
- * just define FAR to be empty.
+ * just define ZFAR to be empty.
  */
 #ifdef SYS16BIT
 #  if defined(M_I86SM) || defined(M_I86MM)
      /* MSC small or medium model */
 #    define SMALL_MEDIUM
 #    ifdef _MSC_VER
-#      define FAR _far
+#      define ZFAR _far
 #    else
-#      define FAR far
+#      define ZFAR far
 #    endif
 #  endif
 #  if (defined(__SMALL__) || defined(__MEDIUM__))
      /* Turbo C small or medium model */
 #    define SMALL_MEDIUM
 #    ifdef __BORLANDC__
-#      define FAR _far
+#      define ZFAR _far
 #    else
-#      define FAR far
+#      define ZFAR far
 #    endif
 #  endif
 #endif
@@ -294,8 +294,8 @@
 #  endif
 
 #  ifdef ZLIB_WINAPI
-#    ifdef FAR
-#      undef FAR
+#    ifdef ZFAR
+#      undef ZFAR
 #    endif
 #    include <windows.h>
      /* No need for _export, use ZLIB.DEF instead. */
@@ -304,7 +304,7 @@
 #    ifdef WIN32
 #      define ZEXPORTVA WINAPIV
 #    else
-#      define ZEXPORTVA FAR CDECL
+#      define ZEXPORTVA ZFAR CDECL
 #    endif
 #  endif
 #endif
@@ -331,8 +331,17 @@
 #  define ZEXPORTVA
 #endif
 
-#ifndef FAR
-#  define FAR
+/* ZFAR should match FAR except for Win386 where this code would fail
+ * because it expects to use malloc/free which are intended for a flat
+ * memory model internally */
+#if !defined(WIN386)
+#  ifndef ZFAR
+#    define ZFAR FAR
+#  endif
+#endif
+
+#ifndef ZFAR
+#  define ZFAR
 #endif
 
 #if !defined(__MACTYPES__)
@@ -342,25 +351,25 @@ typedef unsigned int   uInt;  /* 16 bits or more */
 typedef unsigned long  uLong; /* 32 bits or more */
 
 #if defined(SMALL_MEDIUM) && defined(_MSC_VER)
-   /* Borland C/C++ and some old MSC versions ignore FAR inside typedef */
-#  define Bytef Byte FAR
+   /* Borland C/C++ and some old MSC versions ignore ZFAR inside typedef */
+#  define Bytef Byte ZFAR
 #else
-   typedef Byte  FAR Bytef;
+   typedef Byte  ZFAR Bytef;
 #endif
-typedef char  FAR charf;
-typedef int   FAR intf;
-typedef uInt  FAR uIntf;
-typedef uLong FAR uLongf;
+typedef char  ZFAR charf;
+typedef int   ZFAR intf;
+typedef uInt  ZFAR uIntf;
+typedef uLong ZFAR uLongf;
 
 #ifdef STDC
-   typedef void const FAR *voidpcf;
+   typedef void const ZFAR *voidpcf;
    typedef void const *voidpc;
-   typedef void FAR   *voidpf;
+   typedef void ZFAR   *voidpf;
    typedef void       *voidp;
 #else
-   typedef Byte const FAR *voidpcf;
+   typedef Byte const ZFAR *voidpcf;
    typedef Byte const *voidpc;
-   typedef Byte FAR   *voidpf;
+   typedef Byte ZFAR   *voidpf;
    typedef Byte       *voidp;
 #endif
 

@@ -35,9 +35,9 @@
 /* compile with -Dlocal if your debugger can't find static symbols */
 
 typedef unsigned char  uch;
-typedef uch FAR uchf;
+typedef uch ZFAR uchf;
 typedef unsigned short ush;
-typedef ush FAR ushf;
+typedef ush ZFAR ushf;
 typedef unsigned long  ulg;
 
 extern const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
