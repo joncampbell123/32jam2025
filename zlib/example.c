@@ -5,7 +5,7 @@
 
 /* @(#) $Id$ */
 
-#if defined(WINDOWS) || defined(WIN32) || defined(WIN386)
+#if defined(_WINDOWS) || defined(WIN32) || defined(WIN386)
 #include <windows.h>
 #endif
 
@@ -22,7 +22,7 @@
 # include <i86.h>
 #endif
 
-#if defined(WINDOWS) || defined(WIN32) || defined(WIN386)
+#if defined(_WINDOWS) || defined(WIN32) || defined(WIN386)
 #define CHECK_ERR(err, msg) { \
     if (err != Z_OK) { \
         char tmp[256]; \
@@ -374,8 +374,8 @@ void test_sync(compr, comprLen, uncompr, uncomprLen)
  * Usage:  example [output.gz  [input.gz]]
  */
 
-#if defined(WINDOWS) || defined(WIN32) || defined(WIN386)
-int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,int nCmdShow) {
+#if defined(_WINDOWS) || defined(WIN32) || defined(WIN386)
+int PASCAL __loadds WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,int nCmdShow) {
 #else
 int main(argc, argv)
     int argc;
@@ -387,7 +387,7 @@ int main(argc, argv)
     uLong uncomprLen = comprLen;
     static const char* myVersion = ZLIB_VERSION;
 
-#if defined(WINDOWS) || defined(WIN32) || defined(WIN386)
+#if defined(_WINDOWS) || defined(WIN32) || defined(WIN386)
     (void)hInstance;
     (void)hPrevInstance;
     (void)lpCmdLine;
