@@ -7,7 +7,7 @@ CFLAGS_THIS = -fr=nul -fo=$(SUBDIR)$(HPS).obj -i.. -dHAVE_CONFIG_H -dSTDC
 
 EXT_ZLIB_LIB_STATIC=$(SUBDIR)$(HPS)zlib.s.lib # to avoid conflicts with DLL import library
 EXT_ZLIB_LIB_DLL=$(SUBDIR)$(HPS)zlib.lib # to avoid conflicts with DLL import library
-EXT_ZLIB_DLL=$(SUBDIR)$(HPS)zlib.dll
+EXT_ZLIB_DLL=$(SUBDIR)$(HPS)ZLIB.DLL
 EXT_ZLIB_EXAMPLE_EXE = $(SUBDIR)$(HPS)example.exe
 
 OBJS = $(SUBDIR)$(HPS)adler32.obj $(SUBDIR)$(HPS)compress.obj $(SUBDIR)$(HPS)crc32.obj $(SUBDIR)$(HPS)deflate.obj $(SUBDIR)$(HPS)infback.obj $(SUBDIR)$(HPS)inffast.obj $(SUBDIR)$(HPS)inflate.obj $(SUBDIR)$(HPS)inftrees.obj $(SUBDIR)$(HPS)trees.obj $(SUBDIR)$(HPS)uncompr.obj $(SUBDIR)$(HPS)zutil.obj $(SUBDIR)$(HPS)libmain.obj
@@ -55,10 +55,10 @@ $(EXT_ZLIB_DLL) $(EXT_ZLIB_LIB_DLL): $(OBJS)
 	%write tmp.cmd segment TYPE CODE MOVEABLE DISCARDABLE SHARED
 	%write tmp.cmd segment TYPE DATA MOVEABLE
 !  endif
-	%write tmp.cmd option impfile=$(SUBDIR)$(HPS)zlib.lcf
+	%write tmp.cmd option impfile=$(SUBDIR)$(HPS)ZLIB.LCF
 	%write tmp.cmd name $(EXT_ZLIB_DLL)
 	@wlink @tmp.cmd
-	perl lcflib.pl --nofilter $(SUBDIR)$(HPS)zlib.lib $(SUBDIR)$(HPS)zlib.lcf
+	perl lcflib.pl --nofilter $(SUBDIR)$(HPS)zlib.lib $(SUBDIR)$(HPS)ZLIB.LCF
 !  ifdef WIN_NE_SETVER_BUILD
 	$(WIN_NE_SETVER_BUILD) $(EXT_ZLIB_DLL)
 !  endif
