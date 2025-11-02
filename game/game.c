@@ -2,26 +2,6 @@
 # error This is Windows code, not DOS
 #endif
 
-/* Windows programming notes:
- *
- *   - If you're writing your software to work only on Windows 3.1 or later, you can omit the
- *     use of MakeProcInstance(). Windows 3.0 however require your code to use it.
- *
- *   - The Window procedure must be exported at link time. Windows 3.0 demands it.
- *
- *   - If you want your code to run in Windows 3.0, everything must be MOVEABLE. Your code and
- *     data segments must be MOVEABLE. If you intend to load resources, the resources must be
- *     MOVEABLE. The constraints of real mode and fitting everything into 640KB or less require
- *     it.
- *
- *   - If you want to keep your sanity, never mark your data segment (DGROUP) as discardable.
- *     You can make your code discardable because the mechanisms of calling your code by Windows
- *     including the MakeProcInstance()-generated wrapper for your windows proc will pull your
- *     code segment back in on demand. There is no documented way to pull your data segment back
- *     in if discarded. Notice all the programs in Windows 2.0/3.0 do the same thing.
- */
-/* FIXME: This code crashes when multiple instances are involved. Especially the win386 build. */
-
 #include <windows.h>
 #include <string.h>
 #include <stdio.h>
@@ -271,11 +251,9 @@ BOOL CheckMultiInstanceFindWindow(const BOOL mustError) {
 	if (!(WndConfigFlags & WndCFG_MultiInstance)) {
 		HWND hwnd = FindWindow(WndProcClass,NULL);
 		if (hwnd) {
-#if WINVER >= 0x200
 			/* NTS: Windows 95 and later might ignore SetActiveWindow(), use SetWindowPos() as a backup
 			 *      to at least make it visible. */
 			SetWindowPos(hwnd,0,0,0,0,0,SWP_NOZORDER|SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_NOMOVE|SWP_NOSIZE);
-#endif
 			SetActiveWindow(hwnd);
 
 			if (IsIconic(hwnd)) SendMessage(hwnd,WM_SYSCOMMAND,SC_RESTORE,0);
@@ -308,11 +286,7 @@ void WinClientSizeInFullScreen(RECT *d,const struct WndStyle_t *style,const BOOL
 	/* calculate the rect so that the window caption, sysmenu, and borders are just off the
 	 * edges of the screen, leaving the client area to cover the screen, BUT, disregard the
 	 * fMenu flag so that the menu bar, if any, is visible at the top of the screen. */
-#if WINVER >= 0x300
 	AdjustWindowRectEx(d,style->style,FALSE,style->styleEx);
-#else
-	AdjustWindowRect(d,style->style,FALSE);
-#endif
 }
 
 void WinClientSizeToWindowSize(POINT *d,const POINT *s,const struct WndStyle_t *style,const BOOL fMenu) {
@@ -320,24 +294,10 @@ void WinClientSizeToWindowSize(POINT *d,const POINT *s,const struct WndStyle_t *
 	memset(&um,0,sizeof(um));
 	um.right = s->x;
 	um.bottom = s->y;
-#if WINVER >= 0x300
 	AdjustWindowRectEx(&um,style->style,fMenu,style->styleEx);
-#else
-	AdjustWindowRect(&um,style->style,fMenu);
-#endif
 	d->x = um.right - um.left;
 	d->y = um.bottom - um.top;
 }
-
-#if (WINVER >= 0x300)
-# define DeleteMenuGF DeleteMenu
-#else
-/* NTS: DeleteMenu() does exist in Windows 2.x but it only supports MF_BYPOSITION. This code needs MF_BYCOMMAND. */
-BOOL DeleteMenuGF(HMENU hMenu,UINT idItem,UINT fuFlags) {
-	/* Microsoft's Windows 3.1 SDK has forgotten about MF_REMOVE and does not mention it */
-	return ChangeMenu(hMenu,idItem,NULL,0,MF_DELETE | fuFlags);
-}
-#endif
 
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
 LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
@@ -356,9 +316,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			WndStateFlags |= WndState_Minimized;
 
 			if (WndConfigFlags & WndCFG_TopMost) {
-#if WINVER >= 0x200
 				SetWindowPos(hwndMain,HWND_NOTOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE); // take away topmost
-#endif
 			}
 		}
 		else {
@@ -368,9 +326,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			WinClientSizeToWindowSize(&WndCurrentSize,&WndCurrentSizeClient,&WndStyle,GetMenu(hwnd)!=NULL?TRUE:FALSE);
 
 			if (WndConfigFlags & WndCFG_TopMost) {
-#if WINVER >= 0x200
 				SetWindowPos(hwndMain,HWND_TOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE);
-#endif
 			}
 		}
 
@@ -384,11 +340,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			WndStateFlags &= ~WndState_Active;
 
 			if (WndConfigFlags & WndCFG_DeactivateMinimize) {
-#if WINVER >= 0x200
 				ShowWindow(hwnd,SW_SHOWMINNOACTIVE);
-#else
-				ShowWindow(hwnd,SHOW_ICONWINDOW); /* Windows 1.0 */
-#endif
 			}
 		}
 
@@ -508,30 +460,24 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 				break;
 			case SC_MINIMIZE:
 				if (WndConfigFlags & WndCFG_TopMost) {
-#if WINVER >= 0x200
 					SetWindowPos(hwndMain,HWND_NOTOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE); // take away topmost
-#endif
 				}
 				break;
 			case SC_MAXIMIZE:
 				if (WndConfigFlags & WndCFG_Fullscreen) {
-#if WINVER >= 0x200
 					// NTS: It is very important to SW_SHOWNORMAL then SW_SHOWMAXIMIZED or else Windows 3.0
 					//      will only show the window in normal maximized dimensions
 					if (WndStateFlags & WndState_Minimized) ShowWindow(hwnd,SW_SHOWNORMAL);
 					ShowWindow(hwnd,SW_SHOWMAXIMIZED);
-#endif
 					return 0;
 				}
 				break;
 			case SC_RESTORE:
 				if (WndConfigFlags & WndCFG_Fullscreen) {
-#if WINVER >= 0x200
 					// NTS: It is very important to SW_SHOWNORMAL then SW_SHOWMAXIMIZED or else Windows 3.0
 					//      will only show the window in normal maximized dimensions
 					if (WndStateFlags & WndState_Minimized) ShowWindow(hwnd,SW_SHOWNORMAL);
 					ShowWindow(hwnd,SW_SHOWMAXIMIZED);
-#endif
 					return 0;
 				}
 				break;
@@ -672,20 +618,16 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		/* TODO: VGA driver returns AspectRatio = 10:10 call a function to reduce the fraction i.e. to 1:1 */
 
 		t = GetDeviceCaps(screenDC,RASTERCAPS);
-#if WINVER >= 0x300
 		if (t & RC_PALETTE) {
 			WndScreenInfo.Flags |= WndScreenInfoFlag_Palette;
 			w = GetDeviceCaps(screenDC,SIZEPALETTE); if (w) WndScreenInfo.PaletteSize = w;
 			w = GetDeviceCaps(screenDC,COLORRES); if (w) WndScreenInfo.ColorBitsPerPixel = w;
 			WndScreenInfo.PaletteReserved = GetDeviceCaps(screenDC,NUMRESERVED);
 		}
-#endif
 		if (t & RC_BITMAP64) WndScreenInfo.Flags |= WndScreenInfoFlag_BitmapBig;
 
 		w = RC_BITBLT;
-#if WINVER >= 0x300
 		w |= RC_DI_BITMAP;
-#endif
 		if ((t&w) != w) {
 			ReleaseDC(NULL,screenDC);
 			MessageBox(NULL,"Your video driver is missing some important functions","",MB_OK);
@@ -804,19 +746,11 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 
 		WinClientSizeInFullScreen(&WndFullscreenSize,&style,fMenu); /* requires WndWorkArea and WndScreenSize */
 
-#if WINVER >= 0x300
 		hwndMain = CreateWindowEx(style.styleEx,WndProcClass,WndTitle,style.style,
 			CW_USEDEFAULT,CW_USEDEFAULT,
 			WndDefSize.x,WndDefSize.y,
 			NULL,NULL,
 			hInstance,NULL);
-#else
-		hwndMain = CreateWindow(WndProcClass,WndTitle,style.style,
-			CW_USEDEFAULT,CW_USEDEFAULT,
-			WndDefSize.x,WndDefSize.y, // NTS: In Windows 1.0, unless the style is WS_POPUP, this is ignored
-			NULL,NULL,
-			hInstance,NULL);
-#endif
 		if (!hwndMain) {
 			MessageBox(NULL,"Unable to create window","Oops!",MB_OK);
 			return 1;
@@ -825,11 +759,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		if (fMenu) SetMenu(hwndMain,menu);
 	}
 
-#if WINVER >= 0x200
 	if (nCmdShow == SW_MINIMIZE || nCmdShow == SW_SHOWMINIMIZED || nCmdShow == SW_SHOWMINNOACTIVE) WndStateFlags |= WndState_Minimized;
-#else
-	if (nCmdShow == SHOW_ICONWINDOW) WndStateFlags |= WndState_Minimized; /* Windows 1.0 */
-#endif
 
 	/* NTS: Windows 3.1 will not send WM_WINDOWPOSCHANGING for window creation because,
 	 *      well, the window was just created and therefore didn't change position!
@@ -837,30 +767,18 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	 *      change is necessary! To make this work with any other Windows, also maximize
 	 *      the window. */
 	if ((WndConfigFlags & WndCFG_Fullscreen) && !(WndStateFlags & WndState_Minimized)) {
-#if WINVER >= 0x200
 		SetWindowPos(hwndMain,HWND_TOP,0,0,0,0,SWP_NOZORDER|SWP_NOSIZE|SWP_NOACTIVATE);
-#else
-		/* NTS: Windows 1.0 WS_TILED aka WS_OVERLAPPED windows cannot be moved using MoveWindow.
-		 *      The above code for fullscreen should have changed the style to WS_POPUP so that
-		 *      we can control and place the window */
-		MoveWindow(hwndMain,
-			WndFullscreenSize.left,WndFullscreenSize.top,
-			WndFullscreenSize.right - WndFullscreenSize.left,
-			WndFullscreenSize.bottom - WndFullscreenSize.top,TRUE);
-#endif
 	}
 
 	SysMenu = GetSystemMenu(hwndMain,FALSE);
 	if (WndConfigFlags & WndCFG_Fullscreen) {
 		// do not remove SC_MOVE, it makes it impossible in Windows 3.x to move the minimized icon.
 		// do not remove SC_RESTORE, it makes it impossible in Windows 3.x to restore the window by double-clicking the minimized icon.
-		DeleteMenuGF(SysMenu,SC_MAXIMIZE,MF_BYCOMMAND);
-		DeleteMenuGF(SysMenu,SC_SIZE,MF_BYCOMMAND);
+		DeleteMenu(SysMenu,SC_MAXIMIZE,MF_BYCOMMAND);
+		DeleteMenu(SysMenu,SC_SIZE,MF_BYCOMMAND);
 	}
 	if (WndConfigFlags & WndCFG_TopMost) {
-#if WINVER >= 0x200
 		SetWindowPos(hwndMain,HWND_TOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE);
-#endif
 	}
 
 	ShowWindow(hwndMain,nCmdShow);
@@ -868,12 +786,10 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 
 	if (GetActiveWindow() == hwndMain) WndStateFlags |= WndState_Active;
 
-#if WINVER >= 0x200
 	/* Windows 95: Show the window normally, then maximize it, to encourage the task bar to hide itself when we go fullscreen.
 	 *             Without this, the task bar will SOMETIMES hide itself, and other times just stay there at the bottom of the screen. */
 	if ((WndConfigFlags & WndCFG_Fullscreen) && !(WndStateFlags & WndState_Minimized) && (WndStateFlags & WndState_Active))
 		ShowWindow(hwndMain,SW_MAXIMIZE);
-#endif
 
 #if TARGET_MSDOS == 32 && !defined(WIN386)
 	ReleaseMutex(WndLocalAppMutex);
