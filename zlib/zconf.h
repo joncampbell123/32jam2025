@@ -145,7 +145,7 @@
 #    define WIN32
 #  endif
 #endif
-#if (defined(MSDOS) || defined(OS2) || defined(WINDOWS)) && !defined(WIN32)
+#if (defined(MSDOS) || defined(OS2) || defined(WINDOWS) || TARGET_MSDOS == 16) && !defined(WIN32)
 #  if !defined(__GNUC__) && !defined(__FLAT__) && !defined(__386__)
 #    ifndef SYS16BIT
 #      define SYS16BIT
@@ -185,6 +185,14 @@
 #endif
 #if !defined(STDC) && (defined(OS2) || defined(__HOS_AIX__))
 #  define STDC
+#endif
+
+#if defined(SYS16BIT) && defined(WINDOWS) && !defined(WIN386) && !defined(WIN32)
+#  define USELOCKCOUNT
+#endif
+
+#if defined(WINDOWS)
+# include <windows.h>
 #endif
 
 #if defined(__OS400__) && !defined(STDC)    /* iSeries (formerly AS/400). */

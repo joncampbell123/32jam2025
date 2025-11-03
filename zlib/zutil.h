@@ -272,9 +272,27 @@ voidpf ZLIB_INTERNAL zcalloc OF((voidpf opaque, unsigned items,
                         unsigned size));
 void ZLIB_INTERNAL zcfree  OF((voidpf opaque, voidpf ptr));
 
-#define ZALLOC(strm, items, size) \
+#ifdef USELOCKCOUNT
+// sorry, function pointers are a big no-no- in real-mode Windows
+# define ZALLOC(strm, items, size) \
+           (zcalloc((strm)->opaque, (items), (size)))
+# define ZFREE(strm, addr)  (zcfree((strm)->opaque, (voidpf)(addr)))
+# define TRY_FREE(s, p) {if (p) ZFREE(s, p);}
+#else
+# define ZALLOC(strm, items, size) \
            (*((strm)->zalloc))((strm)->opaque, (items), (size))
-#define ZFREE(strm, addr)  (*((strm)->zfree))((strm)->opaque, (voidpf)(addr))
-#define TRY_FREE(s, p) {if (p) ZFREE(s, p);}
+# define ZFREE(strm, addr)  (*((strm)->zfree))((strm)->opaque, (voidpf)(addr))
+# define TRY_FREE(s, p) {if (p) ZFREE(s, p);}
+#endif
+
+#ifdef USELOCKCOUNT
+int ZLIB_INTERNAL UseLock();
+int ZLIB_INTERNAL UseUnlock();
+ZEXTERN WORD ZEXPORT CheckUseLock();
+#else
+# define UseLock()
+# define UseUnlock()
+# define CheckUseLock() (0)
+#endif
 
 #endif /* ZUTIL_H */

@@ -24,7 +24,7 @@ EXT_ZLIB_LIB_LIB=$(SUBDIR_LIB)$(HPS)zlib.lib # to avoid conflicts with DLL impor
 
 #--------------------
 $(EXT_ZLIB_LIB_LIB): $(OBJS_LIB)
-	wlib -q -b -c $(EXT_ZLIB_LIB_LIB) -+$(SUBDIR_LIB)$(HPS)adler32.obj -+$(SUBDIR_LIB)$(HPS)compress.obj -+$(SUBDIR_LIB)$(HPS)crc32.obj -+$(SUBDIR_LIB)$(HPS)deflate.obj -+$(SUBDIR_LIB)$(HPS)infback.obj -+$(SUBDIR_LIB)$(HPS)inffast.obj -+$(SUBDIR_LIB)$(HPS)inflate.obj -+$(SUBDIR_LIB)$(HPS)inftrees.obj -+$(SUBDIR_LIB)$(HPS)trees.obj -+$(SUBDIR_LIB)$(HPS)uncompr.obj -+$(SUBDIR_LIB)$(HPS)zutil.obj
+	wlib -q -b -c $(EXT_ZLIB_LIB_LIB) -+$(SUBDIR_LIB)$(HPS)adler32.obj -+$(SUBDIR_LIB)$(HPS)compress.obj -+$(SUBDIR_LIB)$(HPS)crc32.obj -+$(SUBDIR_LIB)$(HPS)deflate.obj -+$(SUBDIR_LIB)$(HPS)infback.obj -+$(SUBDIR_LIB)$(HPS)inffast.obj -+$(SUBDIR_LIB)$(HPS)inflate.obj -+$(SUBDIR_LIB)$(HPS)inftrees.obj -+$(SUBDIR_LIB)$(HPS)trees.obj -+$(SUBDIR_LIB)$(HPS)uncompr.obj -+$(SUBDIR_LIB)$(HPS)zutil.obj -+$(SUBDIR_LIB)$(HPS)libmain.obj
 
 #--------------------
 !ifndef WIN386
