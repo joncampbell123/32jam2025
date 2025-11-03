@@ -380,7 +380,6 @@ int main(argc, argv)
     Byte *compr, *uncompr;
     uLong comprLen = 10000*sizeof(int); /* don't overflow on MSDOS */
     uLong uncomprLen = comprLen;
-    static const char* myVersion = ZLIB_VERSION;
 
 // NTS: There is this weird bug with Windows real mode and Open Watcom where, seemingly based on random
 //      criteria, the compiled EXE is loaded and executed by Windows with an incorrect DS data segment value.
@@ -402,12 +401,20 @@ int main(argc, argv)
     (void)argc;
 #endif
 
-    if (zlibVersion()[0] != myVersion[0]) {
-        fprintf(stderr, "incompatible zlib version\n");
-        exit(1);
-
-    } else if (strcmp(zlibVersion(), ZLIB_VERSION) != 0) {
-        fprintf(stderr, "warning: different zlib version\n");
+    {
+        /* NTS: myVersion was once "static const char*" but in real-mode Windows, after LockSegment() or
+         *      when Windows moves unlocked memory around, that static const char pointer no longer points
+         *      to the string you think it does. As const char, it is initialized HERE after LockSegment()
+         *      and guaranteed to point to the ZLIB_VERSION string you expect. This fixes false
+         *      "incompatible zlib version" errors. */
+        const char* myVersion = ZLIB_VERSION;
+        if (zlibVersion()[0] != myVersion[0]) {
+            fprintf(stderr, "incompatible zlib version\n");
+            fprintf(stderr,"%s != %s != %s",zlibVersion(),myVersion,ZLIB_VERSION);
+            exit(1);
+        } else if (strcmp(zlibVersion(), ZLIB_VERSION) != 0) {
+            fprintf(stderr, "warning: different zlib version\n");
+        }
     }
 
     printf("zlib version %s = 0x%04x, compile flags = 0x%lx\n",
