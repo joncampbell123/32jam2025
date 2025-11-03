@@ -20,7 +20,6 @@ int CALLBACK LibMain(HINSTANCE hinst, WORD wDataSeg, WORD cbHeapSize, LPSTR lpsz
 static WORD UseLockCount = 0;
 
 int ZLIB_INTERNAL UseLock() {
-	MessageBox(NULL,"LOCK","",MB_OK);
 	if (UseLockCount++ == 0) {
 		WORD c=0;
 		__asm {
@@ -35,7 +34,6 @@ int ZLIB_INTERNAL UseLock() {
 }
 
 int ZLIB_INTERNAL UseUnlock() {
-	MessageBox(NULL,"UNLOCK","",MB_OK);
 	if (--UseLockCount == 0) {
 		WORD c=0;
 		__asm {
