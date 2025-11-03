@@ -704,15 +704,6 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		BOOL fMenu = (menu!=NULL && (WndConfigFlags & WndCFG_ShowMenu))?TRUE:FALSE;
 		struct WndStyle_t style = WndStyle;
 
-#if WINVER < 0x200
-		if (WndConfigFlags & WndCFG_Fullscreen) {
-			/* Windows 1.0: WS_OVERLAPPED (aka WS_TILED) prevents fullscreen because we then
-			 *              cannot control the position of our window, change it to WS_POPUP */
-			if ((style.style & (WS_POPUP|WS_CHILD)) == WS_TILED/*which is zero--look at WINDOWS.H*/)
-				style.style |= WS_POPUP; /* WS_TILED is zero, so no need to mask off anything */
-		}
-#endif
-
 		/* must be computed BEFORE creating the window */
 		WinClientSizeToWindowSize(&WndMinSize,&WndMinSizeClient,&style,fMenu);
 		WinClientSizeToWindowSize(&WndMaxSize,&WndMaxSizeClient,&style,fMenu);
