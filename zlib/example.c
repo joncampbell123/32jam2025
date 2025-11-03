@@ -32,22 +32,17 @@
     } \
 }
 
-#define fprintf __my_fprintf
+// NTS: Prior code had separate code for fprintf and printf, and for whatever reason. that
+//      triggered something in Open Watcom and/or real-mode Windows to screw up the data
+//      segment value (DS) with a small offset like 10, 17, or 36 which of course causes
+//      this program to crash.
+//
+//      Removing __my_fprintf() and mapping both macros to __my_printf(), for whatever
+//      mysterious magic reason, fixes the DS offset and then allows this program to work.
+#define fprintf(dummy,...) __my_printf(__VA_ARGS__)
 #define printf __my_printf
 
 #include <stdarg.h>
-
-void __my_fprintf(FILE *fake,const char *fmt,...) {
-	char tmp[256];
-	va_list va;
-
-	(void)fake;
-
-	va_start(va, fmt);
-	vsnprintf(tmp, sizeof(tmp), fmt, va);
-	MessageBox((HWND)NULL,tmp,"ERROR:",MB_OK);
-	va_end(va);
-}
 
 void __my_printf(const char *fmt,...) {
 	char tmp[256];
@@ -386,6 +381,16 @@ int main(argc, argv)
     uLong comprLen = 10000*sizeof(int); /* don't overflow on MSDOS */
     uLong uncomprLen = comprLen;
     static const char* myVersion = ZLIB_VERSION;
+
+// NTS: There is this weird bug with Windows real mode and Open Watcom where, seemingly based on random
+//      criteria, the compiled EXE is loaded and executed by Windows with an incorrect DS data segment value.
+//      The value is offset by some small value like 10, 17, or 36. Of course doing that throws off all
+//      pointers in the EXE and of course that is a GREAT way to corrupt your own data segment, possibly
+//      adjacent memory, and cause a crash.
+//
+//      So, if the MessageBox() call below shows nothing or gibberish, that bug has triggered again.
+    LockSegment(-1); // the ZLIB interface expects pointers not to change around so we need to lock our data segment
+    MessageBox(NULL,"TEST START","ZLIB EXAMPLE",MB_OK); // If this text is displayed as gibberish, the bug is happening again
 
 #if defined(_WINDOWS) || defined(WIN32) || defined(WIN386)
     (void)hInstance;
