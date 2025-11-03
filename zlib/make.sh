@@ -3,13 +3,8 @@ rel=..
 if [ x"$TOP" == x ]; then TOP=`pwd`/$rel; fi
 . $rel/linux-ow.sh
 
-# example.exe is compiling into a real-mode EXE that Windows can't seem to track the DS
-# segment properly. I'm sorry but it's hard to write code for an environment that randomly
-# depending on the compiled EXE, gives you a DS value that's 20-50 real-mode paragraphs
-# off from the real segment base. God damn. No wonder Microsoft was eager to drop real-mode
-# Windows. Real-mode Windows isn't even the target platform for this project, we're focused
-# on protected mode Windows 3.1/95 here. This isn't an academic DOSLIB exercise in writing
-# code for old Windows in general, this is more specific and I don't have time for bullshit.
+win10=1 # Windows 1.0
+win20=1 # Windows 2.0
 win30=1 # Windows 3.0
 win31=1 # Windows 3.1
 winnt=1 # Windows NT
