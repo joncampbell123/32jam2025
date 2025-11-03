@@ -32,6 +32,12 @@
     } \
 }
 
+/* NTS: changing this to "#define fprintf()" fixes the DS offset bug.
+ *      so does "#define fprintf(dummy,...) __my_printf(__VA_ARGS__)".
+ *      Something about having __my_fprintf() there and calling it
+ *      causes the DS offset bug.
+ *
+ *      The DS offset bug seems to always use offsets of 10, 17, or 36. */
 #define fprintf __my_fprintf
 #define printf __my_printf
 
@@ -386,6 +392,9 @@ int main(argc, argv)
     uLong comprLen = 10000*sizeof(int); /* don't overflow on MSDOS */
     uLong uncomprLen = comprLen;
     static const char* myVersion = ZLIB_VERSION;
+
+    LockSegment(-1);
+    MessageBox(NULL,"THIS TEXT SHOULD APPEAR PROPERLY","ZLIB TEST",MB_OK);
 
 #if defined(_WINDOWS) || defined(WIN32) || defined(WIN386)
     (void)hInstance;

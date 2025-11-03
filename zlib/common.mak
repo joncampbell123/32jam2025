@@ -34,7 +34,7 @@ $(EXT_ZLIB_DLL) $(EXT_ZLIB_LIB_DLL): $(OBJS_DLL)
 	%write tmp.cmd option MODNAME=$(MODULENAME_BASE)_ZLIB
 	%write tmp.cmd segment TYPE CODE MOVEABLE DISCARDABLE SHARED
 	%write tmp.cmd segment TYPE DATA MOVEABLE
-	%write tmp.cmd option protmode # Protected mode Windows only, this shit won't run properly in real-mode Windows for weird arcane reasons!
+	#%write tmp.cmd option protmode # Protected mode Windows only, this shit won't run properly in real-mode Windows for weird arcane reasons!
 !endif
 	%write tmp.cmd option impfile=$(SUBDIR_DLL)$(HPS)ZLIB.LCF
 	%write tmp.cmd name $(EXT_ZLIB_DLL)
@@ -59,7 +59,7 @@ $(EXT_ZLIB_EXAMPLE_EXE_DLL): $(EXT_ZLIB_DLL) $(EXT_ZLIB_LIB_DLL) $(SUBDIR_DLL)$(
 	%write tmp.cmd segment TYPE DATA PRELOAD MOVEABLE
 !endif
 	%write tmp.cmd option map=$(EXT_ZLIB_EXAMPLE_EXE_DLL).map
-	%write tmp.cmd option protmode # Protected mode Windows only, this shit won't run properly in real-mode Windows for weird arcane reasons!
+	#%write tmp.cmd option protmode # Protected mode Windows only, this shit won't run properly in real-mode Windows for weird arcane reasons!
 	@wlink @tmp.cmd
 !ifdef WIN386
 	@$(WIN386_EXE_TO_REX_IF_REX) $(EXT_ZLIB_EXAMPLE_EXE_DLL)
@@ -86,7 +86,7 @@ $(EXT_ZLIB_EXAMPLE_EXE_LIB): $(EXT_ZLIB_LIB) $(EXT_ZLIB_LIB_LIB) $(SUBDIR_LIB)$(
 # NTS: Real-mode Windows will NOT run our program unless segments are MOVEABLE DISCARDABLE. Especially Windows 2.x and 3.0.
 	%write tmp.cmd segment TYPE CODE PRELOAD MOVEABLE DISCARDABLE SHARED
 	%write tmp.cmd segment TYPE DATA PRELOAD MOVEABLE
-	%write tmp.cmd option protmode # Protected mode Windows only, this shit won't run properly in real-mode Windows for weird arcane reasons!
+	#%write tmp.cmd option protmode # Protected mode Windows only, this shit won't run properly in real-mode Windows for weird arcane reasons!
 !endif
 	%write tmp.cmd option map=$(EXT_ZLIB_EXAMPLE_EXE_LIB).map
 	@wlink @tmp.cmd
