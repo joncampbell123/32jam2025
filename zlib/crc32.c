@@ -19,6 +19,10 @@
   one thread to use crc32().
  */
 
+#if TARGET_MSDOS == 16
+# define NOBYFOUR
+#endif
+
 #ifdef MAKECRCH
 #  include <stdio.h>
 #  ifndef DYNAMIC_CRC_TABLE
