@@ -36,6 +36,7 @@ $(EXT_ZLIB_DLL) $(EXT_ZLIB_LIB_DLL): $(OBJS_DLL)
 	%write tmp.cmd segment TYPE DATA MOVEABLE
 !endif
 	%write tmp.cmd option impfile=$(SUBDIR_DLL)$(HPS)ZLIB.LCF
+	%write tmp.cmd option map=$(EXT_ZLIB_DLL).map
 	%write tmp.cmd name $(EXT_ZLIB_DLL)
 	@wlink @tmp.cmd
 	perl lcflib.pl --nofilter $(SUBDIR_DLL)$(HPS)zlib.lib $(SUBDIR_DLL)$(HPS)ZLIB.LCF
