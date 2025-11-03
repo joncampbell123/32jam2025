@@ -450,7 +450,7 @@ typedef uLong ZFAR uLongf;
   #pragma map(inflate_copyright,"INCOPY")
 #endif
 
-#if defined(__WATCOMC__) && TARGET_MSDOS == 16 && defined(__COMPACT__)
+#if defined(__WATCOMC__) && TARGET_MSDOS == 16
 # define NO_GZCOMPRESS
 # define NO_GZIP
 #endif
