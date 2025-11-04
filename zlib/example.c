@@ -11,6 +11,7 @@
 
 #include "zlib.h"
 #include <stdio.h>
+#include <stdint.h>
 
 #ifdef STDC
 #  include <string.h>
@@ -21,6 +22,16 @@
 # include <dos.h>
 # include <i86.h>
 #endif
+
+/* string, len, adler32 init, crc32 init, adler32 final, crc32 final */
+struct chksumtest_t {
+	char*		txt;
+	unsigned short	len;
+	uint32_t	adler32_init;
+	uint32_t	crc32_init;
+	uint32_t	adler32_final;
+	uint32_t	crc32_final;
+};
 
 #if defined(_WINDOWS) || defined(WIN32) || defined(WIN386)
 #define CHECK_ERR(err, msg) { \
@@ -81,6 +92,47 @@ void test_flush         OF((Byte *compr, uLong *comprLen));
 void test_sync          OF((Byte *compr, uLong comprLen,
                             Byte *uncompr, uLong uncomprLen));
 int  main               OF((int argc, char *argv[]));
+
+const struct chksumtest_t chktest[] = {
+{"",0,0x00000001,0x00000000,0x00000001,0x00000000},
+{"test",4,0x00000001,0x00000000,0x045d01c1,0xd87f7e0c},
+{"testing123",10,0x00000001,0x00000000,0x16450395,0xe82509f0},
+{"iuqwpoiuirhjke-09328-0q8ewaf987ad098f7sad9f8puahpwrouae8n7fg37r098w7r98we7rf098we7r098we7~0fd~~sdf~~sf~sa~d~~sad~~sad~7wuiqoueyuwidyqwuioryqwouifdqowuiryqw8e79qw8e",163,0x00000001,0x00000000,0xa9423d0f,0x4b87f53e},
+{NULL}
+};
+
+void test_crcs() {
+    unsigned int i;
+    uint32_t c,a;
+
+    for (i=0;chktest[i].txt;i++) {
+        a = adler32(0,NULL,0);
+        c = crc32(0,NULL,0);
+
+        if (a != chktest[i].adler32_init) {
+            fprintf(stderr,"adler32 check fail i=%u msg=%s expect=0x%08lx got=0x%08lx\n",
+                i,(const unsigned char*)chktest[i].txt,(unsigned long)chktest[i].adler32_init,(unsigned long)a);
+        }
+        if (c != chktest[i].crc32_init) {
+            fprintf(stderr,"crc32 check fail i=%u msg=%s expect=0x%08lx got=0x%08lx\n",
+                i,(const unsigned char*)chktest[i].txt,(unsigned long)chktest[i].crc32_init,(unsigned long)c);
+        }
+
+        if (chktest[i].len) {
+            a = adler32(a,(const unsigned char*)chktest[i].txt,chktest[i].len);
+            c = crc32(c,(const unsigned char*)chktest[i].txt,chktest[i].len);
+        }
+
+        if (a != chktest[i].adler32_final) {
+            fprintf(stderr,"adler32 check2 fail i=%u msg=%s expect=0x%08lx got=0x%08lx\n",
+                i,(const unsigned char*)chktest[i].txt,(unsigned long)chktest[i].adler32_final,(unsigned long)a);
+        }
+        if (c != chktest[i].crc32_final) {
+            fprintf(stderr,"crc32 check2 fail i=%u msg=%s expect=0x%08lx got=0x%08lx\n",
+                i,(const unsigned char*)chktest[i].txt,(unsigned long)chktest[i].crc32_final,(unsigned long)c);
+        }
+    }
+}
 
 /* ===========================================================================
  * Test compress() and uncompress()
@@ -432,6 +484,7 @@ int main(argc, argv)
         exit(1);
     }
 
+    test_crcs();
     test_compress(compr, comprLen, uncompr, uncomprLen);
 
     test_deflate(compr, comprLen);
