@@ -500,5 +500,9 @@ int main(argc, argv)
     free(compr);
     free(uncompr);
 
+#if defined(_WINDOWS) || defined(WIN32) || defined(WIN386)
+    MessageBox(NULL,"TEST COMPLETED","ZLIB EXAMPLE",MB_OK); // If this text is displayed as gibberish, the bug is happening again
+#endif
+
     return 0;
 }
