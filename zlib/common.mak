@@ -9,32 +9,12 @@ SUBDIR_DLL = $(SUBDIR)$(HPS)dll
 SUBDIR_LIB = $(SUBDIR)$(HPS)lib
 
 #--------------------
-# Windows 1.x and 2.x when given a module "ZLIB" looks for "ZLIB.EXE" not "ZLIB.DLL"
-!ifndef WIN386
-! ifdef TARGET_WINDOWS
-!  ifeq TARGET_MSDOS 16
-!   ifeq TARGET_WINDOWS 10
-!    define WINDOWS_DLL_IS_EXE
-!   endif
-!   ifeq TARGET_WINDOWS 20
-!    define WINDOWS_DLL_IS_EXE
-!   endif
-!  endif
-! endif
-!endif
-
-#--------------------
 !ifndef WIN386
 OBJS_DLL = $(SUBDIR_DLL)$(HPS)adler32.obj $(SUBDIR_DLL)$(HPS)compress.obj $(SUBDIR_DLL)$(HPS)crc32.obj $(SUBDIR_DLL)$(HPS)deflate.obj $(SUBDIR_DLL)$(HPS)infback.obj $(SUBDIR_DLL)$(HPS)inffast.obj $(SUBDIR_DLL)$(HPS)inflate.obj $(SUBDIR_DLL)$(HPS)inftrees.obj $(SUBDIR_DLL)$(HPS)trees.obj $(SUBDIR_DLL)$(HPS)uncompr.obj $(SUBDIR_DLL)$(HPS)zutil.obj $(SUBDIR_DLL)$(HPS)libmain.obj
 
 EXT_ZLIB_EXAMPLE_EXE_DLL = $(SUBDIR_DLL)$(HPS)example.exe
 EXT_ZLIB_LIB_DLL=$(SUBDIR_DLL)$(HPS)zlib.lib # to avoid conflicts with DLL import library
-
-! ifdef WINDOWS_DLL_IS_EXE
-EXT_ZLIB_DLL=$(SUBDIR_DLL)$(HPS)ZLIB.EXE
-! else
 EXT_ZLIB_DLL=$(SUBDIR_DLL)$(HPS)ZLIB.DLL
-! endif
 !endif
 #--------------------
 OBJS_LIB = $(SUBDIR_LIB)$(HPS)adler32.obj $(SUBDIR_LIB)$(HPS)compress.obj $(SUBDIR_LIB)$(HPS)crc32.obj $(SUBDIR_LIB)$(HPS)deflate.obj $(SUBDIR_LIB)$(HPS)infback.obj $(SUBDIR_LIB)$(HPS)inffast.obj $(SUBDIR_LIB)$(HPS)inflate.obj $(SUBDIR_LIB)$(HPS)inftrees.obj $(SUBDIR_LIB)$(HPS)trees.obj $(SUBDIR_LIB)$(HPS)uncompr.obj $(SUBDIR_LIB)$(HPS)zutil.obj $(SUBDIR_LIB)$(HPS)libmain.obj
@@ -51,6 +31,7 @@ $(EXT_ZLIB_LIB_LIB): $(OBJS_LIB)
 $(EXT_ZLIB_DLL) $(EXT_ZLIB_LIB_DLL): $(OBJS_DLL)
 	%write tmp.cmd option quiet system $(WLINK_DLL_SYSTEM) file $(SUBDIR_DLL)$(HPS)adler32.obj file $(SUBDIR_DLL)$(HPS)compress.obj file $(SUBDIR_DLL)$(HPS)crc32.obj file $(SUBDIR_DLL)$(HPS)deflate.obj file $(SUBDIR_DLL)$(HPS)infback.obj file $(SUBDIR_DLL)$(HPS)inffast.obj file $(SUBDIR_DLL)$(HPS)inflate.obj file $(SUBDIR_DLL)$(HPS)inftrees.obj file $(SUBDIR_DLL)$(HPS)trees.obj file $(SUBDIR_DLL)$(HPS)uncompr.obj file $(SUBDIR_DLL)$(HPS)zutil.obj file $(SUBDIR_DLL)$(HPS)libmain.obj
 !ifeq TARGET_MSDOS 16
+	%write tmp.cmd option protmode # Protected mode Windows only, this shit won't run properly in real-mode Windows for weird arcane reasons!
 	%write tmp.cmd option MODNAME=$(MODULENAME_BASE)_ZLIB
 	%write tmp.cmd segment TYPE CODE MOVEABLE DISCARDABLE SHARED LOADONCALL
 	%write tmp.cmd segment TYPE DATA MOVEABLE
@@ -72,6 +53,7 @@ $(EXT_ZLIB_DLL) $(EXT_ZLIB_LIB_DLL): $(OBJS_DLL)
 $(EXT_ZLIB_EXAMPLE_EXE_DLL): $(EXT_ZLIB_DLL) $(EXT_ZLIB_LIB_DLL) $(SUBDIR_DLL)$(HPS)example.obj
 	%write tmp.cmd option quiet system $(WLINK_SYSTEM) file $(SUBDIR_DLL)$(HPS)example.obj library $(EXT_ZLIB_LIB_DLL) name $(EXT_ZLIB_EXAMPLE_EXE_DLL)
 !ifeq TARGET_MSDOS 16
+	%write tmp.cmd option protmode # Protected mode Windows only, this shit won't run properly in real-mode Windows for weird arcane reasons!
 	%write tmp.cmd option MODNAME=$(MODULENAME_BASE)_ZLIB_DLL_EXAMPLE
 # NTS: Real-mode Windows will NOT run our program unless segments are MOVEABLE DISCARDABLE. Especially Windows 2.x and 3.0.
 	%write tmp.cmd segment TYPE CODE PRELOAD MOVEABLE DISCARDABLE SHARED
@@ -100,6 +82,7 @@ $(SUBDIR_DLL)$(HPS)example.obj: example.c
 $(EXT_ZLIB_EXAMPLE_EXE_LIB): $(EXT_ZLIB_LIB) $(EXT_ZLIB_LIB_LIB) $(SUBDIR_LIB)$(HPS)example.obj
 	%write tmp.cmd option quiet system $(WLINK_SYSTEM) file $(SUBDIR_LIB)$(HPS)example.obj library $(EXT_ZLIB_LIB_LIB) name $(EXT_ZLIB_EXAMPLE_EXE_LIB)
 !ifeq TARGET_MSDOS 16
+	%write tmp.cmd option protmode # Protected mode Windows only, this shit won't run properly in real-mode Windows for weird arcane reasons!
 	%write tmp.cmd option MODNAME=$(MODULENAME_BASE)_ZLIB_LIB_EXAMPLE
 # NTS: Real-mode Windows will NOT run our program unless segments are MOVEABLE DISCARDABLE. Especially Windows 2.x and 3.0.
 	%write tmp.cmd segment TYPE CODE PRELOAD MOVEABLE DISCARDABLE SHARED

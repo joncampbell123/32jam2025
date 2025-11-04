@@ -285,14 +285,4 @@ void ZLIB_INTERNAL zcfree  OF((voidpf opaque, voidpf ptr));
 # define TRY_FREE(s, p) {if (p) ZFREE(s, p);}
 #endif
 
-#ifdef USELOCKCOUNT
-int ZLIB_INTERNAL UseLock();
-int ZLIB_INTERNAL UseUnlock();
-ZEXTERN WORD ZEXPORT CheckUseLock();
-#else
-# define UseLock()
-# define UseUnlock()
-# define CheckUseLock() (0)
-#endif
-
 #endif /* ZUTIL_H */

@@ -25,10 +25,6 @@
 # define NOBYFOUR
 #endif
 
-#if TARGET_MSDOS == 16 && defined(_WINDOWS) && defined(__WATCOMC__) && defined(ZLIB_DLL)
-#pragma code_seg("CRCTEXT")
-#endif
-
 #ifdef MAKECRCH
 #  include <stdio.h>
 #  ifndef DYNAMIC_CRC_TABLE

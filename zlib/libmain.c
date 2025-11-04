@@ -16,42 +16,6 @@ int CALLBACK LibMain(HINSTANCE hinst, WORD wDataSeg, WORD cbHeapSize, LPSTR lpsz
 }
 #endif
 
-#ifdef USELOCKCOUNT
-static WORD UseLockCount = 0;
-
-int ZLIB_INTERNAL UseLock() {
-	if (UseLockCount++ == 0) {
-		WORD c=0;
-		__asm {
-			mov	ax,cs
-			mov	c,ax
-		}
-		LockSegment(c); // ZLIB uses function pointers, lock code segment too
-		LockSegment(-1);
-	}
-
-	return UseLockCount;
-}
-
-int ZLIB_INTERNAL UseUnlock() {
-	if (--UseLockCount == 0) {
-		WORD c=0;
-		__asm {
-			mov	ax,cs
-			mov	c,ax
-		}
-		UnlockSegment(c);
-		UnlockSegment(-1);
-	}
-
-	return UseLockCount;
-}
-
-ZEXTERN WORD ZEXPORT CheckUseLock() {
-	return UseLockCount;
-}
-#endif
-
 #endif // TARGET_MSDOS == 16
 
 #if TARGET_MSDOS == 32

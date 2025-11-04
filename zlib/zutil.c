@@ -283,17 +283,13 @@ void ZLIB_INTERNAL zcfree (voidpf opaque, voidpf ptr)
 
 voidpf ZLIB_INTERNAL zcalloc (voidpf opaque, uInt items, uInt size)
 {
-    voidpf *r;
     if (opaque) opaque = 0; /* to make compiler happy */
-    r = _halloc((long)items, size);
-    if (r != NULL) UseLock();
-    return r;
+    return _halloc((long)items, size);
 }
 
 void ZLIB_INTERNAL zcfree (voidpf opaque, voidpf ptr)
 {
     if (opaque) opaque = 0; /* to make compiler happy */
-    if (ptr) UseUnlock();
     _hfree(ptr);
 }
 
