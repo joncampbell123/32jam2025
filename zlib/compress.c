@@ -8,10 +8,6 @@
 #define ZLIB_INTERNAL
 #include "zlib.h"
 
-#if TARGET_MSDOS == 16 && defined(_WINDOWS) && defined(__WATCOMC__) && defined(ZLIB_DLL)
-#pragma code_seg("UNCOMPRCRCTEXT")
-#endif
-
 /* ===========================================================================
      Compresses the source buffer into the destination buffer. The level
    parameter has the same meaning as in deflateInit.  sourceLen is the byte

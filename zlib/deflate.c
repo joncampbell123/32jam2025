@@ -51,6 +51,10 @@
 
 #include "deflate.h"
 
+#if TARGET_MSDOS == 16 && defined(_WINDOWS) && defined(__WATCOMC__) && defined(ZLIB_DLL)
+#pragma code_seg("DEFLATETEXT")
+#endif
+
 const char deflate_copyright[] =
    " deflate 1.2.5 Copyright 1995-2010 Jean-loup Gailly and Mark Adler ";
 /*

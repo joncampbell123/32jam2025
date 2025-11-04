@@ -8,6 +8,10 @@
 
 #define MAXBITS 15
 
+#if TARGET_MSDOS == 16 && defined(_WINDOWS) && defined(__WATCOMC__) && defined(ZLIB_DLL)
+#pragma code_seg("INFLATETEXT")
+#endif
+
 const char inflate_copyright[] =
    " inflate 1.2.5 Copyright 1995-2010 Mark Adler ";
 /*
