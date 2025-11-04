@@ -2,7 +2,11 @@
  * Generated automatically by crc32.c
  */
 
-local const unsigned long ZFAR crc_table[TBLS][256] =
+#if TARGET_MSDOS == 16 && defined(_WINDOWS) && defined(__WATCOMC__) && defined(ZLIB_DLL)
+static const uint32_t near crc_table[TBLS][256] =
+#else
+local const uint32_t ZFAR crc_table[TBLS][256] =
+#endif
 {
   {
     0x00000000UL, 0x77073096UL, 0xee0e612cUL, 0x990951baUL, 0x076dc419UL,

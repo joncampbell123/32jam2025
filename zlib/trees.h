@@ -1,6 +1,10 @@
 /* header created automatically with -DGEN_TREES_H */
 
+#if TARGET_MSDOS == 16 && defined(_WINDOWS) && defined(__WATCOMC__) && defined(ZLIB_DLL)
+static const ct_data near static_ltree[L_CODES+2] = {
+#else
 local const ct_data static_ltree[L_CODES+2] = {
+#endif
 {{ 12},{  8}}, {{140},{  8}}, {{ 76},{  8}}, {{204},{  8}}, {{ 44},{  8}},
 {{172},{  8}}, {{108},{  8}}, {{236},{  8}}, {{ 28},{  8}}, {{156},{  8}},
 {{ 92},{  8}}, {{220},{  8}}, {{ 60},{  8}}, {{188},{  8}}, {{124},{  8}},

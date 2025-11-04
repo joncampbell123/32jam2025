@@ -68,7 +68,11 @@ typedef struct ct_data_s {
         ush  dad;        /* father node in Huffman tree */
         ush  len;        /* length of bit string */
     } dl;
+#if TARGET_MSDOS == 16 && defined(_WINDOWS) && defined(__WATCOMC__) && defined(ZLIB_DLL)
+} ct_data;
+#else
 } ZFAR ct_data;
+#endif
 
 #define Freq fc.freq
 #define Code fc.code

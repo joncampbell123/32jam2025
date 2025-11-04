@@ -7,7 +7,7 @@
 
 #include "zutil.h"
 
-#if TARGET_MSDOS == 16 && defined(_WINDOWS)
+#if TARGET_MSDOS == 16 && defined(_WINDOWS) && defined(__WATCOMC__) && defined(ZLIB_DLL)
 #pragma code_seg("UNCOMPRCRCTEXT")
 #endif
 
