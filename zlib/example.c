@@ -381,6 +381,7 @@ int main(argc, argv)
     uLong comprLen = 10000*sizeof(int); /* don't overflow on MSDOS */
     uLong uncomprLen = comprLen;
 
+#if defined(_WINDOWS) || defined(WIN32) || defined(WIN386)
 // NTS: There is this weird bug with Windows real mode and Open Watcom where, seemingly based on random
 //      criteria, the compiled EXE is loaded and executed by Windows with an incorrect DS data segment value.
 //      The value is offset by some small value like 10, 17, or 36. Of course doing that throws off all
@@ -390,6 +391,7 @@ int main(argc, argv)
 //      So, if the MessageBox() call below shows nothing or gibberish, that bug has triggered again.
     LockSegment(-1); // the ZLIB interface expects pointers not to change around so we need to lock our data segment
     MessageBox(NULL,"TEST START","ZLIB EXAMPLE",MB_OK); // If this text is displayed as gibberish, the bug is happening again
+#endif
 
 #if defined(_WINDOWS) || defined(WIN32) || defined(WIN386)
     (void)hInstance;

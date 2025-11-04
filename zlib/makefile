@@ -7,11 +7,16 @@ BIN_OUT = $(EXAMPLE)
 LIB_OUT = $(ZLIB)
 
 # GNU makefile, Linux host
-all: bin lib
+all: bin lib test
 
 bin: linux-host $(BIN_OUT)
 
 lib: linux-host $(LIB_OUT)
+
+test: linux-host/gench
+
+linux-host/gench: gench.c
+	gcc -lz -o $@ $<
 
 linux-host:
 	mkdir -p linux-host
