@@ -32,7 +32,7 @@ $(EXT_ZLIB_DLL) $(EXT_ZLIB_LIB_DLL): $(OBJS_DLL)
 	%write tmp.cmd option quiet system $(WLINK_DLL_SYSTEM) file $(SUBDIR_DLL)$(HPS)adler32.obj file $(SUBDIR_DLL)$(HPS)compress.obj file $(SUBDIR_DLL)$(HPS)crc32.obj file $(SUBDIR_DLL)$(HPS)deflate.obj file $(SUBDIR_DLL)$(HPS)infback.obj file $(SUBDIR_DLL)$(HPS)inffast.obj file $(SUBDIR_DLL)$(HPS)inflate.obj file $(SUBDIR_DLL)$(HPS)inftrees.obj file $(SUBDIR_DLL)$(HPS)trees.obj file $(SUBDIR_DLL)$(HPS)uncompr.obj file $(SUBDIR_DLL)$(HPS)zutil.obj file $(SUBDIR_DLL)$(HPS)libmain.obj
 !ifeq TARGET_MSDOS 16
 	%write tmp.cmd option MODNAME=$(MODULENAME_BASE)_ZLIB
-	%write tmp.cmd segment TYPE CODE MOVEABLE DISCARDABLE SHARED
+	%write tmp.cmd segment TYPE CODE MOVEABLE DISCARDABLE SHARED LOADONCALL
 	%write tmp.cmd segment TYPE DATA MOVEABLE
 !endif
 	%write tmp.cmd option impfile=$(SUBDIR_DLL)$(HPS)ZLIB.LCF

@@ -8,6 +8,10 @@
 #define ZLIB_INTERNAL
 #include "zlib.h"
 
+#if TARGET_MSDOS == 16 && defined(_WINDOWS)
+#pragma code_seg("UNCOMPRCRCTEXT")
+#endif
+
 /* ===========================================================================
      Decompresses the source buffer into the destination buffer.  sourceLen is
    the byte length of the source buffer. Upon entry, destLen is the total

@@ -7,6 +7,10 @@
 
 #include "zutil.h"
 
+#if TARGET_MSDOS == 16 && defined(_WINDOWS)
+#pragma code_seg("UNCOMPRCRCTEXT")
+#endif
+
 #define local static
 
 #define BASE 65521UL    /* largest prime smaller than 65536 */

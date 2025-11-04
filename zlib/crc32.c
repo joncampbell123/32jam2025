@@ -23,6 +23,10 @@
 # define NOBYFOUR
 #endif
 
+#if TARGET_MSDOS == 16 && defined(_WINDOWS)
+#pragma code_seg("UNCOMPRCRCTEXT")
+#endif
+
 #ifdef MAKECRCH
 #  include <stdio.h>
 #  ifndef DYNAMIC_CRC_TABLE
