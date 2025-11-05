@@ -11,7 +11,6 @@
 
 #include "zlib.h"
 #include <stdio.h>
-#include <fcntl.h>
 #include <stdint.h>
 
 #ifndef O_BINARY
@@ -414,13 +413,6 @@ void test_inflate_data(uncompr, uncomprLen)
     }
     if (memcmp(inft1_orig,uncompr,dsz)) {
         fprintf(stderr,"inflate output did not match expected data\n");
-	{
-		int fd = open("wtf.bin",O_WRONLY|O_CREAT|O_BINARY,0644);
-		if (fd >= 0) {
-			write(fd,uncompr,dsz);
-			close(fd);
-		}
-	}
         exit(1);
     }
 
