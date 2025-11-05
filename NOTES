@@ -1,0 +1,8 @@
+
+- There was a point early in development when game.c supported window and fullscreen mode
+  from Windows 95 all the way down to Windows 1.0. That was scrapped because this code
+  targets Windows 3.1/95 and all support code below Windows 3.0 was removed. That code
+  in other projects may be useful.
+  See git branch 'main-snapshot-windows1x-fullscreen-and-support-20251102' to view that
+  code.
+
