@@ -51,14 +51,15 @@ int main(int argc,char **argv) {
 	printf("static const unsigned char _zlib_data[%u] = {\n",dsz);
 	{
 		const unsigned char *p = buf2;
-		unsigned int x = 0,i;
-		for (i=9;i < dsz;i++) {
-			if (x == 0) printf("    ");
+		unsigned int x=0,i;
+
+		for (i=0;i < dsz;i++) {
+			if (x == 0) printf("/*%04u*/ ",i);
 			printf("0x%02X",buf2[i]);
 			if ((i+1) != dsz) printf(",");
 			if ((++x) == 16) {
-				x = 0;
 				printf("\n");
+				x = 0;
 			}
 		}
 		if (x) printf("\n");
