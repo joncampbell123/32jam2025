@@ -13,9 +13,12 @@ bin: linux-host $(BIN_OUT)
 
 lib: linux-host $(LIB_OUT)
 
-test: linux-host/gench
+test: linux-host/gench linux-host/genz
 
 linux-host/gench: gench.c
+	gcc -lz -o $@ $<
+
+linux-host/genz: genz.c
 	gcc -lz -o $@ $<
 
 linux-host:
