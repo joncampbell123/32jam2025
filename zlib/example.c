@@ -423,6 +423,8 @@ void test_inflate_data(uncompr, uncomprLen)
 	}
         exit(1);
     }
+
+    printf("inflate test OK\n");
 }
 
 void test_crcs() {
