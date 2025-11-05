@@ -197,7 +197,6 @@ const UINT near			WndMenu = IDM_MAINMENU;
 
 // NTS: Your game's main window style. Not all styles are compatible with menus or other styles.
 //      For more information see Windows SDK documentation regarding CreateWindowEx().
-//      Extended styles are not availeble when targeting Windows 1.x and Windows 2.x.
 const struct WndStyle_t		WndStyle = { .style = WS_OVERLAPPEDWINDOW, .styleEx = 0 };
 //const struct WndStyle_t		WndStyle = { .style = WS_POPUPWINDOW|WS_MINIMIZEBOX|WS_MAXIMIZEBOX|WS_CAPTION, .styleEx = 0 };
 //const struct WndStyle_t		WndStyle = { .style = WS_DLGFRAME|WS_CAPTION|WS_SYSMENU|WS_BORDER, .styleEx = WS_EX_DLGMODALFRAME };
