@@ -452,7 +452,8 @@ typedef uLong ZFAR uLongf;
 
 #if defined(__WATCOMC__) && TARGET_MSDOS == 16
 # define NO_GZCOMPRESS
-# define NO_GZIP
 #endif
+
+#define NO_GZIP
 
 #endif /* ZCONF_H */
