@@ -66,6 +66,27 @@ int main(int argc,char **argv) {
 	}
 	printf("};\n");
 
+	printf("\n");
+
+	dsz = (unsigned int)z.total_in;
+	printf("static const unsigned char _orig_data[%u] = {\n",dsz);
+	{
+		const unsigned char *p = buf;
+		unsigned int x=0,i;
+
+		for (i=0;i < dsz;i++) {
+			if (x == 0) printf("/*%04u*/ ",i);
+			printf("0x%02X",buf[i]);
+			if ((i+1) != dsz) printf(",");
+			if ((++x) == 16) {
+				printf("\n");
+				x = 0;
+			}
+		}
+		if (x) printf("\n");
+	}
+	printf("};\n");
+
 	free(buf2);
 	free(buf);
 	return 0;
