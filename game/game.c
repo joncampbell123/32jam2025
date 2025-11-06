@@ -42,7 +42,8 @@
 
 // WndStateFlags
 #define WndState_Minimized		0x00000001u
-#define WndState_Active			0x00000002u
+#define WndState_Maximized		0x00000002u
+#define WndState_Active			0x00000004u
 
 // WndGraphicsCaps.flags
 #define WndGraphicsCaps_Flags_DIBTopDown	0x00000001u /* Windows 95/NT4 top-down DIBs are supported */
@@ -388,8 +389,13 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		return 0; /* OK */
 	}
 	else if (message == WM_SIZE) {
+		WndStateFlags &= ~WndState_Maximized;
 		if (wparam == SIZE_MINIMIZED) {
 			WndStateFlags |= WndState_Minimized;
+
+			DLOGT("WM_SIZE: Minimized min=%u max=%u",
+				(WndStateFlags & WndState_Minimized)?1:0,
+				(WndStateFlags & WndState_Maximized)?1:0);
 
 			if (WndConfigFlags & WndCFG_TopMost) {
 				SetWindowPos(hwndMain,HWND_NOTOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE); // take away topmost
@@ -397,12 +403,15 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		}
 		else {
 			WndStateFlags &= ~WndState_Minimized;
+			if (wparam == SIZE_MAXIMIZED) WndStateFlags |= WndState_Maximized;
 			WndCurrentSizeClient.x = LOWORD(lparam);
 			WndCurrentSizeClient.y = HIWORD(lparam);
 			WinClientSizeToWindowSize(&WndCurrentSize,&WndCurrentSizeClient,&WndStyle,GetMenu(hwnd)!=NULL?TRUE:FALSE);
 
-			DLOGT("WM_SIZE: Client={w=%d, h=%d}, Window={w=%d, h=%d}",
-				WndCurrentSizeClient.x,WndCurrentSizeClient.y,WndCurrentSize.x,WndCurrentSize.y);
+			DLOGT("WM_SIZE: Client={w=%d, h=%d}, Window={w=%d, h=%d} min=%u max=%u",
+				WndCurrentSizeClient.x,WndCurrentSizeClient.y,WndCurrentSize.x,WndCurrentSize.y,
+				(WndStateFlags & WndState_Minimized)?1:0,
+				(WndStateFlags & WndState_Maximized)?1:0);
 
 			if (WndConfigFlags & WndCFG_TopMost) {
 				SetWindowPos(hwndMain,HWND_TOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE);
@@ -529,35 +538,43 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		return 1; /* Important: Returning 1 signals to Windows that we processed the message. Windows 3.0 gets really screwed up if we don't! */
 	}
 	else if (message == WM_SYSCOMMAND) {
-		switch (wparam) {
-			case SC_MOVE:
-				if ((WndConfigFlags & WndCFG_Fullscreen) && !(WndStateFlags & WndState_Minimized)) return 0;
-				break;
-			case SC_MINIMIZE:
-				if (WndConfigFlags & WndCFG_TopMost) {
-					SetWindowPos(hwndMain,HWND_NOTOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE); // take away topmost
-				}
-				break;
-			case SC_MAXIMIZE:
-				if (WndConfigFlags & WndCFG_Fullscreen) {
-					// NTS: It is very important to SW_SHOWNORMAL then SW_SHOWMAXIMIZED or else Windows 3.0
-					//      will only show the window in normal maximized dimensions
-					if (WndStateFlags & WndState_Minimized) ShowWindow(hwnd,SW_SHOWNORMAL);
-					ShowWindow(hwnd,SW_SHOWMAXIMIZED);
-					return 0;
-				}
-				break;
-			case SC_RESTORE:
-				if (WndConfigFlags & WndCFG_Fullscreen) {
-					// NTS: It is very important to SW_SHOWNORMAL then SW_SHOWMAXIMIZED or else Windows 3.0
-					//      will only show the window in normal maximized dimensions
-					if (WndStateFlags & WndState_Minimized) ShowWindow(hwnd,SW_SHOWNORMAL);
-					ShowWindow(hwnd,SW_SHOWMAXIMIZED);
-					return 0;
-				}
-				break;
-			default:
-				break;
+		if (LOWORD(wparam) >= 0xF000) {
+			/* "In WM_SYSCOMMAND messages the four low-order bits of the wCmdType (wparam) parameter
+			 * are used internally by Windows. When an application tests the value of wCmdType it must
+			 * combine the value 0xFFF0 with wCmdType to obtain the correct result"
+			 *
+			 * OK whatever Microsoft */
+			switch (LOWORD(wparam) & 0xFFF0) {
+				case SC_MOVE:
+					if ((WndConfigFlags & WndCFG_Fullscreen) && !(WndStateFlags & WndState_Minimized)) return 0;
+					if (WndStateFlags & WndState_Maximized) return 0;
+					break;
+				case SC_MINIMIZE:
+					if (WndConfigFlags & WndCFG_TopMost) {
+						SetWindowPos(hwndMain,HWND_NOTOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE); // take away topmost
+					}
+					break;
+				case SC_MAXIMIZE:
+					if (WndConfigFlags & WndCFG_Fullscreen) {
+						// NTS: It is very important to SW_SHOWNORMAL then SW_SHOWMAXIMIZED or else Windows 3.0
+						//      will only show the window in normal maximized dimensions
+						if (WndStateFlags & WndState_Minimized) ShowWindow(hwnd,SW_SHOWNORMAL);
+						ShowWindow(hwnd,SW_SHOWMAXIMIZED);
+						return 0;
+					}
+					break;
+				case SC_RESTORE:
+					if (WndConfigFlags & WndCFG_Fullscreen) {
+						// NTS: It is very important to SW_SHOWNORMAL then SW_SHOWMAXIMIZED or else Windows 3.0
+						//      will only show the window in normal maximized dimensions
+						if (WndStateFlags & WndState_Minimized) ShowWindow(hwnd,SW_SHOWNORMAL);
+						ShowWindow(hwnd,SW_SHOWMAXIMIZED);
+						return 0;
+					}
+					break;
+				default:
+					break;
+			}
 		}
 
 		return DefWindowProc(hwnd,message,wparam,lparam);
