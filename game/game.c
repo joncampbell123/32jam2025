@@ -406,7 +406,14 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			if (wparam == SIZE_MAXIMIZED) WndStateFlags |= WndState_Maximized;
 			WndCurrentSizeClient.x = LOWORD(lparam);
 			WndCurrentSizeClient.y = HIWORD(lparam);
-			WinClientSizeToWindowSize(&WndCurrentSize,&WndCurrentSizeClient,&WndStyle,GetMenu(hwnd)!=NULL?TRUE:FALSE);
+
+			/* WM_SIZE is sent after the window has been resized, so asking for the window RECT is OK */
+			{
+				RECT um;
+				GetWindowRect(hwnd,&um);
+				WndCurrentSize.x = um.right - um.left;
+				WndCurrentSize.y = um.bottom - um.top;
+			}
 
 			DLOGT("WM_SIZE: Client={w=%d, h=%d}, Window={w=%d, h=%d} min=%u max=%u",
 				WndCurrentSizeClient.x,WndCurrentSizeClient.y,WndCurrentSize.x,WndCurrentSize.y,
