@@ -1,0 +1,12 @@
+
+- AdjustWindowRect / AdjustWindowRectEx
+
+  Documented to take a client area rect and adjust it to product a window area rect.
+  Under Windows 3.0 and Windows 3.1 the height computed is one pixel too small.
+  Sometimes for WS_POPUP it is two pixels too small. For example if I ask for a
+  client area of 320x240, you'll likely get a client area of 320x239 or 320x238.
+
+  Windows 1.x and 2.x have not yet been tested for this bug.
+
+  Microsoft appears to have fixed this bug in Windows 95/NT4.
+
