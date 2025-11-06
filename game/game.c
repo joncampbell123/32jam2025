@@ -283,6 +283,7 @@ void debuglogprintf(const char *fmt,...) {
 		l = (size_t)(w - dlogtmp);
 
 		write(debug_log_fd,dlogtmp,l);
+		fsync(debug_log_fd); // in case the program crashes!
 
 		va_end(va);
 	}
