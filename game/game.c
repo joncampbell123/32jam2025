@@ -677,10 +677,26 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 			WindowsVersionFlags |= WindowsVersionFlags_NT;
 #else
 		DOSVersion = (WORD)(v >> 16);
+		if (DOSVersion == 0x500) {
+			/* get the real MS-DOS version */
+			WORD x=0;
 
-		// TODO: If the MS-DOS version reported is 5.00, it might be Windows NT, and
-		//       an additional call is needed to get the "real" version number, which
-		//       if it is 5.50, means we're running under Windows NT
+			__asm {
+				mov	ax,0x3306
+				xor	bx,bx
+				int	21h
+				jc	err1
+				xchg	bl,bh
+				mov	x,bx
+err1:
+			}
+
+			if (x != 0) {
+				DOSVersion = x;
+				if (x == 0x0532) /* Windows NT NTVDM.EXE reports 5.00, real version 5.50 */
+					WindowsVersionFlags |= WindowsVersionFlags_NT;
+			}
+		}
 #endif
 
 #if 0//DEBUG
