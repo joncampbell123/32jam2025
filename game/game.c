@@ -259,6 +259,11 @@ BYTE near			WindowsVersionFlags = 0;
 struct WndScreenInfo_t near	WndScreenInfo = { 0, 0, 0, 0, 0, 0 };
 struct WndGraphicsCaps_t near	WndGraphicsCaps = { 0 };
 
+#if WINVER < 0x400
+/* Windows 3.x compensation for off by 1 (or 2) bugs in AdjustWindowRect */
+int near			WndAdjustWindowRectBug_yadd = 0;
+#endif
+
 #if GAMEDEBUG
 # ifndef WIN32
 static char dlogtmp[256];
@@ -345,6 +350,10 @@ void WinClientSizeToWindowSize(POINT *d,const POINT *s,const struct WndStyle_t *
 	AdjustWindowRectEx(&um,style->style,fMenu,style->styleEx);
 	d->x = um.right - um.left;
 	d->y = um.bottom - um.top;
+#if WINVER < 0x400
+/* Windows 3.x compensation for off by 1 (or 2) bugs in AdjustWindowRect */
+	d->y += WndAdjustWindowRectBug_yadd;
+#endif
 }
 
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
@@ -873,6 +882,8 @@ err1:
 			WndScreenSize.x,WndScreenSize.y);
 		DLOG("  WorkArea: (left,top,right,bottom){%d,%d,%d,%d}",
 			WndWorkArea.left,WndWorkArea.top,WndWorkArea.right,WndWorkArea.bottom);
+		DLOG("  Fullscreen: (left,top,right,bottom){%d,%d,%d,%d}",
+			WndFullscreenSize.left,WndFullscreenSize.top,WndFullscreenSize.right,WndFullscreenSize.bottom);
 
 		hwndMain = CreateWindowEx(style.styleEx,WndProcClass,WndTitle,style.style,
 			CW_USEDEFAULT,CW_USEDEFAULT,
@@ -886,6 +897,35 @@ err1:
 
 		if (fMenu) SetMenu(hwndMain,menu);
 	}
+
+#if WINVER < 0x400
+	/* Windows 3.0/3.1 bug: AdjustWindowRect window dimensions are correct for the width of the window,
+	 * but it's off by 1 (or 2 if WS_POPUP) for the height of the window. Windows 95/NT appears to have
+	 * fixed this bug. Check for that here. */
+	{
+		RECT um;
+
+		GetClientRect(hwndMain,&um);
+		DLOG("Window client area check after CreateWindow (Windows 3.x AdjustWindowRect bug)");
+		DLOG("  ClientRect=(left,top,right,bottom){%d,%d,%d,%d}",
+			um.left,um.top,um.right,um.bottom);
+
+		WndAdjustWindowRectBug_yadd = WndDefSizeClient.y - (um.bottom - um.top);
+		DLOG("  Height adjust (add to bottom): %d",WndAdjustWindowRectBug_yadd);
+
+		if (WndAdjustWindowRectBug_yadd != 0 && WndAdjustWindowRectBug_yadd >= -2 && WndAdjustWindowRectBug_yadd <= 2) {
+			WndMinSize.y += WndAdjustWindowRectBug_yadd;
+			WndMaxSize.y += WndAdjustWindowRectBug_yadd;
+			WndDefSize.y += WndAdjustWindowRectBug_yadd;
+			SetWindowPos(hwndMain,0,0,0,WndDefSize.x,WndDefSize.y,SWP_NOZORDER|SWP_NOMOVE|SWP_NOACTIVATE);
+
+			GetClientRect(hwndMain,&um);
+			DLOG("Window client area check after CreateWindow and adjustment (Windows 3.x AdjustWindowRect bug)");
+			DLOG("  ClientRect=(left,top,right,bottom){%d,%d,%d,%d}",
+				um.left,um.top,um.right,um.bottom);
+		}
+	}
+#endif
 
 	DLOG("Game window configuration state at startup:");
 	DLOG("  Show menu: %u",(WndConfigFlags & WndCFG_ShowMenu) ? 1 : 0);
