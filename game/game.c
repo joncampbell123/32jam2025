@@ -16,9 +16,12 @@
 
 ////
 #if GAMEDEBUG
-# define DLOG(...) debuglogprintf(__VA_ARGS__)
+# define DLP_TICKS 0x0001u
+# define DLOG(...) debuglogprintf(0,__VA_ARGS__)
+# define DLOGT(...) debuglogprintf(DLP_TICKS,__VA_ARGS__)
 #else
 # define DLOG(...) { }
+# define DLOGT(...) { }
 #endif
 
 
@@ -216,6 +219,8 @@ const struct WndStyle_t		WndStyle = { .style = WS_OVERLAPPEDWINDOW, .styleEx = 0
 
 #if GAMEDEBUG
 int near			debug_log_fd = -1;
+DWORD				debug_p_ticks = 0;
+uint64_t			debug_ticks = 0;
 #endif
 
 HINSTANCE near			myInstance = (HINSTANCE)NULL;
@@ -270,18 +275,26 @@ int near			WndAdjustWindowRectBug_yadd = 0;
 static char dlogtmp[256];
 # endif
 // Win16 warning: Do not call this function from any code that Windows 3.1 calls from an "interrupt handler"
-void debuglogprintf(const char *fmt,...) {
+void debuglogprintf(unsigned int fl,const char *fmt,...) {
 	if (WndConfigFlags & WndCFG_DebugLogging) {
 # ifdef WIN32
 		char dlogtmp[256];
 # endif
+		char *w = dlogtmp,*f = dlogtmp + sizeof(dlogtmp) - 3;
 		va_list va;
 		size_t l;
-		char *w;
 
 		va_start(va,fmt);
 
-		w = dlogtmp + vsnprintf(dlogtmp,sizeof(dlogtmp)-3,fmt,va);
+		if (fl & DLP_TICKS) {
+			/* track the ticks not directly, but by counting deltas, so that the 49 day rollover does not affect our time counting */
+			const DWORD nc = GetTickCount();
+			debug_ticks += (uint64_t)((DWORD)(nc - debug_p_ticks));
+			debug_p_ticks = nc;
+			w += snprintf(w,(size_t)(f - w),"@%lu.%03u: ",(unsigned long)(debug_ticks / 1000ull),(unsigned int)(debug_ticks % 1000ull));
+		}
+
+		if (w < f) w += vsnprintf(w,(size_t)(f - w),fmt,va);
 		*w++ = '\r';
 		*w++ = '\n';
 		*w = 0;
@@ -300,7 +313,7 @@ BOOL CheckMultiInstanceFindWindow(const BOOL mustError) {
 	if (!(WndConfigFlags & WndCFG_MultiInstance)) {
 		HWND hwnd = FindWindow(WndProcClass,NULL);
 		if (hwnd) {
-			DLOG("found another instance via FindWindow");
+			DLOGT("found another instance via FindWindow");
 
 			/* NTS: Windows 95 and later might ignore SetActiveWindow(), use SetWindowPos() as a backup
 			 *      to at least make it visible. */
@@ -308,7 +321,7 @@ BOOL CheckMultiInstanceFindWindow(const BOOL mustError) {
 			SetActiveWindow(hwnd);
 
 			if (IsIconic(hwnd)) {
-				DLOG("The other window is minimized, restoring it");
+				DLOGT("The other window is minimized, restoring it");
 				SendMessage(hwnd,WM_SYSCOMMAND,SC_RESTORE,0);
 			}
 
@@ -383,7 +396,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			WndCurrentSizeClient.y = HIWORD(lparam);
 			WinClientSizeToWindowSize(&WndCurrentSize,&WndCurrentSizeClient,&WndStyle,GetMenu(hwnd)!=NULL?TRUE:FALSE);
 
-			DLOG("WM_SIZE: Client={w=%d, h=%d}, Window={w=%d, h=%d}",
+			DLOGT("WM_SIZE: Client={w=%d, h=%d}, Window={w=%d, h=%d}",
 				WndCurrentSizeClient.x,WndCurrentSizeClient.y,WndCurrentSize.x,WndCurrentSize.y);
 
 			if (WndConfigFlags & WndCFG_TopMost) {
@@ -587,6 +600,8 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	WndConfigFlags |= WndCFG_DebugLogging;
 
 	if (WndConfigFlags & WndCFG_DebugLogging) {
+		debug_ticks = 0;
+		debug_p_ticks = GetTickCount();
 		debug_log_fd = open("debug.log",O_WRONLY|O_CREAT|O_TRUNC|O_BINARY,0644);
 		if (debug_log_fd >= 0) {
 			DLOG("=======================================================================");
@@ -634,7 +649,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		if (snprintf(tmp,sizeof(tmp),"AppMutex_%s",WndProcClass) >= (sizeof(tmp)-1)) return 1;
 		WndLocalAppMutex = CreateMutexA(NULL,FALSE,tmp);
 		if (WndLocalAppMutex == NULL) {
-			DLOG("Win32 CreateMutex failed");
+			DLOGT("Win32 CreateMutex failed");
 			return 1;
 		}
 	}
@@ -642,7 +657,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	{
 		DWORD r = WaitForSingleObject(WndLocalAppMutex,INFINITE);
 		if (!(r == WAIT_OBJECT_0 || r == WAIT_ABANDONED)) {
-			DLOG("Win32 mutex wait failed");
+			DLOGT("Win32 mutex wait failed");
 			return 1;
 		}
 	}
@@ -724,19 +739,19 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		}
 		if (t & RC_BITMAP64) WndScreenInfo.Flags |= WndScreenInfoFlag_BitmapBig;
 
-		DLOG("GDI screen info:");
-		DLOG("  Bits Per Pixel: %u",WndScreenInfo.BitsPerPixel);
-		DLOG("  Bitplanes: %u",WndScreenInfo.BitPlanes);
-		DLOG("  Color Bits Per Pixel: %u",WndScreenInfo.ColorBitsPerPixel);
-		DLOG("  Total Bits Per Pixel: %u",WndScreenInfo.TotalBitsPerPixel);
-		DLOG("  Render Bits Per Pixel: %u",WndScreenInfo.RenderBitsPerPixel);
-		DLOG("  Palette size: %u",WndScreenInfo.PaletteSize);
-		DLOG("  Palette reserved colors: %u",WndScreenInfo.PaletteReserved);
-		DLOG("  Pixel aspect ratio: %u:%u",WndScreenInfo.AspectRatio.x,WndScreenInfo.AspectRatio.y);
-		DLOG("  Has color palette: %u",WndScreenInfo.Flags & WndScreenInfoFlag_Palette ? 1 : 0);
-		DLOG("  Big Bitmaps (64K or larger): %u",WndScreenInfo.Flags & WndScreenInfoFlag_BitmapBig ? 1 : 0);
-		DLOG("  RC_BITBLT (required): %u",(t & RC_BITBLT) ? 1 : 0);
-		DLOG("  RC_DI_BITMAP (required): %u",(t & RC_DI_BITMAP) ? 1 : 0);
+		DLOGT("GDI screen info:");
+		DLOGT("  Bits Per Pixel: %u",WndScreenInfo.BitsPerPixel);
+		DLOGT("  Bitplanes: %u",WndScreenInfo.BitPlanes);
+		DLOGT("  Color Bits Per Pixel: %u",WndScreenInfo.ColorBitsPerPixel);
+		DLOGT("  Total Bits Per Pixel: %u",WndScreenInfo.TotalBitsPerPixel);
+		DLOGT("  Render Bits Per Pixel: %u",WndScreenInfo.RenderBitsPerPixel);
+		DLOGT("  Palette size: %u",WndScreenInfo.PaletteSize);
+		DLOGT("  Palette reserved colors: %u",WndScreenInfo.PaletteReserved);
+		DLOGT("  Pixel aspect ratio: %u:%u",WndScreenInfo.AspectRatio.x,WndScreenInfo.AspectRatio.y);
+		DLOGT("  Has color palette: %u",WndScreenInfo.Flags & WndScreenInfoFlag_Palette ? 1 : 0);
+		DLOGT("  Big Bitmaps (64K or larger): %u",WndScreenInfo.Flags & WndScreenInfoFlag_BitmapBig ? 1 : 0);
+		DLOGT("  RC_BITBLT (required): %u",(t & RC_BITBLT) ? 1 : 0);
+		DLOGT("  RC_DI_BITMAP (required): %u",(t & RC_DI_BITMAP) ? 1 : 0);
 
 		w = RC_BITBLT | RC_DI_BITMAP;
 		if ((t&w) != w) {
@@ -815,10 +830,10 @@ err1:
 		}
 #endif
 
-		DLOG("Windows version info:");
-		DLOG("  Windows version: %u.%u",WindowsVersion >> 8,WindowsVersion & 0xFFu);
-		DLOG("  DOS version: %u.%u",DOSVersion >> 8,DOSVersion & 0xFFu);
-		DLOG("  Is Windows NT: %u",(WindowsVersionFlags & WindowsVersionFlags_NT) ? 1 : 0);
+		DLOGT("Windows version info:");
+		DLOGT("  Windows version: %u.%u",WindowsVersion >> 8,WindowsVersion & 0xFFu);
+		DLOGT("  DOS version: %u.%u",DOSVersion >> 8,DOSVersion & 0xFFu);
+		DLOGT("  Is Windows NT: %u",(WindowsVersionFlags & WindowsVersionFlags_NT) ? 1 : 0);
 
 #if 0//DEBUG
 		{
@@ -835,8 +850,8 @@ err1:
 	 * Windows 95/NT4 allows top-down DIBs if the BITMAPINFOHEADER biHeight value is negative */
 	if (WindowsVersion >= 0x35F) WndGraphicsCaps.flags |= WndGraphicsCaps_Flags_DIBTopDown;
 
-	DLOG("Game graphics capabilities:");
-	DLOG("  Windows 95/NT top-down DIBs: %u",WndGraphicsCaps.flags & WndGraphicsCaps_Flags_DIBTopDown);
+	DLOGT("Game graphics capabilities:");
+	DLOGT("  Windows 95/NT top-down DIBs: %u",WndGraphicsCaps.flags & WndGraphicsCaps_Flags_DIBTopDown);
 
 	{
 		HMENU menu = WndMenu!=0u?LoadMenu(hInstance,MAKEINTRESOURCE(WndMenu)):((HMENU)NULL);
@@ -872,18 +887,18 @@ err1:
 
 		WinClientSizeInFullScreen(&WndFullscreenSize,&style,fMenu); /* requires WndWorkArea and WndScreenSize */
 
-		DLOG("Initial window sizing calculations:");
-		DLOG("  MinSize: Client={w=%d, h=%d}, Window={w=%d, h=%d}",
+		DLOGT("Initial window sizing calculations:");
+		DLOGT("  MinSize: Client={w=%d, h=%d}, Window={w=%d, h=%d}",
 			WndMinSizeClient.x,WndMinSizeClient.y,WndMinSize.x,WndMinSize.y);
-		DLOG("  MaxSize: Client={w=%d, h=%d}, Window={w=%d, h=%d}",
+		DLOGT("  MaxSize: Client={w=%d, h=%d}, Window={w=%d, h=%d}",
 			WndMaxSizeClient.x,WndMaxSizeClient.y,WndMaxSize.x,WndMaxSize.y);
-		DLOG("  DefSize: Client={w=%d, h=%d}, Window={w=%d, h=%d}",
+		DLOGT("  DefSize: Client={w=%d, h=%d}, Window={w=%d, h=%d}",
 			WndDefSizeClient.x,WndDefSizeClient.y,WndDefSize.x,WndDefSize.y);
-		DLOG("  ScreenSize: w=%d, h=%d",
+		DLOGT("  ScreenSize: w=%d, h=%d",
 			WndScreenSize.x,WndScreenSize.y);
-		DLOG("  WorkArea: (left,top,right,bottom){%d,%d,%d,%d}",
+		DLOGT("  WorkArea: (left,top,right,bottom){%d,%d,%d,%d}",
 			WndWorkArea.left,WndWorkArea.top,WndWorkArea.right,WndWorkArea.bottom);
-		DLOG("  Fullscreen: (left,top,right,bottom){%d,%d,%d,%d}",
+		DLOGT("  Fullscreen: (left,top,right,bottom){%d,%d,%d,%d}",
 			WndFullscreenSize.left,WndFullscreenSize.top,WndFullscreenSize.right,WndFullscreenSize.bottom);
 
 		hwndMain = CreateWindowEx(style.styleEx,WndProcClass,WndTitle,style.style,
@@ -910,12 +925,12 @@ err1:
 		RECT um;
 
 		GetClientRect(hwndMain,&um);
-		DLOG("Window client area check after CreateWindow (Windows 3.x AdjustWindowRect bug)");
-		DLOG("  ClientRect=(left,top,right,bottom){%d,%d,%d,%d}",
+		DLOGT("Window client area check after CreateWindow (Windows 3.x AdjustWindowRect bug)");
+		DLOGT("  ClientRect=(left,top,right,bottom){%d,%d,%d,%d}",
 			um.left,um.top,um.right,um.bottom);
 
 		WndAdjustWindowRectBug_yadd = WndDefSizeClient.y - (um.bottom - um.top);
-		DLOG("  Height adjust (add to bottom): %d",WndAdjustWindowRectBug_yadd);
+		DLOGT("  Height adjust (add to bottom): %d",WndAdjustWindowRectBug_yadd);
 
 		if (WndAdjustWindowRectBug_yadd != 0 && WndAdjustWindowRectBug_yadd >= -2 && WndAdjustWindowRectBug_yadd <= 2) {
 			WndMinSize.y += WndAdjustWindowRectBug_yadd;
@@ -924,21 +939,21 @@ err1:
 			SetWindowPos(hwndMain,0,0,0,WndDefSize.x,WndDefSize.y,SWP_NOZORDER|SWP_NOMOVE|SWP_NOACTIVATE);
 
 			GetClientRect(hwndMain,&um);
-			DLOG("Window client area check after CreateWindow and adjustment (Windows 3.x AdjustWindowRect bug)");
-			DLOG("  ClientRect=(left,top,right,bottom){%d,%d,%d,%d}",
+			DLOGT("Window client area check after CreateWindow and adjustment (Windows 3.x AdjustWindowRect bug)");
+			DLOGT("  ClientRect=(left,top,right,bottom){%d,%d,%d,%d}",
 				um.left,um.top,um.right,um.bottom);
 		}
 	}
 #endif
 
-	DLOG("Game window configuration state at startup:");
-	DLOG("  Show menu: %u",(WndConfigFlags & WndCFG_ShowMenu) ? 1 : 0);
-	DLOG("  Fullscreen: %u",(WndConfigFlags & WndCFG_Fullscreen) ? 1 : 0);
-	DLOG("  Topmost: %u",(WndConfigFlags & WndCFG_TopMost) ? 1 : 0);
-	DLOG("  Minimize if deactivated: %u",(WndConfigFlags & WndCFG_DeactivateMinimize) ? 1 : 0);
-	DLOG("  Allow multiple instances: %u",(WndConfigFlags & WndCFG_MultiInstance) ? 1 : 0);
-	DLOG("  Fullscreen fit work area: %u",(WndConfigFlags & WndCFG_FullscreenWorkArea) ? 1 : 0);
-	DLOG("  Debug logging: %u",(WndConfigFlags & WndCFG_DebugLogging) ? 1 : 0);
+	DLOGT("Game window configuration state at startup:");
+	DLOGT("  Show menu: %u",(WndConfigFlags & WndCFG_ShowMenu) ? 1 : 0);
+	DLOGT("  Fullscreen: %u",(WndConfigFlags & WndCFG_Fullscreen) ? 1 : 0);
+	DLOGT("  Topmost: %u",(WndConfigFlags & WndCFG_TopMost) ? 1 : 0);
+	DLOGT("  Minimize if deactivated: %u",(WndConfigFlags & WndCFG_DeactivateMinimize) ? 1 : 0);
+	DLOGT("  Allow multiple instances: %u",(WndConfigFlags & WndCFG_MultiInstance) ? 1 : 0);
+	DLOGT("  Fullscreen fit work area: %u",(WndConfigFlags & WndCFG_FullscreenWorkArea) ? 1 : 0);
+	DLOGT("  Debug logging: %u",(WndConfigFlags & WndCFG_DebugLogging) ? 1 : 0);
 
 	if (nCmdShow == SW_MINIMIZE || nCmdShow == SW_SHOWMINIMIZED || nCmdShow == SW_SHOWMINNOACTIVE) WndStateFlags |= WndState_Minimized;
 
