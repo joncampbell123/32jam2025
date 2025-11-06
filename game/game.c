@@ -288,6 +288,7 @@ void debuglogprintf(unsigned int fl,const char *fmt,...) {
 
 		if (fl & DLP_TICKS) {
 			/* track the ticks not directly, but by counting deltas, so that the 49 day rollover does not affect our time counting */
+			/* NTS: By default in Windows, tick count resolution is roughly 55ms (18.2 ticks/sec system timer) */
 			const DWORD nc = GetTickCount();
 			debug_ticks += (uint64_t)((DWORD)(nc - debug_p_ticks));
 			debug_p_ticks = nc;
