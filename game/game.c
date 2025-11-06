@@ -352,8 +352,8 @@ void WinClientSizeToWindowSize(POINT *d,const POINT *s,const struct WndStyle_t *
 	d->x = um.right - um.left;
 	d->y = um.bottom - um.top;
 #if WINVER < 0x400
-/* Windows 3.x compensation for off by 1 (or 2) bugs in AdjustWindowRect */
-	d->y += WndAdjustWindowRectBug_yadd;
+/* Windows 3.x compensation for off by 1 (or 2) bugs in AdjustWindowRect but only if fMenu == TRUE */
+	if (fMenu) d->y += WndAdjustWindowRectBug_yadd;
 #endif
 }
 
