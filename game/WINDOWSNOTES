@@ -10,3 +10,8 @@
 
   Microsoft appears to have fixed this bug in Windows 95/NT4.
 
+- POSIX open() O_TEXT default. If you intend to read/write data, DOS/Windows C
+  libraries by default will translate \r\n to \n on read and \n to \r\n on write.
+  To read binary data, you need to add O_BINARY. Note that DOS and Windows are
+  the only platforms to require O_BINARY, it's not even defined on other platforms.
+
