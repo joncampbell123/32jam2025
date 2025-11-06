@@ -294,12 +294,17 @@ BOOL CheckMultiInstanceFindWindow(const BOOL mustError) {
 	if (!(WndConfigFlags & WndCFG_MultiInstance)) {
 		HWND hwnd = FindWindow(WndProcClass,NULL);
 		if (hwnd) {
+			DLOG("found another instance via FindWindow");
+
 			/* NTS: Windows 95 and later might ignore SetActiveWindow(), use SetWindowPos() as a backup
 			 *      to at least make it visible. */
 			SetWindowPos(hwnd,0,0,0,0,0,SWP_NOZORDER|SWP_NOACTIVATE|SWP_SHOWWINDOW|SWP_NOMOVE|SWP_NOSIZE);
 			SetActiveWindow(hwnd);
 
-			if (IsIconic(hwnd)) SendMessage(hwnd,WM_SYSCOMMAND,SC_RESTORE,0);
+			if (IsIconic(hwnd)) {
+				DLOG("The other window is minimized, restoring it");
+				SendMessage(hwnd,WM_SYSCOMMAND,SC_RESTORE,0);
+			}
 
 			return TRUE;
 		}
@@ -615,12 +620,18 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		char tmp[256];
 		if (snprintf(tmp,sizeof(tmp),"AppMutex_%s",WndProcClass) >= (sizeof(tmp)-1)) return 1;
 		WndLocalAppMutex = CreateMutexA(NULL,FALSE,tmp);
-		if (WndLocalAppMutex == NULL) return 1;
+		if (WndLocalAppMutex == NULL) {
+			DLOG("Win32 CreateMutex failed");
+			return 1;
+		}
 	}
 
 	{
 		DWORD r = WaitForSingleObject(WndLocalAppMutex,INFINITE);
-		if (!(r == WAIT_OBJECT_0 || r == WAIT_ABANDONED)) return 1;
+		if (!(r == WAIT_OBJECT_0 || r == WAIT_ABANDONED)) {
+			DLOG("Win32 mutex wait failed");
+			return 1;
+		}
 	}
 
 	if (CheckMultiInstanceFindWindow(FALSE))
@@ -674,7 +685,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		WndScreenInfo.BitPlanes = GetDeviceCaps(screenDC,PLANES);
 		if (WndScreenInfo.BitPlanes == 0) WndScreenInfo.BitPlanes = 1;
 
-		WndScreenInfo.ColorBitsPerPixel = 24; /* assume full RGB */
+		WndScreenInfo.ColorBitsPerPixel = 0; /* we don't know */
 
 		/* used for picking graphics */
 		WndScreenInfo.TotalBitsPerPixel =
@@ -700,8 +711,21 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		}
 		if (t & RC_BITMAP64) WndScreenInfo.Flags |= WndScreenInfoFlag_BitmapBig;
 
-		w = RC_BITBLT;
-		w |= RC_DI_BITMAP;
+		DLOG("GDI screen info:");
+		DLOG("  Bits Per Pixel: %u",WndScreenInfo.BitsPerPixel);
+		DLOG("  Bitplanes: %u",WndScreenInfo.BitPlanes);
+		DLOG("  Color Bits Per Pixel: %u",WndScreenInfo.ColorBitsPerPixel);
+		DLOG("  Total Bits Per Pixel: %u",WndScreenInfo.TotalBitsPerPixel);
+		DLOG("  Render Bits Per Pixel: %u",WndScreenInfo.RenderBitsPerPixel);
+		DLOG("  Palette size: %u",WndScreenInfo.PaletteSize);
+		DLOG("  Palette reserved colors: %u",WndScreenInfo.PaletteReserved);
+		DLOG("  Pixel aspect ratio: %u:%u",WndScreenInfo.AspectRatio.x,WndScreenInfo.AspectRatio.y);
+		DLOG("  Has color palette: %u",WndScreenInfo.Flags & WndScreenInfoFlag_Palette ? 1 : 0);
+		DLOG("  Big Bitmaps (64K or larger): %u",WndScreenInfo.Flags & WndScreenInfoFlag_BitmapBig ? 1 : 0);
+		DLOG("  RC_BITBLT (required): %u",(t & RC_BITBLT) ? 1 : 0);
+		DLOG("  RC_DI_BITMAP (required): %u",(t & RC_DI_BITMAP) ? 1 : 0);
+
+		w = RC_BITBLT | RC_DI_BITMAP;
 		if ((t&w) != w) {
 			ReleaseDC(NULL,screenDC);
 			MessageBox(NULL,"Your video driver is missing some important functions","",MB_OK);
