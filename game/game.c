@@ -231,6 +231,7 @@ BYTE near			WndConfigFlags = WndCFG_ShowMenu;
 //BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_Fullscreen | WndCFG_FullscreenWorkArea;
 //BYTE near			WndConfigFlags = 0;
 //BYTE near			WndConfigFlags = WndCFG_ShowMenu | WndCFG_DeactivateMinimize;
+//BYTE near			WndConfigFlags = WndCFG_Fullscreen;
 
 // NOTE: To prevent resizing completely, set the min, max, and def sizes to the exact same value
 const POINT near		WndMinSizeClient = { 80, 60 };
@@ -900,9 +901,12 @@ err1:
 
 #if WINVER < 0x400
 	/* Windows 3.0/3.1 bug: AdjustWindowRect window dimensions are correct for the width of the window,
-	 * but it's off by 1 (or 2 if WS_POPUP) for the height of the window. Windows 95/NT appears to have
-	 * fixed this bug. Check for that here. */
-	{
+	 * but it's off by 1 (or 2 if WS_POPUP) for the height of the window. This bug only happens if there
+	 * is a menu bar in the window (fMenu == TRUE). Windows 95/NT appears to have fixed this bug.
+	 * The fullscreen rect calculation is not subject to this bug because, even if the menu bar is there,
+	 * it calls AdjustWindowRect with fMenu == FALSE to ensure that the menu bar is visible at the top
+	 * of the screen. */
+	if (!(WndConfigFlags & WndCFG_Fullscreen)) {
 		RECT um;
 
 		GetClientRect(hwndMain,&um);
