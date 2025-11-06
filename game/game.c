@@ -859,6 +859,18 @@ err1:
 
 		WinClientSizeInFullScreen(&WndFullscreenSize,&style,fMenu); /* requires WndWorkArea and WndScreenSize */
 
+		DLOG("Initial window sizing calculations:");
+		DLOG("  MinSize: Client={w=%d, h=%d}, Window={w=%d, h=%d}",
+			WndMinSizeClient.x,WndMinSizeClient.y,WndMinSize.x,WndMinSize.y);
+		DLOG("  MaxSize: Client={w=%d, h=%d}, Window={w=%d, h=%d}",
+			WndMaxSizeClient.x,WndMaxSizeClient.y,WndMaxSize.x,WndMaxSize.y);
+		DLOG("  DefSize: Client={w=%d, h=%d}, Window={w=%d, h=%d}",
+			WndDefSizeClient.x,WndDefSizeClient.y,WndDefSize.x,WndDefSize.y);
+		DLOG("  ScreenSize: w=%d, h=%d",
+			WndScreenSize.x,WndScreenSize.y);
+		DLOG("  WorkArea: (left,top,right,bottom){%d,%d,%d,%d}",
+			WndWorkArea.left,WndWorkArea.top,WndWorkArea.right,WndWorkArea.bottom);
+
 		hwndMain = CreateWindowEx(style.styleEx,WndProcClass,WndTitle,style.style,
 			CW_USEDEFAULT,CW_USEDEFAULT,
 			WndDefSize.x,WndDefSize.y,
