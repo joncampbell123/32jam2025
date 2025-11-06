@@ -270,6 +270,10 @@ struct WndGraphicsCaps_t near	WndGraphicsCaps = { 0 };
 int near			WndAdjustWindowRectBug_yadd = 0;
 #endif
 
+int clamp0(int x) {
+	return x >= 0 ? x : 0;
+}
+
 #if GAMEDEBUG
 # ifndef WIN32
 static char dlogtmp[256];
@@ -490,8 +494,8 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 
 			/* if Windows maximizes our window, we want it centered on screen, not
 			 * put into the upper left hand corner like it does by default */
-			mmi->ptMaxPosition.x = (((WndWorkArea.right - WndWorkArea.left) - mmi->ptMaxSize.x) / 2) + WndWorkArea.left;
-			mmi->ptMaxPosition.y = (((WndWorkArea.bottom - WndWorkArea.top) - mmi->ptMaxSize.y) / 2) + WndWorkArea.top;
+			mmi->ptMaxPosition.x = clamp0(((WndWorkArea.right - WndWorkArea.left) - mmi->ptMaxSize.x) / 2) + WndWorkArea.left;
+			mmi->ptMaxPosition.y = clamp0(((WndWorkArea.bottom - WndWorkArea.top) - mmi->ptMaxSize.y) / 2) + WndWorkArea.top;
 		}
 	}
 	else if (message == WM_SETCURSOR) {
