@@ -967,7 +967,7 @@ err1:
 			um.left,um.top,um.right,um.bottom);
 
 		WndAdjustWindowRectBug_yadd = WndDefSizeClient.y - (um.bottom - um.top);
-		DLOGT("  Height adjust (add to bottom): %d",WndAdjustWindowRectBug_yadd);
+		DLOGT("  Possible height adjust (add to bottom): %d",WndAdjustWindowRectBug_yadd);
 
 		if (WndAdjustWindowRectBug_yadd != 0 && WndAdjustWindowRectBug_yadd >= -2 && WndAdjustWindowRectBug_yadd <= 2) {
 			WndMinSize.y += WndAdjustWindowRectBug_yadd;
