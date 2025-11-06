@@ -456,6 +456,10 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			WndStateFlags |= WndState_Minimized;
 		else
 			WndStateFlags &= ~WndState_Minimized;
+		if (IsZoomed(hwnd))
+			WndStateFlags |= WndState_Maximized;
+		else
+			WndStateFlags &= ~WndState_Maximized;
 
 		if ((WndConfigFlags & WndCFG_Fullscreen) && !(WndStateFlags & WndState_Minimized)) {
 			wpc->x = WndFullscreenSize.left;
@@ -478,6 +482,10 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			WndStateFlags |= WndState_Minimized;
 		else
 			WndStateFlags &= ~WndState_Minimized;
+		if (IsZoomed(hwnd))
+			WndStateFlags |= WndState_Maximized;
+		else
+			WndStateFlags &= ~WndState_Maximized;
 
 		if ((WndConfigFlags & WndCFG_Fullscreen) && !(WndStateFlags & WndState_Minimized)) {
 			mmi->ptMaxSize.x = WndFullscreenSize.right - WndFullscreenSize.left;
