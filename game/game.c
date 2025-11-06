@@ -4,11 +4,23 @@
 
 #include <windows.h>
 #include <string.h>
+#include <stdarg.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <math.h>
 #include <i86.h>
 #include <dos.h>
+#include <io.h>
 #include "resource.h"
+
+
+////
+#if GAMEDEBUG
+# define DLOG(...) debuglogprintf(__VA_ARGS__)
+#else
+# define DLOG(...) { }
+#endif
+
 
 #if WINVER >= 0x30A
 # ifndef SPI_GETWORKAREA
@@ -23,6 +35,7 @@
 #define WndCFG_DeactivateMinimize	0x00000008u /* minimize if the user switches away from the application */
 #define WndCFG_MultiInstance		0x00000010u /* allow multiple instances of this game */
 #define WndCFG_FullscreenWorkArea	0x00000020u /* limit fullscreen to the Windows 95 "work area", do not cover the task bar */
+#define WndCFG_DebugLogging		0x00000040u /* write debug output to a log file (if #ifdef GAMEDEBUG) */
 
 // WndStateFlags
 #define WndState_Minimized		0x00000001u
@@ -201,6 +214,10 @@ const struct WndStyle_t		WndStyle = { .style = WS_OVERLAPPEDWINDOW, .styleEx = 0
 //const struct WndStyle_t		WndStyle = { .style = WS_POPUPWINDOW|WS_MINIMIZEBOX|WS_MAXIMIZEBOX|WS_CAPTION, .styleEx = 0 };
 //const struct WndStyle_t		WndStyle = { .style = WS_DLGFRAME|WS_CAPTION|WS_SYSMENU|WS_BORDER, .styleEx = WS_EX_DLGMODALFRAME };
 
+#if GAMEDEBUG
+int near			debug_log_fd = -1;
+#endif
+
 HINSTANCE near			myInstance = (HINSTANCE)NULL;
 HWND near			hwndMain = (HWND)NULL;
 HMENU near			SysMenu = (HMENU)NULL;
@@ -241,6 +258,36 @@ BYTE near			WindowsVersionFlags = 0;
 
 struct WndScreenInfo_t near	WndScreenInfo = { 0, 0, 0, 0, 0, 0 };
 struct WndGraphicsCaps_t near	WndGraphicsCaps = { 0 };
+
+#if GAMEDEBUG
+# ifndef WIN32
+static char dlogtmp[256];
+# endif
+// Win16 warning: Do not call this function from any code that Windows 3.1 calls from an "interrupt handler"
+void debuglogprintf(const char *fmt,...) {
+	if (WndConfigFlags & WndCFG_DebugLogging) {
+# ifdef WIN32
+		char dlogtmp[256];
+# endif
+		va_list va;
+		size_t l;
+		char *w;
+
+		va_start(va,fmt);
+
+		w = dlogtmp + vsnprintf(dlogtmp,sizeof(dlogtmp)-3,fmt,va);
+		*w++ = '\r';
+		*w++ = '\n';
+		*w = 0;
+
+		l = (size_t)(w - dlogtmp);
+
+		write(debug_log_fd,dlogtmp,l);
+
+		va_end(va);
+	}
+}
+#endif
 
 BOOL CheckMultiInstanceFindWindow(const BOOL mustError) {
 	if (!(WndConfigFlags & WndCFG_MultiInstance)) {
@@ -520,6 +567,41 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,int nCmdShow) {
 	WNDCLASS wnd;
 	MSG msg;
+
+#if GAMEDEBUG
+	WndConfigFlags |= WndCFG_DebugLogging;
+
+	if (WndConfigFlags & WndCFG_DebugLogging) {
+		debug_log_fd = open("debug.log",O_WRONLY|O_CREAT|O_TRUNC,0644);
+		if (debug_log_fd >= 0) {
+			DLOG("=======================================================================");
+			DLOG("BEGIN GAME DEBUG LOG");
+#if TARGET_MSDOS == 32 && !defined(WIN386) // AKA WIN32
+			{
+				SYSTEMTIME st;
+				memset(&st,0,sizeof(st));
+				GetSystemTime(&st);
+				DLOG("%04u-%02u-%02u %02u:%02u:%02u",st.wYear,st.wMonth,st.wDay,st.wHour,st.wMinute,st.wSecond);
+			}
+#else
+			{
+				struct _dostime_t t;
+				struct _dosdate_t d;
+
+				memset(&t,0,sizeof(t));
+				memset(&d,0,sizeof(d));
+				_dos_gettime(&t);
+				_dos_getdate(&d);
+				DLOG("%04u-%02u-%02u %02u:%02u:%02u",d.year,d.month,d.day,t.hour,t.minute,t.second);
+			}
+#endif
+			DLOG("=======================================================================");
+		}
+		else {
+			WndConfigFlags &= ~WndCFG_DebugLogging;
+		}
+	}
+#endif
 
 	(void)lpCmdLine; /* unused */
 

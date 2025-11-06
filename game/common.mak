@@ -3,6 +3,12 @@
 NOW_BUILDING = GAME_EXE
 CFLAGS_THIS = -fr=nul -fo=$(SUBDIR)$(HPS).obj -i.. -i"../.."
 
+DEBUG=1
+
+!ifdef DEBUG
+CFLAGS_THIS += -DGAMEDEBUG
+!endif
+
 !include "../vars.mak"
 
 RCFLAGS_THIS = -i.. -i"../.."
