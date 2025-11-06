@@ -396,7 +396,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 
 		return DefWindowProc(hwnd,message,wparam,lparam);
 	}
-#ifdef WM_WINDOWPOSCHANGING
+#if WINVER >= 0x30A /* Did not appear until Windows 3.1 */
 	else if (message == WM_WINDOWPOSCHANGING) {
 #if (TARGET_MSDOS == 32 && defined(WIN386))
 		WINDOWPOS FAR *wpc = (WINDOWPOS FAR*)MK_FP32((void*)lparam);
@@ -419,7 +419,6 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		return DefWindowProc(hwnd,message,wparam,lparam);
 	}
 #endif
-#ifdef WM_GETMINMAXINFO
 	else if (message == WM_GETMINMAXINFO) {
 #if (TARGET_MSDOS == 32 && defined(WIN386))
 		MINMAXINFO FAR *mmi = (MINMAXINFO FAR*)MK_FP32((void*)lparam);
@@ -462,8 +461,6 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			mmi->ptMaxPosition.y = (((WndWorkArea.bottom - WndWorkArea.top) - mmi->ptMaxSize.y) / 2) + WndWorkArea.top;
 		}
 	}
-#endif
-#ifdef WM_SETCURSOR
 	else if (message == WM_SETCURSOR) {
 		if (LOWORD(lparam) == HTCLIENT) {
 			SetCursor(LoadCursor(NULL,IDC_ARROW));
@@ -473,7 +470,6 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			return DefWindowProc(hwnd,message,wparam,lparam);
 		}
 	}
-#endif
 	else if (message == WM_ERASEBKGND) {
 		RECT um;
 
