@@ -884,6 +884,15 @@ err1:
 		if (fMenu) SetMenu(hwndMain,menu);
 	}
 
+	DLOG("Game window configuration state at startup:");
+	DLOG("  Show menu: %u",(WndConfigFlags & WndCFG_ShowMenu) ? 1 : 0);
+	DLOG("  Fullscreen: %u",(WndConfigFlags & WndCFG_Fullscreen) ? 1 : 0);
+	DLOG("  Topmost: %u",(WndConfigFlags & WndCFG_TopMost) ? 1 : 0);
+	DLOG("  Minimize if deactivated: %u",(WndConfigFlags & WndCFG_DeactivateMinimize) ? 1 : 0);
+	DLOG("  Allow multiple instances: %u",(WndConfigFlags & WndCFG_MultiInstance) ? 1 : 0);
+	DLOG("  Fullscreen fit work area: %u",(WndConfigFlags & WndCFG_FullscreenWorkArea) ? 1 : 0);
+	DLOG("  Debug logging: %u",(WndConfigFlags & WndCFG_DebugLogging) ? 1 : 0);
+
 	if (nCmdShow == SW_MINIMIZE || nCmdShow == SW_SHOWMINIMIZED || nCmdShow == SW_SHOWMINNOACTIVE) WndStateFlags |= WndState_Minimized;
 
 	/* NTS: Windows 3.1 will not send WM_WINDOWPOSCHANGING for window creation because,
