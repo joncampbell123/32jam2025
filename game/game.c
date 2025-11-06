@@ -802,6 +802,11 @@ err1:
 		}
 #endif
 
+		DLOG("Windows version info:");
+		DLOG("  Windows version: %u.%u",WindowsVersion >> 8,WindowsVersion & 0xFFu);
+		DLOG("  DOS version: %u.%u",DOSVersion >> 8,DOSVersion & 0xFFu);
+		DLOG("  Is Windows NT: %u",(WindowsVersionFlags & WindowsVersionFlags_NT) ? 1 : 0);
+
 #if 0//DEBUG
 		{
 			char tmp[256],*w=tmp;
