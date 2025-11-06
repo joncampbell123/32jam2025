@@ -373,6 +373,9 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			WndCurrentSizeClient.y = HIWORD(lparam);
 			WinClientSizeToWindowSize(&WndCurrentSize,&WndCurrentSizeClient,&WndStyle,GetMenu(hwnd)!=NULL?TRUE:FALSE);
 
+			DLOG("WM_SIZE: Client={w=%d, h=%d}, Window={w=%d, h=%d}",
+				WndCurrentSizeClient.x,WndCurrentSizeClient.y,WndCurrentSize.x,WndCurrentSize.y);
+
 			if (WndConfigFlags & WndCFG_TopMost) {
 				SetWindowPos(hwndMain,HWND_TOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE);
 			}
