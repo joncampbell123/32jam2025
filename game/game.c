@@ -822,6 +822,9 @@ err1:
 	 * Windows 95/NT4 allows top-down DIBs if the BITMAPINFOHEADER biHeight value is negative */
 	if (WindowsVersion >= 0x35F) WndGraphicsCaps.flags |= WndGraphicsCaps_Flags_DIBTopDown;
 
+	DLOG("Game graphics capabilities:");
+	DLOG("  Windows 95/NT top-down DIBs: %u",WndGraphicsCaps.flags & WndGraphicsCaps_Flags_DIBTopDown);
+
 	{
 		HMENU menu = WndMenu!=0u?LoadMenu(hInstance,MAKEINTRESOURCE(WndMenu)):((HMENU)NULL);
 		BOOL fMenu = (menu!=NULL && (WndConfigFlags & WndCFG_ShowMenu))?TRUE:FALSE;
