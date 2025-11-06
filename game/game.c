@@ -577,7 +577,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 	WndConfigFlags |= WndCFG_DebugLogging;
 
 	if (WndConfigFlags & WndCFG_DebugLogging) {
-		debug_log_fd = open("debug.log",O_WRONLY|O_CREAT|O_TRUNC,0644);
+		debug_log_fd = open("debug.log",O_WRONLY|O_CREAT|O_TRUNC|O_BINARY,0644);
 		if (debug_log_fd >= 0) {
 			DLOG("=======================================================================");
 			DLOG("BEGIN GAME DEBUG LOG");
