@@ -393,22 +393,9 @@ BOOL InitLogPalette(void) {
 				DLOGT("ERROR: Cannot allocate logpalette");
 				return FALSE;
 			}
-			memset(WndLogPalette,0,sz);
+			memset(WndLogPalette,0,sz); // default all-black palette
 			WndLogPalette->palVersion = 0x300;
 			WndLogPalette->palNumEntries = WndScreenInfo.PaletteSize;
-
-			/* default grayscale ramp */
-			{
-				const unsigned int imax = WndScreenInfo.PaletteSize - 1;
-				unsigned int i;
-
-				for (i=0;i <= imax;i++) {
-					WndLogPalette->palPalEntry[i].peRed =
-					WndLogPalette->palPalEntry[i].peGreen =
-					WndLogPalette->palPalEntry[i].peBlue = (BYTE)(((unsigned long)i * 255ul) / (unsigned long)imax);
-					WndLogPalette->palPalEntry[i].peFlags = 0;
-				}
-			}
 		}
 	}
 
