@@ -1165,6 +1165,7 @@ void FreeSpriteRes(void) {
 	}
 }
 
+#if GAMEDEBUG
 /* DEBUG: Draw a BMPr directly on the window */
 void DrawBMPr(const BMPrHandle h,int x,int y) {
 	if (Spriter && h < SpriterMax) {
@@ -1206,6 +1207,9 @@ void DrawBMPr(const BMPrHandle h,int x,int y) {
 		}
 	}
 }
+#else
+# define DrawBMPr(...)
+#endif
 
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
 LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
