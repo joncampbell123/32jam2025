@@ -8,10 +8,6 @@
 #include "inflate.h"
 #include "inffast.h"
 
-#if TARGET_MSDOS == 16 && defined(_WINDOWS) && defined(__WATCOMC__) && defined(ZLIB_DLL)
-#pragma code_seg("INFLATETEXT")
-#endif
-
 #ifndef ASMINF
 
 /* Allow machine dependent optimization for post-increment or pre-increment.

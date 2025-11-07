@@ -91,10 +91,6 @@
 #  endif
 #endif
 
-#if TARGET_MSDOS == 16 && defined(_WINDOWS) && defined(__WATCOMC__) && defined(ZLIB_DLL)
-#pragma code_seg("INFLATETEXT")
-#endif
-
 /* function prototypes */
 local void fixedtables OF((struct inflate_state ZFAR *state));
 local int updatewindow OF((z_streamp strm, unsigned out));
