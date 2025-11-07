@@ -15,5 +15,5 @@
 #
 #             If you don't give a crap about Windows 3.1 Process Status, go
 #             ahead and use long module names.
-MODULENAME_BASE = game_AAAAAAAAAAAA
+MODULENAME_BASE = game251101
 
