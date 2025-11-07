@@ -1167,12 +1167,11 @@ void FreeSpriteRes(void) {
 
 #if GAMEDEBUG
 /* DEBUG: Draw a BMPr directly on the window */
-void DrawBMPr(const BMPrHandle h,int x,int y) {
+void DrawBMPr(HDC hDC,const BMPrHandle h,int x,int y) {
 	if (Spriter && h < SpriterMax) {
 		struct BMPres *r = BMPr + h;
 
 		if (r->bmpObj) {
-			HDC hDC = GetDC(hwndMain);
 			HDC retDC = CreateCompatibleDC(hDC);
 
 			if (retDC) {
@@ -1184,26 +1183,12 @@ void DrawBMPr(const BMPrHandle h,int x,int y) {
 					return;
 				}
 
-				if (WndHanPalette) {
-					if (SelectPalette(retDC,WndHanPalette,FALSE) == (HPALETTE)NULL)
-						DLOGT("ERROR: Cannot select palette into BMP compat DC");
-
-					RealizePalette(retDC);
-				}
-
 				DLOGT("BitBlt BMP #%u res",h);
 				BitBlt(hDC,x,y,r->width,r->height,retDC,0,0,SRCCOPY);
-
-				if (WndHanPalette) {
-					if (SelectPalette(retDC,(HPALETTE)GetStockObject(DEFAULT_PALETTE),FALSE) == (HPALETTE)NULL)
-						DLOGT("ERROR: Cannot select stock palette into BMP compat DC");
-				}
 
 				SelectObject(retDC,bmpOld);
 				DeleteDC(retDC);
 			}
-
-			ReleaseDC(hwndMain,hDC);
 		}
 	}
 }
@@ -1447,12 +1432,22 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		RECT um;
 
 		if (GetUpdateRect(hwnd,&um,TRUE)) {
+			HPALETTE oldPalette;
 			PAINTSTRUCT ps;
 
 			BeginPaint(hwnd,&ps);
-			EndPaint(hwnd,&ps);
 
-			DrawBMPr(0,0,0);
+			if (WndHanPalette) {
+				oldPalette = SelectPalette(ps.hdc,WndHanPalette,FALSE);
+				if (oldPalette) RealizePalette(ps.hdc);
+			}
+
+			DrawBMPr(ps.hdc,0/*BMPr*/,0/*x*/,0/*y*/);
+
+			if (WndHanPalette)
+				SelectPalette(ps.hdc,oldPalette,TRUE);
+
+			EndPaint(hwnd,&ps);
 		}
 
 		return 0; /* Return 0 to signal we processed the message */
