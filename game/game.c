@@ -1060,7 +1060,7 @@ void LoadBMPrFromBMP(const int fd,struct BMPres *br,const BMPrHandle h) {
 		if (r < (lh * stride)) DLOGT("BMP read short of expectations, want=%u got=%u",lh * stride,r);
 
 		{
-			const int done = SetDIBits(bmpDC,br->bmpObj,y,sliceheight,slice,(BITMAPINFO*)bihraw,DIB_RGB_COLORS);
+			const int done = SetDIBits(bmpDC,br->bmpObj,y,lh,slice,(BITMAPINFO*)bihraw,DIB_RGB_COLORS);
 			if (done < sliceheight) DLOGT("SetDIBitsToDevice() wrote less scanlines want=%d got=%d",sliceheight,done);
 		}
 	}
@@ -1080,21 +1080,190 @@ finish:
 	}
 }
 
+struct png_idat_reader {
+	unsigned char*		buf;
+	unsigned int		buflen;
+	unsigned int		datend;
+	unsigned int		datpos;
+	uint32_t		idat_remain;
+	off_t			pos;
+	z_stream		z;
+	BOOL			idat_eof;
+};
+
+void png_idat_reader_free(struct png_idat_reader *pr) {
+	if (pr->buf) {
+		free(pr->buf);
+		pr->buf = NULL;
+	}
+	if (pr->z.next_in != NULL) {
+		inflateEnd(&(pr->z));
+		pr->z.next_in = NULL;
+	}
+}
+
+void png_idat_reader_refill(struct png_idat_reader *pr,int fd) {
+	DWORD length,chktype;
+	unsigned char tmp[9];
+
+	if (!pr->buf) return;
+	if (pr->idat_eof) return;
+
+	if (pr->datpos >= pr->datend)
+		pr->datpos = pr->datend = 0;
+
+	while (pr->datend < pr->buflen) {
+		if (pr->idat_remain == 0) {
+			/* assume the PNG signature is already there and that the calling code verified it already */
+			/* PNG chunk struct
+			 *   DWORD length
+			 *   DWORD chunkType
+			 *   BYTE data[]
+			 *   DWORD crc32 (we ignore it)
+			 *
+			 * 32-bit values are big endian */
+			if (lseek(fd,pr->pos,SEEK_SET) != pr->pos) break;
+
+			if (read(fd,tmp,8) != 8) break;
+			tmp[8] = 0;
+
+			length = bytswp32(*((DWORD*)(tmp+0)));
+			chktype = bytswp32(*((DWORD*)(tmp+4)));
+
+			DLOGT("[IDAT refill] PNG chunk at %lu: length=%lu chktype=0x%lx '%s'",
+				(unsigned long)(pr->pos + (off_t)8),(unsigned long)length,(unsigned long)chktype,tmp+4);
+
+			if (chktype == 0x49444154/*IDAT*/) {
+				pr->pos += (off_t)8/*header we just read*/ + (off_t)length/*data*/ + (off_t)4/*crc32*/;
+				pr->idat_remain = length;
+			}
+			else {
+				pr->idat_eof = TRUE;
+				break;
+			}
+		}
+		else {
+			unsigned int got,need = pr->buflen - pr->datend; /* assume nonzero, this loop would exit otherwise */
+			if ((uint32_t)need > pr->idat_remain) need = (unsigned int)pr->idat_remain;
+
+			DLOG("PNG IDAT refill readpos=%u appendpos=%u buflen=%u need=%u IDATremain=%lu",
+				pr->datpos,pr->datend,pr->buflen,need,(unsigned long)(pr->idat_remain));
+
+			got = read(fd,pr->buf+pr->datend,need);
+			if ((int)got < 0) got = 0;
+			pr->idat_remain -= (uint32_t)got;
+			pr->datend += got;
+
+			if (got < need) {
+				DLOGT("PNG IDAT unexpected short read want=%u got=%u",need,got);
+				pr->idat_eof = TRUE;
+			}
+		}
+	}
+}
+
+unsigned int png_idat_read(struct png_idat_reader *pr,unsigned char *buf,unsigned int len,int fd) {
+	unsigned int r = 0,avail;
+	int err;
+
+	if (!pr->buf || len == 0) return 0;
+
+	while (len > 0) {
+		if (pr->datpos > pr->datend || pr->datend > pr->buflen) {
+			DLOGT("png_idat_read invalid datpos/datend buffer state");
+			break;
+		}
+
+		avail = pr->datend - pr->datpos;
+		if (avail) {
+			pr->z.total_in = pr->z.total_out = 0;
+			pr->z.next_in = pr->buf + pr->datpos;
+			pr->z.avail_in = pr->datend - pr->datpos;
+			pr->z.next_out = buf;
+			pr->z.avail_out = len;
+
+			err = inflate(&(pr->z),Z_NO_FLUSH);
+			if (pr->z.next_out == buf) err = inflate(&(pr->z),Z_SYNC_FLUSH);
+			if (err == Z_STREAM_END) {
+				DLOGT("ZLIB stream end");
+				pr->datend = pr->datpos = 0;
+				pr->idat_eof = TRUE;
+				break;
+			}
+			else if (err != Z_OK) {
+				DLOGT("ZLIB stream error %d",err);
+				pr->datend = pr->datpos = 0;
+				pr->idat_eof = TRUE;
+				break;
+			}
+
+			pr->datpos += pr->z.total_in;
+			if (pr->datpos > pr->datend) {
+				DLOGT("ZLIB inflate read too much");
+				break;
+			}
+			if (pr->z.total_out > len) {
+				DLOGT("ZLIB inflate wrote too much");
+				break;
+			}
+			buf += pr->z.total_out;
+			len -= pr->z.total_out;
+			r += pr->z.total_out;
+		}
+		else {
+			png_idat_reader_refill(pr,fd);
+			if (pr->datend == 0 && pr->datpos == 0) break;
+		}
+	}
+
+	return r;
+}
+
+BOOL png_idat_reader_init(struct png_idat_reader *pr,off_t ofs) {
+	if (!pr->buf) {
+#if TARGET_MSDOS == 32
+		pr->buflen = 256*1024;
+#else
+		pr->buflen = 15*1024;
+#endif
+
+		pr->buf = malloc(pr->buflen);
+		if (!pr->buf) {
+			DLOGT("PNG IDAT reader failed to malloc buffer");
+			return FALSE;
+		}
+
+		pr->datend = pr->datpos = 0;
+		pr->idat_eof = FALSE;
+		pr->idat_remain = 0;
+		pr->pos = ofs;
+
+		memset(&(pr->z),0,sizeof(z_stream));
+		if (inflateInit2(&(pr->z),15/*max window size 32KB*/) != Z_OK) {
+			DLOGT("PNG IDAT reader failed to init zlib");
+			png_idat_reader_free(pr);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
 void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 	struct minipng_PLTE_color *plte = NULL;
+	struct png_idat_reader pir = {0};
 	struct minipng_IHDR ihdr = {0};
 	unsigned char *pngraw = NULL;
 	unsigned char *bihraw = NULL; // combined BITMAPINFOHEADER and palette for GDI to use
 	unsigned int plte_colors = 0;
-	unsigned char pngstride = 0;
 	unsigned char *slice = NULL;
+	unsigned int pngstride = 0;
 	unsigned int stride,i,y,lh;
 	unsigned int sliceheight;
 	unsigned int bihSize = 0;
 	HDC bmpDC = (HDC)NULL;
 	unsigned char tmp[9];
 	DWORD length,chktype;
-	z_stream z = {0};
 	off_t ofs = 8;
 
 #if GAMEDEBUG
@@ -1236,9 +1405,8 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 
 		stride = (unsigned int)(((((unsigned long)bih->biWidth * (unsigned long)bih->biBitCount) + 31ul) & (~31ul)) >> 3ul);
 
-		/* NTS: The actual PNG compressed image has one extra pixel on the end, which I think has something to do with
-		 *      the filtering modes. Allocate room for one scanline of PNG. */
-		pngstride = (((unsigned long)ihdr.bit_depth * ((unsigned long)ihdr.width + 1ul)) + 7ul) / 8ul;
+		/* NTS: The actual PNG compressed image has one extra pixel on the beginning, which is the filter byte */
+		pngstride = (unsigned int)(((((unsigned long)ihdr.bit_depth * (unsigned long)ihdr.width) + 7ul) / 8ul) + 1ul);
 
 		bih->biSizeImage = stride * ihdr.height;
 		if (bih->biBitCount <= 8) {
@@ -1262,6 +1430,7 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 		sliceheight = 0xF000u / stride;
 #endif
 		DLOGT("BMP loading slice height %u/%u",sliceheight,(unsigned int)ihdr.height);
+		DLOGT("BMP stride %u, PNG stride %u",stride,pngstride);
 		if (!sliceheight) {
 			DLOGT("Slice height not valid");
 			goto finish;
@@ -1280,6 +1449,12 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 		}
 	}
 
+	if (!png_idat_reader_init(&pir,ofs)) {
+		DLOGT("ERROR: Cannot init PNG IDAT reader");
+		goto finish;
+	}
+
+	png_idat_reader_refill(&pir,fd);
 	for (y=0;y < br->height;y += sliceheight) {
 		lh = sliceheight;
 		if ((y+lh) > br->height) lh = br->height - y;
@@ -1290,13 +1465,27 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 		}
 
 		DLOGT("PNG slice load y=%u h=%u of height=%u bytes=%lu",y,lh,br->height,(unsigned long)lh * (unsigned long)stride);
+
+		{
+			unsigned int sy,sr;
+
+			memset(slice,0,stride * sliceheight);
+			for (sy=0;sy < lh;sy++) {
+				sr = png_idat_read(&pir,pngraw,pngstride,fd);
+				DLOGT("PNG IDAT decompress read %u",sr);
+
+				memcpy(slice+((lh-1u-sy)*stride),pngraw+1/*skip filter byte*/,pngstride-1/*minux filter byte*/);
+			}
+
+			{
+				const int done = SetDIBits(bmpDC,br->bmpObj,br->height-y-lh,lh,slice,(BITMAPINFO*)bihraw,DIB_RGB_COLORS);
+				if (done < sliceheight) DLOGT("SetDIBitsToDevice() wrote less scanlines want=%d got=%d",sliceheight,done);
+			}
+		}
 	}
 
 finish:
-	if (z.next_in != NULL) {
-		inflateEnd(&z);
-		z.next_in = NULL;
-	}
+	png_idat_reader_free(&pir);
 	if (bmpDC) {
 		BMPrGDIObjectReleaseDC(h);
 		bmpDC = (HDC)NULL;
