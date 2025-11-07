@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <math.h>
@@ -271,6 +272,10 @@ struct WndGraphicsCaps_t near	WndGraphicsCaps = { 0 };
 int near			WndAdjustWindowRectBug_yadd = 0;
 #endif
 
+// 256-color palette
+LOGPALETTE*			WndLogPalette = NULL;
+HPALETTE near			WndHanPalette = (HPALETTE)NULL;
+
 int clamp0(int x) {
 	return x >= 0 ? x : 0;
 }
@@ -376,6 +381,138 @@ void WinClientSizeToWindowSize(POINT *d,const POINT *s,const struct WndStyle_t *
 #endif
 }
 
+BOOL InitLogPalette(void) {
+	if (!WndLogPalette) {
+		if ((WndScreenInfo.Flags & WndScreenInfoFlag_Palette) && WndScreenInfo.PaletteSize > 0 && WndScreenInfo.PaletteSize <= 256) {
+			/* NTS: LOGPALETTE is defined as the header followed by exactly one PALETTENTRY,
+			 *      therefore subtract 1 when multiplying colors by PALETTENTRY. */
+			const size_t sz = sizeof(LOGPALETTE) + ((WndScreenInfo.PaletteSize - 1) * sizeof(PALETTEENTRY));
+			DLOGT("Display is %u-color paletted, initializing logical palette (%u bytes)",WndScreenInfo.PaletteSize,(unsigned int)sz);
+			WndLogPalette = (LOGPALETTE*)malloc(sz);
+			if (!WndLogPalette) {
+				DLOGT("ERROR: Cannot allocate logpalette");
+				return FALSE;
+			}
+			memset(WndLogPalette,0,sz);
+			WndLogPalette->palVersion = 0x300;
+			WndLogPalette->palNumEntries = WndScreenInfo.PaletteSize;
+
+			/* default grayscale ramp */
+			{
+				const unsigned int imax = WndScreenInfo.PaletteSize - 1;
+				unsigned int i;
+
+				for (i=0;i <= imax;i++) {
+					WndLogPalette->palPalEntry[i].peRed =
+					WndLogPalette->palPalEntry[i].peGreen =
+					WndLogPalette->palPalEntry[i].peBlue = (BYTE)(((unsigned long)i * 255ul) / (unsigned long)imax);
+					WndLogPalette->palPalEntry[i].peFlags = 0;
+				}
+			}
+		}
+	}
+
+	return TRUE;
+}
+
+UINT UnrealizePaletteObject(void) {
+	UINT chg = 0;
+
+	if (WndHanPalette) {
+		HDC hdc;
+
+		DLOGT("Selecting the default system palette into the window to flush our palette");
+
+		hdc = GetDC(hwndMain);
+		if (hdc) {
+			if (SelectPalette(hdc,(HPALETTE)GetStockObject(DEFAULT_PALETTE),FALSE) == (HPALETTE)NULL)
+				DLOGT("ERROR: Cannot select system palette into main window");
+
+			chg = RealizePalette(hdc);
+			DLOGT("RealizePalette: Changed %u colors in the sytem palette",chg);
+
+			ReleaseDC(hwndMain,hdc);
+		}
+		else {
+			DLOGT("ERROR: Cannot GetDC the main window");
+		}
+	}
+
+	return chg;
+}
+
+UINT RealizePaletteObject(void) {
+	UINT chg = 0;
+
+	if (WndHanPalette) {
+		HDC hdc;
+
+		DLOGT("Selecting the palette into the window");
+
+		hdc = GetDC(hwndMain);
+		if (hdc) {
+			if (SelectPalette(hdc,WndHanPalette,FALSE) == (HPALETTE)NULL)
+				DLOGT("ERROR: Cannot select palette into main window");
+
+			chg = RealizePalette(hdc);
+			DLOGT("RealizePalette: Changed %u colors in the sytem palette",chg);
+
+			ReleaseDC(hwndMain,hdc);
+		}
+		else {
+			DLOGT("ERROR: Cannot GetDC the main window");
+		}
+	}
+
+	return chg;
+}
+
+BOOL InitPaletteObject(void) {
+	if (WndLogPalette && WndHanPalette == (HPALETTE)NULL && (WndScreenInfo.Flags & WndScreenInfoFlag_Palette)) {
+		DLOGT("Logpalette valid, creating GDI palette object");
+		WndHanPalette = CreatePalette(WndLogPalette);
+		if (WndHanPalette == NULL) {
+			DLOGT("ERROR: Unable to create GDI palette object");
+			return FALSE;
+		}
+
+		RealizePaletteObject();
+	}
+
+	return TRUE;
+}
+
+BOOL InitColorPalette(void) {
+	if (!InitLogPalette())
+		return FALSE;
+	if (!InitPaletteObject())
+		return FALSE;
+
+	return TRUE;
+}
+
+void FreeLogPalette(void) {
+	if (WndLogPalette) {
+		DLOGT("Freeing logical palette");
+		UnrealizePaletteObject();
+		free(WndLogPalette);
+		WndLogPalette = NULL;
+	}
+}
+
+void FreePaletteObject(void) {
+	if (WndHanPalette) {
+		DLOGT("Freeing GDI palette object");
+		DeleteObject(WndHanPalette);
+		WndHanPalette = (HPALETTE)NULL;
+	}
+}
+
+void FreeColorPalette(void) {
+	FreeLogPalette();
+	FreePaletteObject();
+}
+
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
 LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 #else
@@ -385,6 +522,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		return 0; /* Success */
 	}
 	else if (message == WM_DESTROY) {
+		FreeColorPalette();
 		PostQuitMessage(0);
 		return 0; /* OK */
 	}
@@ -430,9 +568,11 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 	else if (message == WM_ACTIVATE) {
 		if (wparam == WA_CLICKACTIVE || wparam == WA_ACTIVE) {
 			WndStateFlags |= WndState_Active;
+			DLOGT("Game window activated");
 		}
 		else {
 			WndStateFlags &= ~WndState_Active;
+			DLOGT("Game window deactivated");
 
 			if (WndConfigFlags & WndCFG_DeactivateMinimize) {
 				ShowWindow(hwnd,SW_SHOWMINNOACTIVE);
@@ -616,6 +756,21 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		}
 
 		return 0; /* Return 0 to signal we processed the message */
+	}
+	else if (message == WM_PALETTECHANGED || message == WM_QUERYNEWPALETTE) {
+		if (message == WM_PALETTECHANGED && (HWND)wparam == hwnd)
+			return 0;
+
+		if (WndHanPalette) {
+			UINT changed;
+
+			DLOGT("Responding to message %s",message == WM_PALETTECHANGED ? "WM_PALETTECHANGED" : "WM_QUERYNEWPALETTTE");
+			changed = RealizePaletteObject();
+			InvalidateRect(hwnd,NULL,FALSE);
+
+			if (message == WM_QUERYNEWPALETTE)
+				return changed;
+		}
 	}
 	else {
 		return DefWindowProc(hwnd,message,wparam,lparam);
@@ -1014,6 +1169,8 @@ err1:
 		SetWindowPos(hwndMain,HWND_TOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE);
 	}
 
+	InitColorPalette();
+
 	ShowWindow(hwndMain,nCmdShow);
 	UpdateWindow(hwndMain);
 
@@ -1032,6 +1189,8 @@ err1:
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
+
+	FreeColorPalette();
 
 	return msg.wParam;
 }
