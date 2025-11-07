@@ -580,8 +580,6 @@ struct minipng_PLTE_color {
 #pragma pack(pop)
 
 void LoadLogPalettePNG(int fd,PALETTEENTRY *pels,UINT colors) {
-	struct minipng_IHDR ihdr = {0};
-	unsigned int pngmaxcolors = 0;
 	unsigned char tmp[9];
 	DWORD length,chktype;
 	off_t ofs = 8;
@@ -615,25 +613,11 @@ void LoadLogPalettePNG(int fd,PALETTEENTRY *pels,UINT colors) {
 		DLOGT("PNG chunk at %lu: length=%lu chktype=0x%lx '%s'",
 			(unsigned long)ofs,(unsigned long)length,(unsigned long)chktype,tmp+4);
 
-		if (chktype == 0x49484452/*IHDR*/ && length >= 0xD) {
-			read(fd,&ihdr,sizeof(ihdr));
-
-			/* we care about bit depth and color type */
-			DLOGT("IHDR: width=%lu height=%lu bit_depth=%u color_type=%u compression_method=%u filter_method=%u interlace_method=%u",
-				(unsigned long)bytswp32(ihdr.width),(unsigned long)bytswp32(ihdr.height),
-				ihdr.bit_depth,ihdr.color_type,ihdr.compression_method,
-				ihdr.filter_method,ihdr.interlace_method);
-
-			if (ihdr.bit_depth >= 1 && ihdr.bit_depth <= 8 && ihdr.color_type == 3/*indexed color*/) {
-				pngmaxcolors = 1u << ihdr.bit_depth;
-			}
-		}
-		else if (chktype == 0x504C5445/*PLTE*/ && length >= 3) {
+		if (chktype == 0x504C5445/*PLTE*/ && length >= 3) {
 			unsigned int pclr = length / 3;
-
-			if (pclr > pngmaxcolors) pclr = pngmaxcolors;
 			if (pclr > colors) pclr = colors;
 
+			DLOGT("PNG PLTE loading %u colors",pclr);
 			if (sizeof(struct minipng_PLTE_color) == 3 && sizeof(PALETTEENTRY) > 3 && pclr != 0) {
 				unsigned int i = pclr;
 
