@@ -208,9 +208,9 @@ $(SUBDIR_LIB)$(HPS)libmain.obj: libmain.c
 
 all: lib dll exe .symbolic
 
-lib: $(EXT_ZLIB_LIB_LIB) $(EXT_ZLIB_LIB_DLL) $(EXT_ZLIB_DLL) .symbolic
+lib: $(EXT_ZLIB_LIB_LIB) .symbolic
 
-dll: $(EXT_ZLIB_DLL) .symbolic
+dll: $(EXT_ZLIB_DLL) $(EXT_ZLIB_LIB_DLL) .symbolic
 
 testexe: $(EXT_ZLIB_EXAMPLE_EXE_DLL) $(EXT_ZLIB_EXAMPLE_EXE_LIB) .symbolic
 
