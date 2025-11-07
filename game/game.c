@@ -1167,7 +1167,7 @@ void FreeSpriteRes(void) {
 
 #if GAMEDEBUG
 /* DEBUG: Draw a BMPr directly on the window */
-void DrawBMPr(HDC hDC,const BMPrHandle h,int x,int y) {
+void DrawBMPrHDC(HDC hDC,const BMPrHandle h,int x,int y) {
 	if (Spriter && h < SpriterMax) {
 		struct BMPres *r = BMPr + h;
 
@@ -1192,7 +1192,14 @@ void DrawBMPr(HDC hDC,const BMPrHandle h,int x,int y) {
 		}
 	}
 }
+
+void DrawBMPr(const BMPrHandle h,int x,int y) {
+	HDC hDC = GetDC(hwndMain);
+	DrawBMPrHDC(hDC,h,x,y);
+	ReleaseDC(hwndMain,hDC);
+}
 #else
+# define DrawBMPrHDC(...)
 # define DrawBMPr(...)
 #endif
 
@@ -1442,7 +1449,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 				if (oldPalette) RealizePalette(ps.hdc);
 			}
 
-			DrawBMPr(ps.hdc,0/*BMPr*/,0/*x*/,0/*y*/);
+			DrawBMPrHDC(ps.hdc,0/*BMPr*/,0/*x*/,0/*y*/);
 
 			if (WndHanPalette)
 				SelectPalette(ps.hdc,oldPalette,TRUE);
