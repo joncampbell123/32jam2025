@@ -1080,6 +1080,245 @@ finish:
 	}
 }
 
+void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
+	struct minipng_PLTE_color *plte = NULL;
+	struct minipng_IHDR ihdr = {0};
+	unsigned char *pngraw = NULL;
+	unsigned char *bihraw = NULL; // combined BITMAPINFOHEADER and palette for GDI to use
+	unsigned int plte_colors = 0;
+	unsigned char pngstride = 0;
+	unsigned char *slice = NULL;
+	unsigned int stride,i,y,lh;
+	unsigned int sliceheight;
+	unsigned int bihSize = 0;
+	HDC bmpDC = (HDC)NULL;
+	unsigned char tmp[9];
+	DWORD length,chktype;
+	z_stream z = {0};
+	off_t ofs = 8;
+
+#if GAMEDEBUG
+	if (bytswp32(0x11223344) != 0x44332211) {
+		DLOGT("bytswp32 failed to byte swap properly");
+		return;
+	}
+#endif
+
+	/* assume the PNG signature is already there and that the calling code verified it already */
+	/* PNG chunk struct
+	 *   DWORD length
+	 *   DWORD chunkType
+	 *   BYTE data[]
+	 *   DWORD crc32 (we ignore it)
+	 *
+	 * 32-bit values are big endian */
+
+	DLOGT("Loading PNG #%u res",h);
+
+	while (1) {
+		if (lseek(fd,ofs,SEEK_SET) != ofs) break;
+
+		if (read(fd,tmp,8) != 8) break;
+		tmp[8] = 0;
+		ofs += 8;
+
+		length = bytswp32(*((DWORD*)(tmp+0)));
+		chktype = bytswp32(*((DWORD*)(tmp+4)));
+
+		DLOGT("PNG chunk at %lu: length=%lu chktype=0x%lx '%s'",
+			(unsigned long)ofs,(unsigned long)length,(unsigned long)chktype,tmp+4);
+
+		if (chktype == 0x49484452/*IHDR*/ && length >= sizeof(ihdr)) {
+			read(fd,&ihdr,sizeof(ihdr));
+
+			ihdr.height = bytswp32(ihdr.height);
+			ihdr.width = bytswp32(ihdr.width);
+
+			DLOGT("PNG IHDR: width=%lu height=%lu bit_depth=%u color_type=%u compression_method=%u filter_method=%u interlace_method=%u",
+				(unsigned long)ihdr.width,
+				(unsigned long)ihdr.height,
+				ihdr.bit_depth,
+				ihdr.color_type,
+				ihdr.compression_method,
+				ihdr.filter_method,
+				ihdr.interlace_method);
+		}
+		else if (chktype == 0x504C5445/*PLTE*/ && length >= 3) {
+			unsigned int pclr = length / 3;
+			if (pclr > 256) pclr = 256;
+			plte_colors = pclr;
+
+			plte = malloc(sizeof(struct minipng_PLTE_color) * plte_colors);
+			if (plte) {
+				DLOGT("Loading PNG PLTE palette colors=%u",pclr);
+				read(fd,plte,sizeof(struct minipng_PLTE_color) * plte_colors);
+			}
+			else {
+				DLOGT("ERROR: Unable to malloc PNG PLTE palette colors=%u",pclr);
+			}
+		}
+		else if (chktype == 0x49444154/*IDAT*/) {
+			DLOGT("Found PNG IDAT, halting read to process");
+			ofs -= 8;
+			break;
+		}
+
+		ofs += length; /* skip data[] */
+
+		ofs += 4; /* skip CRC32 */
+
+		/* stop at IEND */
+		if (chktype == 0x49454E44/*IEND*/) {
+			DLOGT("PNG IEND unexpected");
+			goto finish;
+		}
+	}
+
+	if (ihdr.width == 0 || ihdr.height == 0 || ihdr.width > 2048 || ihdr.height > 2048 ||
+		!(ihdr.bit_depth == 1 || ihdr.bit_depth == 4 || ihdr.bit_depth == 8) ||
+		ihdr.compression_method != 0 || ihdr.filter_method != 0 || ihdr.interlace_method != 0) {
+		DLOGT("PNG format not supported");
+		goto finish;
+	}
+
+	bihSize = sizeof(BITMAPINFOHEADER);
+	if (ihdr.color_type == 3/*indexed*/) {
+		bihSize += plte_colors * sizeof(RGBQUAD);
+	}
+	else {
+		DLOGT("PNG format (color type) not supported");
+		goto finish;
+	}
+
+	bihraw = malloc(bihSize);
+	if (!bihraw) {
+		DLOGT("Cannot alloc PNG BITMAPINFOHEADER");
+		goto finish;
+	}
+	memset(bihraw,0,bihSize);
+
+	if (!InitBMPrGDIObject(h,ihdr.width,ihdr.height)) { /* updates br->width, br->height */
+		DLOGT("Unable to init GDI bitmap for BMP");
+		goto finish;
+	}
+
+	bmpDC = BMPrGDIObjectGetDC(h);
+	if (!bmpDC) {
+		DLOGT("CreateCompatibleDC failed");
+		goto finish;
+	}
+	DLOGT("GDI bitmap OK for BMP");
+
+	{
+		HBRUSH oldBrush,newBrush;
+		HPEN oldPen,newPen;
+
+		newPen = (HPEN)GetStockObject(NULL_PEN);
+		newBrush = (HBRUSH)GetStockObject(WHITE_BRUSH);
+
+		oldPen = SelectObject(bmpDC,newPen);
+		oldBrush = SelectObject(bmpDC,newBrush);
+
+		Rectangle(bmpDC,0,0,br->width+1u,br->height+1u);
+
+		SelectObject(bmpDC,oldBrush);
+		SelectObject(bmpDC,oldPen);
+	}
+
+	{
+		BITMAPINFOHEADER *bih = (BITMAPINFOHEADER*)bihraw;
+		bih->biSize = sizeof(BITMAPINFOHEADER);
+		bih->biWidth = ihdr.width;
+		bih->biHeight = ihdr.height;
+		bih->biPlanes = 1;
+		bih->biBitCount = ihdr.bit_depth;
+		bih->biCompression = 0;
+
+		stride = (unsigned int)(((((unsigned long)bih->biWidth * (unsigned long)bih->biBitCount) + 31ul) & (~31ul)) >> 3ul);
+
+		/* NTS: The actual PNG compressed image has one extra pixel on the end, which I think has something to do with
+		 *      the filtering modes. Allocate room for one scanline of PNG. */
+		pngstride = (((unsigned long)ihdr.bit_depth * ((unsigned long)ihdr.width + 1ul)) + 7ul) / 8ul;
+
+		bih->biSizeImage = stride * ihdr.height;
+		if (bih->biBitCount <= 8) {
+			RGBQUAD *pal = (RGBQUAD*)(bihraw + bih->biSize);
+
+			bih->biClrUsed = plte_colors;
+			bih->biClrImportant = plte_colors;
+			if (plte && plte_colors != 0u) {
+				for (i=0;i < plte_colors;i++) {
+					pal[i].rgbRed = plte[i].red;
+					pal[i].rgbGreen = plte[i].green;
+					pal[i].rgbBlue = plte[i].blue;
+					pal[i].rgbReserved = 0;
+				}
+			}
+		}
+
+#if TARGET_MSDOS == 32
+		sliceheight = (unsigned int)ihdr.height;
+#else
+		sliceheight = 0xF000u / stride;
+#endif
+		DLOGT("BMP loading slice height %u/%u",sliceheight,(unsigned int)ihdr.height);
+		if (!sliceheight) {
+			DLOGT("Slice height not valid");
+			goto finish;
+		}
+
+		slice = malloc(sliceheight * stride);
+		if (!slice) {
+			DLOGT("ERROR: Cannot allocate memory for BMP data loading");
+			goto finish;
+		}
+
+		pngraw = malloc(pngstride);
+		if (!pngraw) {
+			DLOGT("ERROR: Cannot allocate memory for PNG scanline");
+			goto finish;
+		}
+	}
+
+	for (y=0;y < br->height;y += sliceheight) {
+		lh = sliceheight;
+		if ((y+lh) > br->height) lh = br->height - y;
+
+		if (lh > sliceheight) {
+			DLOGT("BUG! line %d",__LINE__);
+			break;
+		}
+
+		DLOGT("PNG slice load y=%u h=%u of height=%u bytes=%lu",y,lh,br->height,(unsigned long)lh * (unsigned long)stride);
+	}
+
+finish:
+	if (z.next_in != NULL) {
+		inflateEnd(&z);
+		z.next_in = NULL;
+	}
+	if (bmpDC) {
+		BMPrGDIObjectReleaseDC(h);
+		bmpDC = (HDC)NULL;
+	}
+	if (slice) {
+		free(slice);
+		slice = NULL;
+	}
+	if (plte) {
+		free(plte);
+		plte = NULL;
+	}
+	if (pngraw) {
+		free(pngraw);
+		pngraw = NULL;
+	}
+	if (bihraw) {
+		free(bihraw);
+		bihraw = NULL;
+	}
+}
+
 BOOL LoadBMPr(const BMPrHandle h,const char *p) {
 	if (BMPr && h < BMPrMax) {
 		struct BMPres *b = BMPr + h;
@@ -1100,7 +1339,7 @@ BOOL LoadBMPr(const BMPrHandle h,const char *p) {
 			}
 			else if (!memcmp(tmp,"\x89PNG\x0D\x0A\x1A\x0A",8)) {
 				DLOGT("PNG image in %s",p);
-				DLOGT("[TODO] PNG image load");
+				LoadBMPrFromPNG(fd,b,h);
 			}
 			else {
 				DLOGT("Unable to identify image type in %s",p);
@@ -1884,7 +2123,7 @@ err1:
 	}
 
 	LoadLogPalette("palette.png");
-	LoadBMPr(0,"sht1_8.bmp");
+	LoadBMPr(0,"sht1_8.png");
 
 	ShowWindow(hwndMain,nCmdShow);
 	UpdateWindow(hwndMain);
