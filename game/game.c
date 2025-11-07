@@ -553,8 +553,113 @@ void LoadLogPaletteBMP(int fd,PALETTEENTRY *pels,UINT colors) {
 	}
 }
 
+uint32_t bytswp32(uint32_t t) {
+	t = (t << 16) | (t >> 16);
+	t = ((t & 0xFF00FF00) >> 8) | ((t & 0x00FF00FF) << 8);
+	return t;
+}
+
+/* PNG IHDR [https://www.w3.org/TR/PNG/#11IHDR]. Fields are big endian. */
+#pragma pack(push,1)
+struct minipng_IHDR {
+    uint32_t        width;                  /* +0x00 */
+    uint32_t        height;                 /* +0x04 */
+    uint8_t         bit_depth;              /* +0x08 */
+    uint8_t         color_type;             /* +0x09 */
+    uint8_t         compression_method;     /* +0x0A */
+    uint8_t         filter_method;          /* +0x0B */
+    uint8_t         interlace_method;       /* +0x0C */
+};                                          /* =0x0D */
+#pragma pack(pop)
+
+/* PNG PLTE [https://www.w3.org/TR/PNG/#11PLTE] */
+#pragma pack(push,1)
+struct minipng_PLTE_color {
+    uint8_t         red,green,blue;         /* +0x00,+0x01,+0x02 */
+};                                          /* =0x03 */
+#pragma pack(pop)
+
 void LoadLogPalettePNG(int fd,PALETTEENTRY *pels,UINT colors) {
-	DLOGT("[TODO] PNG image palette support");
+	struct minipng_IHDR ihdr = {0};
+	unsigned int pngmaxcolors = 0;
+	unsigned char tmp[9];
+	DWORD length,chktype;
+	off_t ofs = 8;
+
+#if GAMEDEBUG
+	if (bytswp32(0x11223344) != 0x44332211) {
+		DLOGT("bytswp32 failed to byte swap properly");
+		return;
+	}
+#endif
+
+	/* assume the PNG signature is already there and that the calling code verified it already */
+	/* PNG chunk struct
+	 *   DWORD length
+	 *   DWORD chunkType
+	 *   BYTE data[]
+	 *   DWORD crc32 (we ignore it)
+	 *
+	 * 32-bit values are big endian */
+
+	while (1) {
+		if (lseek(fd,ofs,SEEK_SET) != ofs) break;
+
+		if (read(fd,tmp,8) != 8) break;
+		tmp[8] = 0;
+		ofs += 8;
+
+		length = bytswp32(*((DWORD*)(tmp+0)));
+		chktype = bytswp32(*((DWORD*)(tmp+4)));
+
+		DLOGT("PNG chunk at %lu: length=%lu chktype=0x%lx '%s'",
+			(unsigned long)ofs,(unsigned long)length,(unsigned long)chktype,tmp+4);
+
+		if (chktype == 0x49484452/*IHDR*/ && length >= 0xD) {
+			read(fd,&ihdr,sizeof(ihdr));
+
+			/* we care about bit depth and color type */
+			DLOGT("IHDR: width=%lu height=%lu bit_depth=%u color_type=%u compression_method=%u filter_method=%u interlace_method=%u",
+				(unsigned long)bytswp32(ihdr.width),(unsigned long)bytswp32(ihdr.height),
+				ihdr.bit_depth,ihdr.color_type,ihdr.compression_method,
+				ihdr.filter_method,ihdr.interlace_method);
+
+			if (ihdr.bit_depth >= 1 && ihdr.bit_depth <= 8 && ihdr.color_type == 3/*indexed color*/) {
+				pngmaxcolors = 1u << ihdr.bit_depth;
+			}
+		}
+		else if (chktype == 0x504C5445/*PLTE*/ && length >= 3) {
+			unsigned int pclr = length / 3;
+
+			if (pclr > pngmaxcolors) pclr = pngmaxcolors;
+			if (pclr > colors) pclr = colors;
+
+			if (sizeof(struct minipng_PLTE_color) == 3 && sizeof(PALETTEENTRY) > 3 && pclr != 0) {
+				unsigned int i = pclr;
+
+				read(fd,pels,3*pclr);
+
+				/* convert in place backwards */
+				while ((i--) > 0) {
+					const struct minipng_PLTE_color pc = ((struct minipng_PLTE_color*)pels)[i];
+					pels[i].peRed = pc.red;
+					pels[i].peGreen = pc.green;
+					pels[i].peBlue = pc.blue;
+					pels[i].peFlags = 0;
+				}
+			}
+		}
+
+		ofs += length; /* skip data[] */
+
+		ofs += 4; /* skip CRC32 */
+
+		/* stop at IEND */
+		if (chktype == 0x49454E44/*IEND*/) {
+			DLOGT("PNG IEND found, stopping");
+			break;
+		}
+	}
 }
 
 void LoadLogPalette(const char *p) {
@@ -564,19 +669,19 @@ void LoadLogPalette(const char *p) {
 		fd = open(p,O_RDONLY|O_BINARY);
 		if (fd >= 0) {
 			PALETTEENTRY *pels = (PALETTEENTRY*)(&WndLogPalette->palPalEntry[0]);
-			char tmp[4] = {0};
+			char tmp[8] = {0};
 
 			DLOGT("Loading logical palette from source image %s",p);
 			memset(pels,0,WndScreenInfo.PaletteSize * sizeof(PALETTEENTRY));
 
 			lseek(fd,0,SEEK_SET);
-			read(fd,tmp,4);
+			read(fd,tmp,8);
 
 			if (!memcmp(tmp,"BM",2)) {
 				DLOGT("BMP image in %s",p);
 				LoadLogPaletteBMP(fd,pels,WndScreenInfo.PaletteSize);
 			}
-			else if (!memcmp(tmp,"\x89PNG",4)) {
+			else if (!memcmp(tmp,"\x89PNG\x0D\x0A\x1A\x0A",8)) {
 				DLOGT("PNG image in %s",p);
 				LoadLogPalettePNG(fd,pels,WndScreenInfo.PaletteSize);
 			}
@@ -1258,7 +1363,7 @@ err1:
 	}
 
 	InitColorPalette();
-	LoadLogPalette("palette.bmp");
+	LoadLogPalette("palette.png");
 
 	ShowWindow(hwndMain,nCmdShow);
 	UpdateWindow(hwndMain);
