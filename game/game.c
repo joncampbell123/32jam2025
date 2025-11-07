@@ -500,6 +500,107 @@ void FreeColorPalette(void) {
 	FreePaletteObject();
 }
 
+void LoadLogPaletteBMP(int fd,PALETTEENTRY *pels,UINT colors) {
+	BITMAPFILEHEADER bfh;
+	BITMAPINFOHEADER bih;
+	unsigned int i;
+	DWORD bclr;
+
+	lseek(fd,0,SEEK_SET);
+
+	memset(&bfh,0,sizeof(bfh));
+	read(fd,&bfh,sizeof(bfh));
+	/* assume bfh.bfType == 'BM' because the calling function already checked that */
+	read(fd,&bih,sizeof(bih));
+
+	/* all that matters is whether the bit count is below 8 and the BMP has a color palette */
+	if (!(bih.biBitCount >= 1 && bih.biBitCount <= 8 && bih.biPlanes == 1)) {
+		DLOGT("BMP file is not paletted (%u bits per pixel)",bih.biBitCount);
+		return;
+	}
+
+	bclr = 1u << bih.biBitCount;
+	if (bih.biClrUsed != 0 && bclr > bih.biClrUsed) bclr = bih.biClrUsed;
+	if (bclr > colors) bclr = colors;
+
+	DLOGT("Will load %u colors from BMP palette",bclr);
+	if (bclr && sizeof(RGBQUAD) == sizeof(PALETTEENTRY)/*4 bytes per entry in both or else this code is wrong*/) {
+		DLOGT("Loading %u colors from BMP palette",bclr);
+
+		/* palette follows the BITMAPINFOHEADER */
+		read(fd,pels,bclr * sizeof(RGBQUAD));
+
+		/* convert in place */
+		for (i=0;i < bclr;i++) {
+			/* RGBQUAD
+			 *   rgbBlue
+			 *   rgbGreen
+			 *   rgbBlue
+			 *   rgbReserved
+			 *
+			 * PALETTEENTRY
+			 *   peRed
+			 *   peGreen
+			 *   peBlue
+			 *   peFlags
+			 */
+			const RGBQUAD tmp = ((RGBQUAD*)pels)[i];
+			pels[i].peRed = tmp.rgbRed;
+			pels[i].peGreen = tmp.rgbGreen;
+			pels[i].peBlue = tmp.rgbBlue;
+			pels[i].peFlags = 0;
+		}
+	}
+}
+
+void LoadLogPalettePNG(int fd,PALETTEENTRY *pels,UINT colors) {
+	DLOGT("[TODO] PNG image palette support");
+}
+
+void LoadLogPalette(const char *p) {
+	if (WndLogPalette) {
+		int fd;
+
+		fd = open(p,O_RDONLY|O_BINARY);
+		if (fd >= 0) {
+			PALETTEENTRY *pels = (PALETTEENTRY*)(&WndLogPalette->palPalEntry[0]);
+			char tmp[4] = {0};
+
+			DLOGT("Loading logical palette from source image %s",p);
+			memset(pels,0,WndScreenInfo.PaletteSize * sizeof(PALETTEENTRY));
+
+			lseek(fd,0,SEEK_SET);
+			read(fd,tmp,4);
+
+			if (!memcmp(tmp,"BM",2)) {
+				DLOGT("BMP image in %s",p);
+				LoadLogPaletteBMP(fd,pels,WndScreenInfo.PaletteSize);
+			}
+			else if (!memcmp(tmp,"\x89PNG",4)) {
+				DLOGT("PNG image in %s",p);
+				LoadLogPalettePNG(fd,pels,WndScreenInfo.PaletteSize);
+			}
+			else {
+				DLOGT("Unable to identify image type in %s",p);
+			}
+
+			if (WndHanPalette) {
+				UINT chg;
+
+				chg = SetPaletteEntries(WndHanPalette,0,WndScreenInfo.PaletteSize,pels);
+				DLOGT("Applying palette to GDI object, %u colors changed",chg);
+
+				RealizePaletteObject();
+			}
+
+			close(fd);
+		}
+		else {
+			DLOGT("Unable to open palette source image %s",p);
+		}
+	}
+}
+
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
 LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 #else
@@ -1157,6 +1258,7 @@ err1:
 	}
 
 	InitColorPalette();
+	LoadLogPalette("palette.bmp");
 
 	ShowWindow(hwndMain,nCmdShow);
 	UpdateWindow(hwndMain);

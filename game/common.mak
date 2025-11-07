@@ -9,6 +9,8 @@ DEBUG=1
 CFLAGS_THIS += -DGAMEDEBUG
 !endif
 
+COPY_IF_NEWER=cp -v -u
+
 !include "../vars.mak"
 
 RCFLAGS_THIS = -i.. -i"../.."
@@ -53,6 +55,7 @@ $(GAME_EXE): $(SUBDIR)$(HPS)game.obj $(GAME_RES)
 	@wbind $(GAME_EXE) -q -R $(GAME_RES)
 !endif
 	@$(COPY) ..$(HPS)dos32a.dat $(SUBDIR)$(HPS)dos4gw.exe
+	@$(COPY_IF_NEWER) *.bmp *.png $(SUBDIR)$(HPS)
 !ifdef WIN_NE_SETVER_BUILD
 	$(WIN_NE_SETVER_BUILD) $(GAME_EXE)
 !endif
