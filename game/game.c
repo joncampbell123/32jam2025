@@ -244,7 +244,7 @@ BYTE near			WndConfigFlags = WndCFG_ShowMenu;
 // NOTE: To prevent resizing completely, set the min, max, and def sizes to the exact same value
 const POINT near		WndMinSizeClient = { 80, 60 };
 POINT near			WndMinSize = { 0, 0 };
-const POINT near		WndMaxSizeClient = { 480, 360 };
+const POINT near		WndMaxSizeClient = { 600, 380 };
 POINT near			WndMaxSize = { 0, 0 };
 const POINT near		WndDefSizeClient = { 320, 240 };
 POINT near			WndDefSize = { 0, 0 };
@@ -276,6 +276,31 @@ int near			WndAdjustWindowRectBug_yadd = 0;
 // 256-color palette
 LOGPALETTE*			WndLogPalette = NULL;
 HPALETTE near			WndHanPalette = (HPALETTE)NULL;
+
+// loaded bitmap resource
+struct BMPres {
+	HBITMAP			bmpObj;
+	unsigned short		width,height;
+	unsigned short		flags;
+};
+
+#define BMPresFlag_Allocated	0x0001u
+
+typedef WORD			BMPrHandle;
+WORD near			BMPrMax = 4;
+struct BMPres*			BMPr = NULL;
+
+// sprite within bitmap
+struct SpriteRes {
+	BMPrHandle		bmp;
+	unsigned short		x,y,w,h; /* subregion of bmp */
+};
+
+typedef WORD			SpriterHandle;
+WORD near			SpriterMax = 4;
+struct SpriteRes*		Spriter = NULL;
+
+/////////////////////////////////////////////////////////////
 
 int clamp0(int x) {
 	return x >= 0 ? x : 0;
@@ -501,7 +526,7 @@ void FreeColorPalette(void) {
 	FreePaletteObject();
 }
 
-void LoadLogPaletteBMP(int fd,PALETTEENTRY *pels,UINT colors) {
+void LoadLogPaletteBMP(const int fd,PALETTEENTRY *pels,UINT colors) {
 	BITMAPFILEHEADER bfh;
 	BITMAPINFOHEADER bih;
 	unsigned int i;
@@ -600,7 +625,7 @@ struct minipng_PLTE_color {
 };                                          /* =0x03 */
 #pragma pack(pop)
 
-void LoadLogPalettePNG(int fd,PALETTEENTRY *pels,UINT colors) {
+void LoadLogPalettePNG(const int fd,PALETTEENTRY *pels,UINT colors) {
 	unsigned char tmp[9];
 	DWORD length,chktype;
 	off_t ofs = 8;
@@ -707,6 +732,477 @@ void LoadLogPalette(const char *p) {
 		}
 		else {
 			DLOGT("Unable to open palette source image %s",p);
+		}
+	}
+}
+
+#define BMPrNone ((WORD)(-1))
+
+static const struct BMPres near BMPrInit = { .bmpObj = (HBITMAP)NULL, .width = 0, .height = 0, .flags = 0 };
+static const struct SpriteRes near SpriterInit = { .bmp = BMPrNone, .x = 0, .y = 0, .w = 0, .h = 0 };
+
+BOOL InitBMPRes(void) {
+	unsigned int i;
+
+	if (!BMPr && BMPrMax != 0) {
+		DLOGT("Allocating BMP res array, %u max",BMPrMax);
+		BMPr = malloc(BMPrMax * sizeof(struct BMPres));
+		if (!BMPr) {
+			DLOGT("Failed to allocate array");
+			return FALSE;
+		}
+		for (i=0;i < BMPrMax;i++) BMPr[i] = BMPrInit;
+	}
+
+	return TRUE;
+}
+
+BOOL InitSpriteRes(void) {
+	unsigned int i;
+
+	if (!Spriter && SpriterMax != 0) {
+		DLOGT("Allocating sprite res array, %u max",SpriterMax);
+		Spriter = malloc(SpriterMax * sizeof(struct SpriteRes));
+		if (!Spriter) {
+			DLOGT("Failed to allocate array");
+			return FALSE;
+		}
+		for (i=0;i < SpriterMax;i++) Spriter[i] = SpriterInit;
+	}
+
+	return TRUE;
+}
+
+BOOL IsBMPresAlloc(const BMPrHandle h) {
+	if (BMPr && h < BMPrMax) {
+		struct BMPres *b = BMPr + h;
+		if (b->flags & BMPresFlag_Allocated) return TRUE;
+	}
+
+	return FALSE;
+}
+
+BOOL IsSpriteResAlloc(const SpriterHandle h) {
+	if (BMPr && h < SpriterMax) {
+		struct SpriteRes *r = Spriter + h;
+		if (r->bmp != BMPrNone) return TRUE;
+	}
+
+	return FALSE;
+}
+
+void FreeBMPrGDIObject(const BMPrHandle h) {
+	if (BMPr && h < BMPrMax) {
+		struct BMPres *b = BMPr + h;
+		if (b->bmpObj != (HBITMAP)NULL) {
+			DLOGT("Freeing BMP #%u res GDI object",h);
+			DeleteObject((HGDIOBJ)(b->bmpObj));
+			b->bmpObj = (HBITMAP)NULL;
+		}
+	}
+}
+
+BOOL InitBMPrGDIObject(const BMPrHandle h,unsigned int width,unsigned int height) {
+	if (BMPr && h < BMPrMax) {
+		struct BMPres *b = BMPr + h;
+
+		/* free only if change in dimensions */
+		if (b->bmpObj != (HBITMAP)NULL && (b->width != width || b->height != height)) {
+			DLOGT("Init GDI BMP object #%u res, width and height changed, freeing bitmap",h);
+			FreeBMPrGDIObject(h);
+		}
+
+		if (b->bmpObj == (HBITMAP)NULL && width > 0 && height > 0) {
+			HDC hDC = GetDC(hwndMain);
+			b->width = width;
+			b->height = height;
+			b->flags = BMPresFlag_Allocated;
+			b->bmpObj = CreateCompatibleBitmap(hDC,width,height);
+			ReleaseDC(hwndMain,hDC);
+
+			if (!b->bmpObj) {
+				DLOGT("Unable to create GDI bitmap compatible with screen of width=%u height=%u",width,height);
+				return FALSE;
+			}
+		}
+	}
+
+	return TRUE;
+}
+
+static BMPrHandle BMPrGDICurrent = BMPrNone;
+static HDC BMPrGDIbmpDC = (HDC)NULL;
+static HBITMAP BMPrGDIbmpOld = (HBITMAP)NULL;
+
+HDC BMPrGDIObjectGetDC(const BMPrHandle h) {
+	if (BMPr && h < BMPrMax && BMPrGDICurrent == BMPrNone) {
+		struct BMPres *b = BMPr + h;
+		if (b->bmpObj) {
+			HDC hDC = GetDC(hwndMain);
+			HDC retDC = CreateCompatibleDC(hDC);
+			ReleaseDC(hwndMain,hDC);
+
+			if (retDC) {
+				BMPrGDIbmpOld = (HBITMAP)SelectObject(retDC,b->bmpObj);
+				if (BMPrGDIbmpOld == (HBITMAP)NULL) {
+					DLOGT("Unable to select bitmap into compatdc");
+					DeleteDC(retDC);
+					return NULL;
+				}
+
+				if (WndHanPalette) {
+					if (SelectPalette(retDC,WndHanPalette,FALSE) == (HPALETTE)NULL)
+						DLOGT("ERROR: Cannot select palette into BMP compat DC");
+
+					RealizePalette(retDC);
+				}
+
+				BMPrGDICurrent = h;
+				BMPrGDIbmpDC = retDC;
+				return retDC;
+			}
+			else {
+				DLOGT("Unable to CreateCompatibleDC");
+			}
+		}
+	}
+
+	return NULL;
+}
+
+void BMPrGDIObjectReleaseDC(const BMPrHandle h) {
+	if (BMPr && h < BMPrMax) {
+		if (BMPrGDICurrent != BMPrNone) {
+			if (BMPrGDICurrent == h) {
+				if (BMPrGDIbmpDC) {
+					if (BMPrGDIbmpOld != (HBITMAP)NULL) {
+						SelectObject(BMPrGDIbmpDC,BMPrGDIbmpOld);
+						BMPrGDIbmpOld = (HBITMAP)NULL;
+					}
+
+					if (WndHanPalette) {
+						if (SelectPalette(BMPrGDIbmpDC,(HPALETTE)GetStockObject(DEFAULT_PALETTE),FALSE) == (HPALETTE)NULL)
+							DLOGT("ERROR: Cannot select stock palette into BMP compat DC");
+					}
+
+					DeleteDC(BMPrGDIbmpDC);
+					BMPrGDIbmpDC = (HDC)NULL;
+				}
+				BMPrGDICurrent = BMPrNone;
+			}
+			else  {
+				DLOGT(__FUNCTION__ " attempt to release #%u res when #%u is the one in use, not releasing",h,BMPrGDICurrent);
+			}
+		}
+		else {
+			DLOGT(__FUNCTION__ " attempt to release #%u res when none are in use, not releasing",h);
+		}
+	}
+}
+
+void LoadBMPrFromBMP(const int fd,struct BMPres *br,const BMPrHandle h) {
+	unsigned char *bihraw = NULL; // combined BITMAPINFOHEADER and palette for GDI to use
+	unsigned char *slice = NULL;
+	unsigned int sliceheight;
+	BITMAPFILEHEADER bfh;
+	BITMAPINFOHEADER bih;
+	HDC bmpDC = (HDC)NULL;
+	unsigned int bihColors;
+	unsigned int bihSize;
+	unsigned int y,lh,r;
+	unsigned int stride;
+
+	lseek(fd,0,SEEK_SET);
+
+	memset(&bfh,0,sizeof(bfh));
+	read(fd,&bfh,sizeof(bfh));
+	/* assume bfh.bfType == 'BM' because the calling function already checked that */
+	read(fd,&bih,sizeof(bih));
+
+	/* require at least biSize >= 40. No old OS/2 format, please. */
+	if (bih.biSize < 40 || bih.biSize > 2048) {
+		DLOGT("BMP file biSize is wrong size, must be BITMAPINFOHEADER");
+		goto finish;
+	}
+
+	DLOGT("BMP file header bfSize=%lu bfOffBits=%lu",
+		(unsigned long)bfh.bfSize,
+		(unsigned long)bfh.bfOffBits);
+
+	/* biCompression == 0, uncompressed only.
+	 * Don't even bother with Windows 95/NT biCompression == BI_BITFIELDS */
+	if (bih.biCompression != 0) {
+		DLOGT("BMP file compression not supported, must be traditional uncompressed format");
+		goto finish;
+	}
+
+	DLOGT("BMP biSize=%u biWidth=%ld biHeight=%ld biPlanes=%u biBitCount=%u biSizeImage=%lu biClrUsed=%lu",
+		(unsigned int)bih.biSize,
+		(int32_t)bih.biWidth,
+		(int32_t)bih.biHeight,
+		(unsigned int)bih.biPlanes,
+		(unsigned int)bih.biBitCount,
+		(unsigned long)bih.biSizeImage,
+		(unsigned long)bih.biClrUsed);
+
+	if (bih.biHeight <= 0 || bih.biWidth <= 0 || bih.biHeight > 2048 || bih.biWidth > 2048) {
+		DLOGT("dimensions not supported");
+		goto finish;
+	}
+	if (bih.biPlanes != 1) {
+		DLOGT("Multi-planar BMPs not supported");
+		goto finish;
+	}
+	if (!(bih.biBitCount == 1 || bih.biBitCount == 4 || bih.biBitCount == 8 || bih.biBitCount == 16 || bih.biBitCount == 24)) {
+		DLOGT("Bit depth not supported");
+		goto finish;
+	}
+
+	bihColors = 0;
+	bihSize = bih.biSize;
+	if (bih.biBitCount <= 8) {
+		bihColors = 1u << bih.biBitCount;
+		if (bih.biClrUsed > 0 && bih.biClrUsed <= 0x7FFFul && bihColors > bih.biClrUsed) bihColors = bih.biClrUsed;
+		bihSize += bihColors * sizeof(RGBQUAD);
+	}
+	DLOGT("Final BITMAPINFOHEADER size=%u colors=%u",
+		bihSize,
+		bihColors);
+
+	if (bihSize < sizeof(bih)) {
+		DLOGT("BUG! sizeof err on line %d",__LINE__);
+		goto finish;
+	}
+
+	stride = (unsigned int)(((((unsigned long)bih.biWidth * (unsigned long)bih.biBitCount) + 31ul) & (~31ul)) >> 3ul);
+	DLOGT("BMP stride %u bytes/line",stride);
+	if (!stride) {
+		DLOGT("Stride not valid");
+		goto finish;
+	}
+
+#if TARGET_MSDOS == 32
+	sliceheight = (unsigned int)bih.biHeight;
+#else
+	sliceheight = 0xF000u / stride;
+#endif
+	DLOGT("BMP loading slice height %u/%u",sliceheight,(unsigned int)bih.biHeight);
+	if (!sliceheight) {
+		DLOGT("Slice height not valid");
+		goto finish;
+	}
+
+	slice = malloc(sliceheight * stride);
+	if (!slice) {
+		DLOGT("ERROR: Cannot allocate memory for BMP data loading");
+		goto finish;
+	}
+
+	bihraw = malloc(bihSize);
+	if (!bihraw) {
+		DLOGT("ERROR: Cannot allocate memory for BITMAPINFOHEADER");
+		goto finish;
+	}
+	memcpy(bihraw,&bih,sizeof(bih));
+	{
+		const unsigned int extra = bihSize - sizeof(bih);
+		if (extra > 0) {
+			DLOGT("Reading additional %u bytes to load the remainder of the image and palette",extra);
+			read(fd,bihraw+sizeof(bih),extra);
+		}
+	}
+
+	if (lseek(fd,bfh.bfOffBits,SEEK_SET) != bfh.bfOffBits) {
+		DLOGT("Failed to seek to BMP DIB bits");
+		goto finish;
+	}
+
+	if (!InitBMPrGDIObject(h,bih.biWidth,bih.biHeight)) { /* updates br->width, br->height */
+		DLOGT("Unable to init GDI bitmap for BMP");
+		goto finish;
+	}
+
+	bmpDC = BMPrGDIObjectGetDC(h);
+	if (!bmpDC) {
+		DLOGT("CreateCompatibleDC failed");
+		goto finish;
+	}
+	DLOGT("GDI bitmap OK for BMP");
+
+	{
+		HBRUSH oldBrush,newBrush;
+		HPEN oldPen,newPen;
+
+		newPen = (HPEN)GetStockObject(NULL_PEN);
+		newBrush = (HBRUSH)GetStockObject(WHITE_BRUSH);
+
+		oldPen = SelectObject(bmpDC,newPen);
+		oldBrush = SelectObject(bmpDC,newBrush);
+
+		Rectangle(bmpDC,0,0,br->width+1u,br->height+1u);
+
+		SelectObject(bmpDC,oldBrush);
+		SelectObject(bmpDC,oldPen);
+	}
+
+	for (y=0;y < br->height;y += sliceheight) {
+		lh = sliceheight;
+		if ((y+lh) > br->height) lh = br->height - y;
+
+		if (lh > sliceheight) {
+			DLOGT("BUG! line %d",__LINE__);
+			break;
+		}
+
+		DLOGT("BMP slice load y=%u h=%u of height=%u bytes=%lu",y,lh,br->height,(unsigned long)lh * (unsigned long)stride);
+
+		r = read(fd,slice,lh * stride);
+		if (r < (lh * stride)) DLOGT("BMP read short of expectations, want=%u got=%u",lh * stride,r);
+
+		{
+			const int done = SetDIBits(bmpDC,br->bmpObj,y,sliceheight,slice,(BITMAPINFO*)bihraw,DIB_RGB_COLORS);
+			if (done < sliceheight) DLOGT("SetDIBitsToDevice() wrote less scanlines want=%d got=%d",sliceheight,done);
+		}
+	}
+
+finish:
+	if (bmpDC) {
+		BMPrGDIObjectReleaseDC(h);
+		bmpDC = (HDC)NULL;
+	}
+	if (slice) {
+		free(slice);
+		slice = NULL;
+	}
+	if (bihraw) {
+		free(bihraw);
+		bihraw = NULL;
+	}
+}
+
+BOOL LoadBMPr(const BMPrHandle h,const char *p) {
+	if (BMPr && h < BMPrMax) {
+		struct BMPres *b = BMPr + h;
+		int fd;
+
+		fd = open(p,O_RDONLY|O_BINARY);
+		if (fd >= 0) {
+			char tmp[8] = {0};
+
+			DLOGT("Loading BMP #%u res from %s",(unsigned int)h,p);
+
+			lseek(fd,0,SEEK_SET);
+			read(fd,tmp,8);
+
+			if (!memcmp(tmp,"BM",2)) {
+				DLOGT("BMP image in %s",p);
+				LoadBMPrFromBMP(fd,b,h);
+			}
+			else if (!memcmp(tmp,"\x89PNG\x0D\x0A\x1A\x0A",8)) {
+				DLOGT("PNG image in %s",p);
+				DLOGT("[TODO] PNG image load");
+			}
+			else {
+				DLOGT("Unable to identify image type in %s",p);
+			}
+
+			close(fd);
+		}
+		else {
+			DLOGT("Unable to load BMP #%u res from %s",(unsigned int)h,p);
+			return FALSE;
+		}
+	}
+	else {
+		DLOGT("Unable to load BMP #%u res from %s, handle out of range",(unsigned int)h,p);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+void FreeBMPr(const BMPrHandle h) {
+	FreeBMPrGDIObject(h);
+	if (BMPr && h < BMPrMax) {
+		struct BMPres *b = BMPr + h;
+		if (b->flags & BMPresFlag_Allocated) {
+			DLOGT("Freeing BMP #%u res",h);
+			b->width = b->height = b->flags = 0;
+		}
+	}
+}
+
+void FreeBMPRes(void) {
+	unsigned int i;
+
+	if (BMPr) {
+		DLOGT("Freeing BMP res");
+		for (i=0;i < BMPrMax;i++) FreeBMPr(i);
+		free(BMPr);
+		BMPr = NULL;
+	}
+}
+
+void FreeSpriter(const SpriterHandle h) {
+	if (Spriter && h < SpriterMax) {
+		struct SpriteRes *r = Spriter + h;
+		if (r->bmp != BMPrNone) {
+			DLOGT("Freeing sprite #%u res",h);
+			r->x = r->y = r->w = r->h = 0;
+			r->bmp = BMPrNone;
+		}
+	}
+}
+
+void FreeSpriteRes(void) {
+	unsigned int i;
+
+	if (Spriter) {
+		DLOGT("Freeing sprite res");
+		for (i=0;i < SpriterMax;i++) FreeSpriter(i);
+		free(Spriter);
+		Spriter = NULL;
+	}
+}
+
+/* DEBUG: Draw a BMPr directly on the window */
+void DrawBMPr(const BMPrHandle h,int x,int y) {
+	if (Spriter && h < SpriterMax) {
+		struct BMPres *r = BMPr + h;
+
+		if (r->bmpObj) {
+			HDC hDC = GetDC(hwndMain);
+			HDC retDC = CreateCompatibleDC(hDC);
+
+			if (retDC) {
+				HBITMAP bmpOld = (HBITMAP)SelectObject(retDC,r->bmpObj);
+				if (bmpOld == (HBITMAP)NULL) {
+					DLOGT("Unable to select bitmap into compatdc");
+					SelectObject(retDC,bmpOld);
+					DeleteDC(retDC);
+					return;
+				}
+
+				if (WndHanPalette) {
+					if (SelectPalette(retDC,WndHanPalette,FALSE) == (HPALETTE)NULL)
+						DLOGT("ERROR: Cannot select palette into BMP compat DC");
+
+					RealizePalette(retDC);
+				}
+
+				DLOGT("BitBlt BMP #%u res",h);
+				BitBlt(hDC,x,y,r->width,r->height,retDC,0,0,SRCCOPY);
+
+				if (WndHanPalette) {
+					if (SelectPalette(retDC,(HPALETTE)GetStockObject(DEFAULT_PALETTE),FALSE) == (HPALETTE)NULL)
+						DLOGT("ERROR: Cannot select stock palette into BMP compat DC");
+				}
+
+				SelectObject(retDC,bmpOld);
+				DeleteDC(retDC);
+			}
+
+			ReleaseDC(hwndMain,hDC);
 		}
 	}
 }
@@ -951,6 +1447,8 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 
 			BeginPaint(hwnd,&ps);
 			EndPaint(hwnd,&ps);
+
+			DrawBMPr(0,0,0);
 		}
 
 		return 0; /* Return 0 to signal we processed the message */
@@ -1370,7 +1868,17 @@ err1:
 	}
 
 	InitColorPalette();
+	if (!InitBMPRes()) {
+		DLOGT("Unable to init BMP res");
+		return 1;
+	}
+	if (!InitSpriteRes()) {
+		DLOGT("Unable to init sprite res");
+		return 1;
+	}
+
 	LoadLogPalette("palette.png");
+	LoadBMPr(0,"diag1.bmp");
 
 	ShowWindow(hwndMain,nCmdShow);
 	UpdateWindow(hwndMain);
@@ -1391,6 +1899,8 @@ err1:
 		DispatchMessage(&msg);
 	}
 
+	FreeBMPRes();
+	FreeSpriteRes();
 	FreeColorPalette();
 
 	return msg.wParam;
