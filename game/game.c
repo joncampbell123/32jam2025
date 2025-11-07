@@ -1449,6 +1449,11 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 		}
 	}
 
+	if (pngstride < 2) {
+		DLOGT("Invalid PNG stride");
+		goto finish;
+	}
+
 	if (!png_idat_reader_init(&pir,ofs)) {
 		DLOGT("ERROR: Cannot init PNG IDAT reader");
 		goto finish;
