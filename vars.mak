@@ -8,5 +8,12 @@
 #
 # Perhaps in the future, some game dev tools will just patch over this string
 # in the EXE without recompiling, so it helps to keep the string long.
-MODULENAME_BASE = game-12324928-7b6b-4f1c-80d1-faa748ddce9b
+#
+# 2025/11/06: Oooooh, keep the base name short. Windows 3.1 Process Status
+#             (win31ps.exe) cannot handle long module names and will CRASH
+#             when it attempts to display them!
+#
+#             If you don't give a crap about Windows 3.1 Process Status, go
+#             ahead and use long module names.
+MODULENAME_BASE = game_AAAAAAAAAAAA
 
