@@ -438,7 +438,7 @@ UINT UnrealizePaletteObject(void) {
 
 		hdc = GetDC(hwndMain);
 		if (hdc) {
-			if (SelectPalette(hdc,(HPALETTE)GetStockObject(DEFAULT_PALETTE),FALSE) == (HPALETTE)NULL)
+			if (SelectPalette(hdc,(HPALETTE)GetStockObject(DEFAULT_PALETTE),(WndStateFlags & WndState_Minimized) ? TRUE : FALSE) == (HPALETTE)NULL)
 				DLOGT("ERROR: Cannot select system palette into main window");
 
 			chg = RealizePalette(hdc);
@@ -464,7 +464,7 @@ UINT RealizePaletteObject(void) {
 
 		hdc = GetDC(hwndMain);
 		if (hdc) {
-			if (SelectPalette(hdc,WndHanPalette,FALSE) == (HPALETTE)NULL)
+			if (SelectPalette(hdc,WndHanPalette,(WndStateFlags & WndState_Minimized) ? TRUE : FALSE) == (HPALETTE)NULL)
 				DLOGT("ERROR: Cannot select palette into main window");
 
 			chg = RealizePalette(hdc);
@@ -1445,7 +1445,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			BeginPaint(hwnd,&ps);
 
 			if (WndHanPalette) {
-				oldPalette = SelectPalette(ps.hdc,WndHanPalette,FALSE);
+				oldPalette = SelectPalette(ps.hdc,WndHanPalette,(WndStateFlags & WndState_Minimized) ? TRUE : FALSE);
 				if (oldPalette) RealizePalette(ps.hdc);
 			}
 
