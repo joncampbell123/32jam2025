@@ -1878,7 +1878,7 @@ err1:
 	}
 
 	LoadLogPalette("palette.png");
-	LoadBMPr(0,"diag1.bmp");
+	LoadBMPr(0,"sht1_8.bmp");
 
 	ShowWindow(hwndMain,nCmdShow);
 	UpdateWindow(hwndMain);
