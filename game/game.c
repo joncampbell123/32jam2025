@@ -514,6 +514,19 @@ void LoadLogPaletteBMP(int fd,PALETTEENTRY *pels,UINT colors) {
 	/* assume bfh.bfType == 'BM' because the calling function already checked that */
 	read(fd,&bih,sizeof(bih));
 
+	/* require at least biSize >= 40. No old OS/2 format, please. */
+	if (bih.biSize < 40 || bih.biSize > 2048) {
+		DLOGT("BMP file biSize is wrong size, must be BITMAPINFOHEADER");
+		return;
+	}
+
+	/* biCompression == 0, uncompressed only.
+	 * Don't even bother with Windows 95/NT biCompression == BI_BITFIELDS */
+	if (bih.biCompression != 0) {
+		DLOGT("BMP file compression not supported, must be traditional uncompressed format");
+		return;
+	}
+
 	/* all that matters is whether the bit count is below 8 and the BMP has a color palette */
 	if (!(bih.biBitCount >= 1 && bih.biBitCount <= 8 && bih.biPlanes == 1)) {
 		DLOGT("BMP file is not paletted (%u bits per pixel)",bih.biBitCount);
@@ -523,6 +536,13 @@ void LoadLogPaletteBMP(int fd,PALETTEENTRY *pels,UINT colors) {
 	bclr = 1u << bih.biBitCount;
 	if (bih.biClrUsed != 0 && bclr > bih.biClrUsed) bclr = bih.biClrUsed;
 	if (bclr > colors) bclr = colors;
+
+	/* if biSize > 40 (as the GNU Image Manipulation Program likes to do by default especially if encoding
+	 * colorspace info) then skip forward to the palette */
+	if (bih.biSize > 40) {
+		DLOGT("BITMAPINFOHEADER biSize larger than base format, skipping %u bytes to the color palette",(unsigned int)bih.biSize - 40);
+		lseek(fd,bih.biSize - 40,SEEK_CUR);
+	}
 
 	DLOGT("Will load %u colors from BMP palette",bclr);
 	if (bclr && sizeof(RGBQUAD) == sizeof(PALETTEENTRY)/*4 bytes per entry in both or else this code is wrong*/) {
