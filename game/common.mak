@@ -1,9 +1,12 @@
 # this makefile is included from all the dos*.mak files, do not use directly
 # NTS: HPS is either \ (DOS) or / (Linux)
 NOW_BUILDING = GAME_EXE
-CFLAGS_THIS = -fr=nul -fo=$(SUBDIR)$(HPS).obj -i.. -i"../.."
+CFLAGS_THIS = -fr=nul -fo=$(SUBDIR)$(HPS).obj -i.. -i"../zlibifo"
 
 DEBUG=1
+
+# we need to know where "HERE" is
+HERE = $+$(%cwd)$-
 
 !ifdef DEBUG
 CFLAGS_THIS += -DGAMEDEBUG
@@ -35,8 +38,24 @@ $(GAME_RES): game.rc
 	$(RC) $(RCFLAGS_THIS) $(RCFLAGS) -fo=$(SUBDIR)$(HPS)game.res  $[@
 !endif
 
-$(GAME_EXE): $(SUBDIR)$(HPS)game.obj $(GAME_RES)
-	%write tmp.cmd option quiet system $(WLINK_SYSTEM) file $(SUBDIR)$(HPS)game.obj
+!ifdef WIN386
+ZLIBIMP=../zlibifo/$(SUBDIR)$(HPS)lib/zlibifo.lib
+$(ZLIBIMP):
+	@cd ../zlibifo
+	@$(MAKECMD) build lib $(SUBDIR)
+	@cd $(HERE)
+
+!else
+ZLIBFILE=../zlibifo/$(SUBDIR)$(HPS)dll/ZLIBIFO.DLL
+ZLIBIMP=../zlibifo/$(SUBDIR)$(HPS)dll/zlibifo.lib
+$(ZLIBFILE) $(ZLIBIMP):
+	@cd ../zlibifo
+	@$(MAKECMD) build dll $(SUBDIR)
+	@cd $(HERE)
+!endif
+
+$(GAME_EXE): $(SUBDIR)$(HPS)game.obj $(ZLIBFILE) $(ZLIBIMP) $(GAME_RES)
+	%write tmp.cmd option quiet system $(WLINK_SYSTEM) file $(SUBDIR)$(HPS)game.obj library $(ZLIBIMP)
 !ifeq TARGET_MSDOS 16
 	%write tmp.cmd option protmode # Protected mode Windows only, this shit won't run properly in real-mode Windows for weird arcane reasons!
 	%write tmp.cmd EXPORT WndProc.1 PRIVATE RESIDENT
@@ -55,6 +74,9 @@ $(GAME_EXE): $(SUBDIR)$(HPS)game.obj $(GAME_RES)
 	@wbind $(GAME_EXE) -q -R $(GAME_RES)
 !endif
 	@$(COPY) ..$(HPS)dos32a.dat $(SUBDIR)$(HPS)dos4gw.exe
+!ifdef ZLIBFILE
+	@$(COPY_IF_NEWER) $(ZLIBFILE) $(SUBDIR)$(HPS)
+!endif
 	@$(COPY_IF_NEWER) *.bmp *.png $(SUBDIR)$(HPS)
 !ifdef WIN_NE_SETVER_BUILD
 	$(WIN_NE_SETVER_BUILD) $(GAME_EXE)

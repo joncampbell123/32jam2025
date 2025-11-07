@@ -14,6 +14,7 @@
 #include <io.h>
 #include "resource.h"
 
+#include <zlib.h>
 
 ////
 #if GAMEDEBUG
@@ -995,6 +996,8 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 			}
 #endif
 			DLOG("=======================================================================");
+			DLOG("ZLIB library, resident: %s",zlibVersion());
+			DLOG("ZLIB library, compiled against: %s",ZLIB_VERSION);
 		}
 		else {
 			WndConfigFlags &= ~WndCFG_DebugLogging;
