@@ -35,11 +35,6 @@ Windows 3.0:
   Windows in 286 Standard Mode by typing "win /2" at the DOS prompt
   and then run the DOS game.
 
-- Win386 build fails to start up. According to the debug log, it exits
-  right after it says "Games graphics capabilities". It's not an issue
-  with CreateWindowEx, if it was, the log file would show all the initial
-  window size and position calculations.
-
 
 
 Windows 2.0:
@@ -68,6 +63,11 @@ FIXED BUGS, Windows Watcom Win386
   WM_GETMINMAXINFO, WM_WINPOSCHANGING, and similar functions that typecast
   lparam to a pointer. If there is a function in Win386 to covnert a 16:16
   pointer to 32-bit in order to safely use it properly, I'd like to know.
+
+- Win386 build fails to start up in Windows 3.0. According to the debug log,
+  it exits right after it says "Games graphics capabilities". It's not an
+  issue with CreateWindowEx, if it was, the log file would show all the
+  initial window size and position calculations.
 
 FIXED BUGS, Windows 2.0
 

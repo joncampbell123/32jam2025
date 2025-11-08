@@ -2195,6 +2195,8 @@ err1:
 
 #if WINVER >= 0x30A
 		// Windows 95: Get the work area, meaning, the area of the screen minus the area taken by the task bar.
+		// NTS: Open Watcom win386 will abort exit this program here in Windows 3.0 because SystemParametersInfo()
+		// did not exist until Windows 3.1.
 		{
 			RECT um;
 			if (SystemParametersInfo(SPI_GETWORKAREA,0,&um,0)) WndWorkArea = um;
