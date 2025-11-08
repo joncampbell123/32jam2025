@@ -36,6 +36,9 @@ Windows 3.0:
   and then run the DOS game. Other complex programs can also crash the same
   way.
 
+  NOTED: If you compile ZLIB into the EXE itself statically, and do not link
+         to ZLIB as an external DLL, Windows 3.0 does not exhibit this issue.
+
 
 
 Windows 2.0:
