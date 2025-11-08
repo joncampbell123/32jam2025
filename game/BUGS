@@ -45,6 +45,9 @@ Windows 3.0:
          doing anything and the issue will still happen. There is something
          about merely loading ZLIBIFO.DLL that causes this issue.
 
+  NOTED: ZLIB and ZLIBIFO, by merely being resideny, both cause this issue in
+         Windows 3.0.
+
 
 Windows 2.0:
 * NOTE: Windows 2.0 is not a primary target for this game engine yet.
