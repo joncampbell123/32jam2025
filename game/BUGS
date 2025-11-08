@@ -15,13 +15,30 @@ Windows 95:
 
 
 Windows 3.1:
-[NONE]
+- Game will always cause Windows EGA driver to crash to DOS. It happens
+  during the image loading routine. Is there something wrong with the EGA
+  driver and SetDIBits()?
 
 
 
 Windows 3.0:
 * NOTE: Windows 3.0 is not a primary target for this game engine yet.
-[NONE]
+- Game will always cause Windows EGA driver to crash to DOS. It happens
+  during the image loading routine. Is there something wrong with the EGA
+  driver and SetDIBits()? Sometimes the crash is that the EGA driver jumps
+  or calls to a NULL real-mode pointer (CS:IP at or near 0000:0000)
+
+- If you run the game, and then try to run Windows SETUP.EXE, Windows
+  hangs, and then hitting RETURN repeatedly causes Windows to crash to DOS
+  or cause an Invalid Opcode storm. This bug only happens if you are running
+  Windows 3.0 in 386 enhanced mode. It does not happen if you start
+  Windows in 286 Standard Mode by typing "win /2" at the DOS prompt
+  and then run the DOS game.
+
+- Win386 build fails to start up. According to the debug log, it exits
+  right after it says "Games graphics capabilities". It's not an issue
+  with CreateWindowEx, if it was, the log file would show all the initial
+  window size and position calculations.
 
 
 
