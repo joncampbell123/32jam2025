@@ -28,12 +28,13 @@ Windows 3.0:
   driver and SetDIBits()? Sometimes the crash is that the EGA driver jumps
   or calls to a NULL real-mode pointer (CS:IP at or near 0000:0000)
 
-- If you run the game, and then try to run Windows SETUP.EXE, Windows
-  hangs, and then hitting RETURN repeatedly causes Windows to crash to DOS
-  or cause an Invalid Opcode storm. This bug only happens if you are running
-  Windows 3.0 in 386 enhanced mode. It does not happen if you start
+- If you run the Win16 build of the game, and then try to run Windows SETUP.EXE,
+  Windows hangs, and then hitting RETURN repeatedly causes Windows to crash
+  to DOS or cause an Invalid Opcode storm. This bug only happens if you are
+  running Windows 3.0 in 386 enhanced mode. It does not happen if you start
   Windows in 286 Standard Mode by typing "win /2" at the DOS prompt
-  and then run the DOS game.
+  and then run the DOS game. Other complex programs can also crash the same
+  way.
 
 
 
