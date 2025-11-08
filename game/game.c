@@ -1183,7 +1183,6 @@ unsigned int png_idat_read(struct png_idat_reader *pr,unsigned char *buf,unsigne
 			pr->z.avail_out = len;
 
 			err = inflate(&(pr->z),Z_NO_FLUSH);
-			if (pr->z.next_out == buf) err = inflate(&(pr->z),Z_SYNC_FLUSH);
 			if (err == Z_STREAM_END) {
 				DLOGT("ZLIB stream end");
 				pr->datend = pr->datpos = 0;
