@@ -1034,7 +1034,7 @@ void LoadBMPrFromBMP(const int fd,struct BMPres *br,const BMPrHandle h) {
 		HPEN oldPen,newPen;
 
 		newPen = (HPEN)GetStockObject(NULL_PEN);
-		newBrush = (HBRUSH)GetStockObject(WHITE_BRUSH);
+		newBrush = (HBRUSH)GetStockObject(BLACK_BRUSH);
 
 		oldPen = SelectObject(bmpDC,newPen);
 		oldBrush = SelectObject(bmpDC,newBrush);
@@ -1061,7 +1061,7 @@ void LoadBMPrFromBMP(const int fd,struct BMPres *br,const BMPrHandle h) {
 
 		{
 			const int done = SetDIBits(bmpDC,br->bmpObj,y,lh,slice,(BITMAPINFO*)bihraw,DIB_RGB_COLORS);
-			if (done < sliceheight) DLOGT("SetDIBitsToDevice() wrote less scanlines want=%d got=%d",sliceheight,done);
+			if (done < lh) DLOGT("SetDIBits() wrote less scanlines want=%d got=%d",lh,done);
 		}
 	}
 
@@ -1185,9 +1185,7 @@ unsigned int png_idat_read(struct png_idat_reader *pr,unsigned char *buf,unsigne
 			err = inflate(&(pr->z),Z_NO_FLUSH);
 			if (err == Z_STREAM_END) {
 				DLOGT("ZLIB stream end");
-				pr->idatend = pr->idatpos = 0;
 				pr->idat_eof = TRUE;
-				break;
 			}
 			else if (err != Z_OK) {
 				DLOGT("ZLIB stream error %d",err);
@@ -1381,7 +1379,7 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 		HPEN oldPen,newPen;
 
 		newPen = (HPEN)GetStockObject(NULL_PEN);
-		newBrush = (HBRUSH)GetStockObject(WHITE_BRUSH);
+		newBrush = (HBRUSH)GetStockObject(BLACK_BRUSH);
 
 		oldPen = SelectObject(bmpDC,newPen);
 		oldBrush = SelectObject(bmpDC,newBrush);
@@ -1472,12 +1470,12 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 			for (sy=0;sy < lh;sy++) {
 				sr = png_idat_read(&pir,&filter,1,fd); // filter byte
 				sr = png_idat_read(&pir,slice+((lh-1u-sy)*stride),pngstride,fd);
-				if (sr != pngstride) DLOGT("PNG IDAT decompress short read want=%u got=%u",pngstride,sr);
+				if (sr != pngstride) DLOGT("PNG IDAT decompress short read want=%u got=%u sy=%u y=%u lh=%u",pngstride,sr,sy,sy+y,lh);
 			}
 
 			{
 				const int done = SetDIBits(bmpDC,br->bmpObj,br->height-y-lh,lh,slice,(BITMAPINFO*)bihraw,DIB_RGB_COLORS);
-				if (done < sliceheight) DLOGT("SetDIBitsToDevice() wrote less scanlines want=%d got=%d",sliceheight,done);
+				if (done < lh) DLOGT("SetDIBits() wrote less scanlines want=%d got=%d",lh,done);
 			}
 		}
 	}
