@@ -1253,7 +1253,6 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 	struct minipng_PLTE_color *plte = NULL;
 	struct png_idat_reader pir = {0};
 	struct minipng_IHDR ihdr = {0};
-	unsigned char *pngraw = NULL;
 	unsigned char *bihraw = NULL; // combined BITMAPINFOHEADER and palette for GDI to use
 	unsigned int plte_colors = 0;
 	unsigned char *slice = NULL;
@@ -1404,9 +1403,11 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 		bih->biCompression = 0;
 
 		stride = (unsigned int)(((((unsigned long)bih->biWidth * (unsigned long)bih->biBitCount) + 31ul) & (~31ul)) >> 3ul);
-
-		/* NTS: The actual PNG compressed image has one extra pixel on the beginning, which is the filter byte */
-		pngstride = (unsigned int)(((((unsigned long)ihdr.bit_depth * (unsigned long)ihdr.width) + 7ul) / 8ul) + 1ul);
+		pngstride = (unsigned int)((((unsigned long)ihdr.bit_depth * (unsigned long)ihdr.width) + 7ul) / 8ul);
+		if (pngstride > stride) {
+			DLOGT("pngstride > stride");
+			goto finish;
+		}
 
 		bih->biSizeImage = stride * ihdr.height;
 		if (bih->biBitCount <= 8) {
@@ -1441,12 +1442,6 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 			DLOGT("ERROR: Cannot allocate memory for BMP data loading");
 			goto finish;
 		}
-
-		pngraw = malloc(pngstride);
-		if (!pngraw) {
-			DLOGT("ERROR: Cannot allocate memory for PNG scanline");
-			goto finish;
-		}
 	}
 
 	if (pngstride < 2) {
@@ -1472,14 +1467,13 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 		DLOGT("PNG slice load y=%u h=%u of height=%u bytes=%lu",y,lh,br->height,(unsigned long)lh * (unsigned long)stride);
 
 		{
+			unsigned char filter;
 			unsigned int sy,sr;
 
-			memset(slice,0,stride * sliceheight);
 			for (sy=0;sy < lh;sy++) {
-				sr = png_idat_read(&pir,pngraw,pngstride,fd);
+				sr = png_idat_read(&pir,&filter,1,fd); // filter byte
+				sr = png_idat_read(&pir,slice+((lh-1u-sy)*stride),pngstride,fd);
 				DLOGT("PNG IDAT decompress read %u",sr);
-
-				memcpy(slice+((lh-1u-sy)*stride),pngraw+1/*skip filter byte*/,pngstride-1/*minux filter byte*/);
 			}
 
 			{
@@ -1502,10 +1496,6 @@ finish:
 	if (plte) {
 		free(plte);
 		plte = NULL;
-	}
-	if (pngraw) {
-		free(pngraw);
-		pngraw = NULL;
 	}
 	if (bihraw) {
 		free(bihraw);
