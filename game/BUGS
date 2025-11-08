@@ -37,8 +37,13 @@ Windows 3.0:
   way.
 
   NOTED: If you compile ZLIB into the EXE itself statically, and do not link
-         to ZLIB as an external DLL, Windows 3.0 does not exhibit this issue.
+         to ZLIBIFO as an external DLL, Windows 3.0 does not exhibit this issue.
 
+  NOTED: Anything that links to the ZLIBIFO.DLL, including EXAMPLE.EXE, triggers
+         this problem. The host program doesn't even have to do anything, it
+         could be a simple WinMain() function that immediately returns without
+         doing anything and the issue will still happen. There is something
+         about merely loading ZLIBIFO.DLL that causes this issue.
 
 
 Windows 2.0:
