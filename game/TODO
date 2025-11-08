@@ -26,6 +26,11 @@ TODO:
   If 2bpp and there is a tRNS chunk that marks at least one color as transparent, and
   the PLTE has only 3 colors, convert the 2bpp on load to a 1bpp image and 1bpp mask.
 
+- PNG image loader: If at some point this code is to support "truecolor" PNG images,
+  support for the various filtering modes will have to be implemented. Most programs
+  do not do filtering for indexed color but will always do filtering for truecolor
+  PNG images.
+
 DONE:
 
 - Windows 95 fullscreen mode: Add a fullscreen window flag. This flag, if set while
