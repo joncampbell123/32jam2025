@@ -2195,6 +2195,11 @@ err1:
 
 #if WINVER >= 0x30A
 		// Windows 95: Get the work area, meaning, the area of the screen minus the area taken by the task bar.
+		//
+		// Windows 3.1 has SystemParametersInfo() but will return FALSE because of course the concept of the work
+		// area did not exist then. However Win16 code in Windows 95 can call this function and get the work area
+		// in the same way that any Win32 program can.
+		//
 		// NTS: Open Watcom win386 will abort exit this program here in Windows 3.0 because SystemParametersInfo()
 		// did not exist until Windows 3.1.
 		{
