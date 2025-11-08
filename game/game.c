@@ -1472,7 +1472,7 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 			for (sy=0;sy < lh;sy++) {
 				sr = png_idat_read(&pir,&filter,1,fd); // filter byte
 				sr = png_idat_read(&pir,slice+((lh-1u-sy)*stride),pngstride,fd);
-				DLOGT("PNG IDAT decompress read %u",sr);
+				if (sr != pngstride) DLOGT("PNG IDAT decompress short read want=%u got=%u",pngstride,sr);
 			}
 
 			{
