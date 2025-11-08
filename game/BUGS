@@ -52,6 +52,14 @@ Windows 1.0:
   the existing instance.
 
 
+FIXED BUGS
+
+- Fixed a bug where the code would memset() with a NULL pointer if the
+  Windows display did not have a color palette (i.e. highcolor modes
+  or mono/16-color). This happened because the code assumed the logical
+  palette array was non-NULL and memset() the logpalette to black before
+  loading it.
+
 FIXED BUGS, Windows 95
 
 - When triggering fullscreen mode (without the work area fullscreen mode),

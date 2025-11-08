@@ -692,47 +692,50 @@ void LoadLogPalettePNG(const int fd,PALETTEENTRY *pels,UINT colors) {
 }
 
 void LoadLogPalette(const char *p) {
-	int fd;
+	if (WndLogPalette) {
+		int fd = open(p,O_RDONLY|O_BINARY);
+		if (fd >= 0) {
+			PALETTEENTRY *pels = (PALETTEENTRY*)(&WndLogPalette->palPalEntry[0]);
+			char tmp[8] = {0};
 
-	fd = open(p,O_RDONLY|O_BINARY);
-	if (fd >= 0) {
-		PALETTEENTRY *pels = (PALETTEENTRY*)(&WndLogPalette->palPalEntry[0]);
-		char tmp[8] = {0};
+			DLOGT("Loading logical palette from source image %s",p);
+			memset(pels,0,WndScreenInfo.PaletteSize * sizeof(PALETTEENTRY));
 
-		DLOGT("Loading logical palette from source image %s",p);
-		memset(pels,0,WndScreenInfo.PaletteSize * sizeof(PALETTEENTRY));
+			lseek(fd,0,SEEK_SET);
+			read(fd,tmp,8);
 
-		lseek(fd,0,SEEK_SET);
-		read(fd,tmp,8);
+			if (!memcmp(tmp,"BM",2)) {
+				DLOGT("BMP image in %s",p);
+				LoadLogPaletteBMP(fd,pels,WndScreenInfo.PaletteSize);
+			}
+			else if (!memcmp(tmp,"\x89PNG\x0D\x0A\x1A\x0A",8)) {
+				DLOGT("PNG image in %s",p);
+				LoadLogPalettePNG(fd,pels,WndScreenInfo.PaletteSize);
+			}
+			else {
+				DLOGT("Unable to identify image type in %s",p);
+			}
 
-		if (!memcmp(tmp,"BM",2)) {
-			DLOGT("BMP image in %s",p);
-			LoadLogPaletteBMP(fd,pels,WndScreenInfo.PaletteSize);
-		}
-		else if (!memcmp(tmp,"\x89PNG\x0D\x0A\x1A\x0A",8)) {
-			DLOGT("PNG image in %s",p);
-			LoadLogPalettePNG(fd,pels,WndScreenInfo.PaletteSize);
+			if (!WndHanPalette)
+				InitPaletteObject();
+
+			if (WndHanPalette) {
+				UINT chg;
+
+				chg = SetPaletteEntries(WndHanPalette,0,WndScreenInfo.PaletteSize,pels);
+				DLOGT("Applying palette to GDI object, %u colors changed",chg);
+
+				RealizePaletteObject();
+			}
+
+			close(fd);
 		}
 		else {
-			DLOGT("Unable to identify image type in %s",p);
+			DLOGT("Unable to open palette source image %s",p);
 		}
-
-		if (!WndHanPalette)
-			InitPaletteObject();
-
-		if (WndHanPalette) {
-			UINT chg;
-
-			chg = SetPaletteEntries(WndHanPalette,0,WndScreenInfo.PaletteSize,pels);
-			DLOGT("Applying palette to GDI object, %u colors changed",chg);
-
-			RealizePaletteObject();
-		}
-
-		close(fd);
 	}
 	else {
-		DLOGT("Unable to open palette source image %s",p);
+		DLOGT("Ignoring palette load from %s, video mode does not use a palette",p);
 	}
 }
 
