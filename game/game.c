@@ -1081,10 +1081,10 @@ finish:
 }
 
 struct png_idat_reader {
-	unsigned char*		buf;
-	unsigned int		buflen;
-	unsigned int		datend;
-	unsigned int		datpos;
+	unsigned char*		ibuf;
+	unsigned int		ibuflen;
+	unsigned int		idatend;
+	unsigned int		idatpos;
 	uint32_t		idat_remain;
 	off_t			pos;
 	z_stream		z;
@@ -1092,9 +1092,9 @@ struct png_idat_reader {
 };
 
 void png_idat_reader_free(struct png_idat_reader *pr) {
-	if (pr->buf) {
-		free(pr->buf);
-		pr->buf = NULL;
+	if (pr->ibuf) {
+		free(pr->ibuf);
+		pr->ibuf = NULL;
 	}
 	if (pr->z.next_in != NULL) {
 		inflateEnd(&(pr->z));
@@ -1106,13 +1106,13 @@ void png_idat_reader_refill(struct png_idat_reader *pr,int fd) {
 	DWORD length,chktype;
 	unsigned char tmp[9];
 
-	if (!pr->buf) return;
+	if (!pr->ibuf) return;
 	if (pr->idat_eof) return;
 
-	if (pr->datpos >= pr->datend)
-		pr->datpos = pr->datend = 0;
+	if (pr->idatpos >= pr->idatend)
+		pr->idatpos = pr->idatend = 0;
 
-	while (pr->datend < pr->buflen) {
+	while (pr->idatend < pr->ibuflen) {
 		if (pr->idat_remain == 0) {
 			/* assume the PNG signature is already there and that the calling code verified it already */
 			/* PNG chunk struct
@@ -1143,16 +1143,16 @@ void png_idat_reader_refill(struct png_idat_reader *pr,int fd) {
 			}
 		}
 		else {
-			unsigned int got,need = pr->buflen - pr->datend; /* assume nonzero, this loop would exit otherwise */
+			unsigned int got,need = pr->ibuflen - pr->idatend; /* assume nonzero, this loop would exit otherwise */
 			if ((uint32_t)need > pr->idat_remain) need = (unsigned int)pr->idat_remain;
 
 			DLOG("PNG IDAT refill readpos=%u appendpos=%u buflen=%u need=%u IDATremain=%lu",
-				pr->datpos,pr->datend,pr->buflen,need,(unsigned long)(pr->idat_remain));
+				pr->idatpos,pr->idatend,pr->ibuflen,need,(unsigned long)(pr->idat_remain));
 
-			got = read(fd,pr->buf+pr->datend,need);
+			got = read(fd,pr->ibuf+pr->idatend,need);
 			if ((int)got < 0) got = 0;
 			pr->idat_remain -= (uint32_t)got;
-			pr->datend += got;
+			pr->idatend += got;
 
 			if (got < need) {
 				DLOGT("PNG IDAT unexpected short read want=%u got=%u",need,got);
@@ -1166,38 +1166,38 @@ unsigned int png_idat_read(struct png_idat_reader *pr,unsigned char *buf,unsigne
 	unsigned int r = 0,avail;
 	int err;
 
-	if (!pr->buf || len == 0) return 0;
+	if (!pr->ibuf || len == 0) return 0;
 
 	while (len > 0) {
-		if (pr->datpos > pr->datend || pr->datend > pr->buflen) {
+		if (pr->idatpos > pr->idatend || pr->idatend > pr->ibuflen) {
 			DLOGT("png_idat_read invalid datpos/datend buffer state");
 			break;
 		}
 
-		avail = pr->datend - pr->datpos;
+		avail = pr->idatend - pr->idatpos;
 		if (avail) {
 			pr->z.total_in = pr->z.total_out = 0;
-			pr->z.next_in = pr->buf + pr->datpos;
-			pr->z.avail_in = pr->datend - pr->datpos;
+			pr->z.next_in = pr->ibuf + pr->idatpos;
+			pr->z.avail_in = pr->idatend - pr->idatpos;
 			pr->z.next_out = buf;
 			pr->z.avail_out = len;
 
 			err = inflate(&(pr->z),Z_NO_FLUSH);
 			if (err == Z_STREAM_END) {
 				DLOGT("ZLIB stream end");
-				pr->datend = pr->datpos = 0;
+				pr->idatend = pr->idatpos = 0;
 				pr->idat_eof = TRUE;
 				break;
 			}
 			else if (err != Z_OK) {
 				DLOGT("ZLIB stream error %d",err);
-				pr->datend = pr->datpos = 0;
+				pr->idatend = pr->idatpos = 0;
 				pr->idat_eof = TRUE;
 				break;
 			}
 
-			pr->datpos += pr->z.total_in;
-			if (pr->datpos > pr->datend) {
+			pr->idatpos += pr->z.total_in;
+			if (pr->idatpos > pr->idatend) {
 				DLOGT("ZLIB inflate read too much");
 				break;
 			}
@@ -1211,7 +1211,7 @@ unsigned int png_idat_read(struct png_idat_reader *pr,unsigned char *buf,unsigne
 		}
 		else {
 			png_idat_reader_refill(pr,fd);
-			if (pr->datend == 0 && pr->datpos == 0) break;
+			if (pr->idatend == 0 && pr->idatpos == 0) break;
 		}
 	}
 
@@ -1219,20 +1219,20 @@ unsigned int png_idat_read(struct png_idat_reader *pr,unsigned char *buf,unsigne
 }
 
 BOOL png_idat_reader_init(struct png_idat_reader *pr,off_t ofs) {
-	if (!pr->buf) {
+	if (!pr->ibuf) {
 #if TARGET_MSDOS == 32
-		pr->buflen = 256*1024;
+		pr->ibuflen = 256*1024;
 #else
-		pr->buflen = 15*1024;
+		pr->ibuflen = 15*1024;
 #endif
 
-		pr->buf = malloc(pr->buflen);
-		if (!pr->buf) {
+		pr->ibuf = malloc(pr->ibuflen);
+		if (!pr->ibuf) {
 			DLOGT("PNG IDAT reader failed to malloc buffer");
 			return FALSE;
 		}
 
-		pr->datend = pr->datpos = 0;
+		pr->idatend = pr->idatpos = 0;
 		pr->idat_eof = FALSE;
 		pr->idat_remain = 0;
 		pr->pos = ofs;
