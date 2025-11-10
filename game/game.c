@@ -328,7 +328,6 @@ typedef WORD			ImageRef;
 
 // arrangement of bitmaps or sprites on the window.
 // NTS: The transparency mask is IGNORED by the window element drawing code.
-// NTS: Do not overlap window elements. Overlapping is not supported by this code.
 // NTS: This code copies down the subregion of a sprite. Changing the sprite source rect after setting it to
 //      the window element will not change the subregion. Changing the bitmap assigned to the sprite will not
 //      change the bitmap displayed.
@@ -1724,6 +1723,7 @@ void DrawBackground(HDC hDC,RECT* updateRect) {
 
 void UpdateWindowElementsHDC(HDC hDC) {
 	unsigned int i;
+	HRGN orgn;
 	HRGN rgn;
 	RECT ur;
 
@@ -1731,14 +1731,35 @@ void UpdateWindowElementsHDC(HDC hDC) {
 	ur.right = WndCurrentSizeClient.x;
 	ur.bottom = WndCurrentSizeClient.y;
 	rgn = CreateRectRgn(ur.left,ur.top,ur.right,ur.bottom);
-	if (rgn) {
+	orgn = CreateRectRgn(0,0,0,0);
+	if (rgn && orgn) {
 		SelectClipRgn(hDC,rgn);
 
 		if (WindowElement) {
 			i = WindowElementMax;
 			while ((i--) != 0) {
 				struct WindowElement *we = WindowElement + i;
+
+				if (we->flags & WindowElementFlag_Enabled) {
+					/* detect overlap using orgn, then add the current element to orgn */
+					{
+						RECT um;
+						um.left = we->x;
+						um.top = we->y;
+						um.right = we->x+we->w;
+						um.bottom = we->y+we->h;
+						if (RectInRegion(orgn,&um)) we->flags |= WindowElementFlag_Update;
+					}
+
+					{
+						HRGN cr = CreateRectRgn(we->x,we->y,we->x+we->w,we->y+we->h);
+						if (cr) CombineRgn(orgn,orgn,cr,RGN_OR);
+						DeleteObject(cr);
+					}
+				}
+
 				DoDrawWindowElementUpdate(hDC,i);
+
 				if (we->flags & WindowElementFlag_Enabled)
 					ExcludeClipRect(hDC,we->x,we->y,we->x+we->w,we->y+we->h);
 			}
@@ -1748,8 +1769,9 @@ void UpdateWindowElementsHDC(HDC hDC) {
 			DrawBackground(hDC,&ur); // clears NeedBkRedraw
 
 		SelectClipRgn(hDC,NULL);
-		DeleteObject(rgn);
 	}
+	if (orgn) DeleteObject(orgn);
+	if (rgn) DeleteObject(rgn);
 }
 
 void UpdateWindowElements(void) {
