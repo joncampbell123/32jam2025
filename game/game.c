@@ -1861,6 +1861,8 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 	}
 }
 
+BYTE near MouseCapture = 0;
+
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
 LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 #else
@@ -2076,12 +2078,37 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		return 1;
 	}
 	else if (message == WM_LBUTTONDOWN) {
+		if (MouseCapture == 0) SetCapture(hwnd);
+		MouseCapture |= 1;
+
 		SetWindowElementPosition(0,LOWORD(lparam),HIWORD(lparam));
 		UpdateWindowElements();
 	}
+	else if (message == WM_LBUTTONUP) {
+		SetWindowElementPosition(0,LOWORD(lparam),HIWORD(lparam));
+		UpdateWindowElements();
+
+		MouseCapture &= ~1;
+		if (MouseCapture == 0) ReleaseCapture();
+	}
 	else if (message == WM_RBUTTONDOWN) {
+		if (MouseCapture == 0) SetCapture(hwnd);
+		MouseCapture |= 2;
+
 		SetWindowElementPosition(1,LOWORD(lparam),HIWORD(lparam));
 		UpdateWindowElements();
+	}
+	else if (message == WM_RBUTTONUP) {
+		SetWindowElementPosition(1,LOWORD(lparam),HIWORD(lparam));
+		UpdateWindowElements();
+
+		MouseCapture &= ~2;
+		if (MouseCapture == 0) ReleaseCapture();
+	}
+	else if (message == WM_MOUSEMOVE) {
+		if (MouseCapture & 1) SetWindowElementPosition(0,LOWORD(lparam),HIWORD(lparam));
+		if (MouseCapture & 2) SetWindowElementPosition(1,LOWORD(lparam),HIWORD(lparam));
+		if (MouseCapture) UpdateWindowElements();
 	}
 	else if (message == WM_KEYDOWN) {
 		if (wparam == '1') {
