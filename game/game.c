@@ -1695,9 +1695,8 @@ void DrawWindowElement(HDC hDC,struct WindowElement *we) {
 
 void DoDrawWindowElementUpdate(HDC hDC,const WindowElementHandle h) {
 	if (WindowElement && h < WindowElementMax) {
-		const WORD chk = WindowElementFlag_Update | WindowElementFlag_Enabled;
 		struct WindowElement *we = WindowElement + h;
-		if ((we->flags & chk) == chk)
+		if (we->flags & WindowElementFlag_Update)
 			DrawWindowElement(hDC,we);
 	}
 }
