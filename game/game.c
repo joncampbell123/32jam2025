@@ -1679,6 +1679,10 @@ void DrawWindowElement(HDC hDC,struct WindowElement *we) {
 				HDC bDC = CreateCompatibleDC(NULL);
 				if (bDC) {
 					HBITMAP ob = (HBITMAP)SelectObject(bDC,(HGDIOBJ)br->bmpObj);
+#if 0//DEBUG: Show the redraw by making it momentarily flicker white
+					SelectObject(hDC,GetStockObject(WHITE_BRUSH));
+					Rectangle(hDC,we->x,we->y,we->x+we->w+1,we->y+we->h+1);
+#endif
 					BitBlt(hDC,we->x,we->y,we->w,we->h,bDC,we->sx,we->sy,SRCCOPY);
 					SelectObject(bDC,(HGDIOBJ)ob);
 					DeleteDC(bDC);
