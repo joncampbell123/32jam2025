@@ -1723,36 +1723,32 @@ void DrawBackground(HDC hDC,RECT* updateRect) {
 }
 
 void UpdateWindowElementsHDC(HDC hDC) {
-	if (WindowElement) {
-		unsigned int i;
-		for (i=0;i < WindowElementMax;i++)
-			DoDrawWindowElementUpdate(hDC,i);
-	}
+	unsigned int i;
+	HRGN rgn;
+	RECT ur;
 
-	if (WndStateFlags & WndState_NeedBkRedraw) {
-		HRGN rgn;
-		RECT ur;
+	ur.top = ur.left = 0;
+	ur.right = WndCurrentSizeClient.x;
+	ur.bottom = WndCurrentSizeClient.y;
+	rgn = CreateRectRgn(ur.left,ur.top,ur.right,ur.bottom);
+	if (rgn) {
+		SelectClipRgn(hDC,rgn);
 
-		DLOGT("UpdateWindowElement redraw background");
-
-		ur.top = ur.left = 0;
-		ur.right = WndCurrentSizeClient.x;
-		ur.bottom = WndCurrentSizeClient.y;
-		rgn = CreateRectRgn(ur.left,ur.top,ur.right,ur.bottom);
-		if (rgn) {
-			SelectClipRgn(hDC,rgn);
-			if (WindowElement) {
-				unsigned int i;
-				for (i=0;i < WindowElementMax;i++) {
-					struct WindowElement *we = WindowElement + i;
-					if (we->flags & WindowElementFlag_Enabled)
-						ExcludeClipRect(hDC,we->x,we->y,we->x+we->w,we->y+we->h);
-				}
+		if (WindowElement) {
+			i = WindowElementMax;
+			while ((i--) != 0) {
+				struct WindowElement *we = WindowElement + i;
+				DoDrawWindowElementUpdate(hDC,i);
+				if (we->flags & WindowElementFlag_Enabled)
+					ExcludeClipRect(hDC,we->x,we->y,we->x+we->w,we->y+we->h);
 			}
-			DrawBackground(hDC,&ur); // clears the NeedBkRedraw
-			SelectClipRgn(hDC,NULL);
-			DeleteObject(rgn);
 		}
+
+		if (WndStateFlags & WndState_NeedBkRedraw)
+			DrawBackground(hDC,&ur); // clears NeedBkRedraw
+
+		SelectClipRgn(hDC,NULL);
+		DeleteObject(rgn);
 	}
 }
 
