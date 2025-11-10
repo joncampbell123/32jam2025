@@ -2115,8 +2115,10 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		UpdateWindowElements();
 	}
 	else if (message == WM_LBUTTONUP) {
-		SetWindowElementPosition(0,LOWORD(lparam),HIWORD(lparam));
-		UpdateWindowElements();
+		if (MouseCapture & 1) {
+			SetWindowElementPosition(0,LOWORD(lparam),HIWORD(lparam));
+			UpdateWindowElements();
+		}
 
 		MouseCapture &= ~1;
 		if (MouseCapture == 0) ReleaseCapture();
@@ -2129,8 +2131,10 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		UpdateWindowElements();
 	}
 	else if (message == WM_RBUTTONUP) {
-		SetWindowElementPosition(1,LOWORD(lparam),HIWORD(lparam));
-		UpdateWindowElements();
+		if (MouseCapture & 2) {
+			SetWindowElementPosition(1,LOWORD(lparam),HIWORD(lparam));
+			UpdateWindowElements();
+		}
 
 		MouseCapture &= ~2;
 		if (MouseCapture == 0) ReleaseCapture();
