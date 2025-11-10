@@ -343,6 +343,7 @@ struct WindowElement {
 #define WindowElementFlag_Enabled	0x0001u /* window element is enabled */
 #define WindowElementFlag_Update	0x0002u /* window element needs to be redrawn fully */
 #define WindowElementFlag_BkUpdate	0x0004u /* window element will need to also trigger window background redraw */
+#define WindowElementFlag_Overlapped	0x0008u /* window element is overlapped by another */
 
 typedef WORD			WindowElementHandle;
 WORD near			WindowElementMax = 8;
@@ -1742,7 +1743,18 @@ void UpdateWindowElementsHDCWithClipRegion(HDC hDC,HRGN rgn,RECT *rgnRect) {
 						um.top = we->y;
 						um.right = we->x+we->w;
 						um.bottom = we->y+we->h;
-						if (RectInRegion(orgn,&um)) we->flags |= WindowElementFlag_Update;
+						if (RectInRegion(orgn,&um)) {
+							we->flags |= WindowElementFlag_Overlapped;
+							if (WndStateFlags & WndState_NeedBkRedraw)
+								we->flags |= WindowElementFlag_Update;
+						}
+						else {
+							if (we->flags & WindowElementFlag_Overlapped) {
+								we->flags &= ~WindowElementFlag_Overlapped;
+								if (WndStateFlags & WndState_NeedBkRedraw)
+									we->flags |= WindowElementFlag_Update;
+							}
+						}
 					}
 
 					{
@@ -1750,6 +1762,9 @@ void UpdateWindowElementsHDCWithClipRegion(HDC hDC,HRGN rgn,RECT *rgnRect) {
 						if (cr) CombineRgn(orgn,orgn,cr,RGN_OR);
 						DeleteObject(cr);
 					}
+				}
+				else {
+					we->flags &= ~WindowElementFlag_Overlapped;
 				}
 
 				DoDrawWindowElementUpdate(hDC,i);
