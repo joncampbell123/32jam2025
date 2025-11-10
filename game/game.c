@@ -46,6 +46,7 @@
 #define WndState_Minimized		0x00000001u
 #define WndState_Maximized		0x00000002u
 #define WndState_Active			0x00000004u
+#define WndState_NeedBkRedraw		0x00000008u /* redraw the background */
 
 // WndGraphicsCaps.flags
 #define WndGraphicsCaps_Flags_DIBTopDown	0x00000001u /* Windows 95/NT4 top-down DIBs are supported */
@@ -284,21 +285,70 @@ struct BMPres {
 	unsigned short		flags;
 };
 
-#define BMPresFlag_Allocated	0x0001u
+#define BMPresFlag_Allocated	0x0001u /* slot is allocated, whether or not there is a bitmap object */
 
 typedef WORD			BMPrHandle;
 WORD near			BMPrMax = 4;
 struct BMPres*			BMPr = NULL;
+#define BMPrNone		((WORD)(-1))
 
 // sprite within bitmap
 struct SpriteRes {
 	BMPrHandle		bmp;
 	unsigned short		x,y,w,h; /* subregion of bmp */
+	WORD			flags;
 };
+
+#define SpriteResFlag_Allocated		0x0001u /* slot is allocated */
+#define SpriteResFlag_IgnoreMask	0x0002u /* even if the bitmap has a transparency mask, do not use it */
+#define SpriteResFlag_HFlip		0x0004u /* horizontally flip */
+#define SpriteResFlag_VFlip		0x0008u /* vertically flip */
 
 typedef WORD			SpriterHandle;
 WORD near			SpriterMax = 4;
 struct SpriteRes*		Spriter = NULL;
+#define SpriterNone		((WORD)(-1))
+
+// combo bitmap/sprite reference number. An imageref is a reference to a sprite or bitmap
+typedef WORD			ImageRef;
+#define ImageRefNone		((WORD)(-1))
+#define ImageRefTypeShift	((WORD)(14))
+#define ImageRefRefMask		((WORD)((1u << ImageRefTypeShift) - 1u))
+#define ImageRefTypeMask	((WORD)(~((1u << ImageRefTypeShift) - 1u)))
+/* ^ NTS: shift=14, 1 << 14 = 0x4000, (1 << 14) - 1 = 0x3FFF, ~0x3FFF = 0xC000 */
+#define ImageRefTypeBitmap	((WORD)(0))
+#define ImageRefTypeSprite	((WORD)(1))
+#define ImageRefGetRef(x)	(((WORD)(x)) & ImageRefRefMask)
+#define ImageRefGetType(x)	((((WORD)(x)) & ImageRefTypeMask) >> ((WORD)ImageRefTypeShift))
+#define ImageRefMakeType(x)	((((WORD)(x)) << ImageRefTypeShift) & ImageRefTypeMask)
+#define MAKEBMPIMAGEREF(x)	(((WORD)(x)) | ImageRefMakeType(ImageRefTypeBitmap))
+#define MAKESPRITEIMAGEREF(x)	(((WORD)(x)) | ImageRefMakeType(ImageRefTypeSprite))
+
+/////////////////////////////////////////////////////////////
+
+// arrangement of bitmaps or sprites on the window.
+// NTS: The transparency mask is IGNORED by the window element drawing code.
+// NTS: Do not overlap window elements. Overlapping is not supported by this code.
+// NTS: This code copies down the subregion of a sprite. Changing the sprite source rect after setting it to
+//      the window element will not change the subregion. Changing the bitmap assigned to the sprite will not
+//      change the bitmap displayed.
+struct WindowElement {
+	ImageRef		imgRef;
+	BMPrHandle		bmpRef;
+	int			x,y; /* signed, to allow partially offscreen if that's what you want */
+	unsigned int		w,h;
+	unsigned int		sx,sy; /* source x,y coordinates of bitmap */
+	WORD			flags;
+};
+
+#define WindowElementFlag_Enabled	0x0001u /* window element is enabled */
+#define WindowElementFlag_Update	0x0002u /* window element needs to be redrawn fully */
+#define WindowElementFlag_BkUpdate	0x0004u /* window element will need to also trigger window background redraw */
+
+typedef WORD			WindowElementHandle;
+WORD near			WindowElementMax = 8;
+struct WindowElement*		WindowElement = NULL;
+#define WindowElementHandleNone	((WORD)(-1))
 
 /////////////////////////////////////////////////////////////
 
@@ -739,10 +789,9 @@ void LoadLogPalette(const char *p) {
 	}
 }
 
-#define BMPrNone ((WORD)(-1))
-
 static const struct BMPres near BMPrInit = { .bmpObj = (HBITMAP)NULL, .width = 0, .height = 0, .flags = 0 };
 static const struct SpriteRes near SpriterInit = { .bmp = BMPrNone, .x = 0, .y = 0, .w = 0, .h = 0 };
+static const struct WindowElement near WindowElementInit = { .imgRef = ImageRefNone, .x = 0, .y = 0, .w = 0, .h = 0, .flags = 0 };
 
 BOOL InitBMPRes(void) {
 	unsigned int i;
@@ -774,6 +823,102 @@ BOOL InitSpriteRes(void) {
 	}
 
 	return TRUE;
+}
+
+BOOL InitWindowElements(void) {
+	unsigned int i;
+
+	if (!WindowElement && WindowElementMax != 0) {
+		DLOGT("Allocating window element array, %u max",WindowElementMax);
+		WindowElement = malloc(WindowElementMax * sizeof(struct WindowElement));
+		if (!WindowElement) {
+			DLOGT("Failed to allocate array");
+			return FALSE;
+		}
+		for (i=0;i < WindowElementMax;i++) WindowElement[i] = WindowElementInit;
+	}
+
+	return TRUE;
+}
+
+void ShowWindowElement(const WindowElementHandle h,const BOOL how) {
+	const WORD enf = how ? WindowElementFlag_Enabled : 0;
+
+	if (WindowElement && h < WindowElementMax) {
+		struct WindowElement *we = WindowElement + h;
+		if ((we->flags & WindowElementFlag_Enabled) != enf) {
+			if (how) {
+				we->flags |= enf;
+				we->flags |= WindowElementFlag_Update;
+			}
+			else {
+				we->flags &= ~enf;
+				we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
+			}
+		}
+	}
+}
+
+void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
+	if (WindowElement && h < WindowElementMax) {
+		struct WindowElement *we = WindowElement + h;
+		unsigned int nw = 0,nh = 0,nsx = 0,nsy = 0;
+
+		if (ir == ImageRefNone) {
+			// do nothing
+		}
+		else if (ImageRefGetType(ir) == ImageRefTypeBitmap) {
+			const BMPrHandle b = (BMPrHandle)ImageRefGetRef(ir);
+			we->bmpRef = BMPrNone;
+			if (BMPr && b < BMPrMax) {
+				struct BMPres *br = BMPr + b;
+				if (br->bmpObj && (br->flags & BMPresFlag_Allocated)) {
+					nw = br->width;
+					nh = br->height;
+				}
+
+				we->bmpRef = b;
+			}
+		}
+		else if (ImageRefGetType(ir) == ImageRefTypeSprite) {
+			const SpriterHandle s = (SpriterHandle)ImageRefGetRef(ir);
+			if (Spriter && s < SpriterMax) {
+				struct SpriteRes *sr = Spriter + s;
+				if (sr->bmp != BMPrNone && (sr->flags & SpriteResFlag_Allocated)) {
+					nw = sr->w;
+					nh = sr->h;
+					nsx = sr->x;
+					nsy = sr->y;
+				}
+
+				if (we->bmpRef != sr->bmp) {
+					we->flags |= WindowElementFlag_Update;
+					we->bmpRef = sr->bmp;
+				}
+			}
+			else {
+				we->bmpRef = BMPrNone;
+			}
+		}
+		else {
+			we->bmpRef = BMPrNone;
+			return;
+		}
+
+		/* if the reference or source x/y coords changed, update the element */
+		if (we->imgRef != ir || we->sx != nsx || we->sy != nsy)
+			we->flags |= WindowElementFlag_Update;
+
+		/* if the region changed size, need to redraw background AND update the element */
+		if (we->w != nw || we->h != nh)
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
+
+		we->w = nw;
+		we->h = nh;
+		we->sx = nsx;
+		we->sy = nsy;
+		we->imgRef = ir;
+	}
 }
 
 BOOL IsBMPresAlloc(const BMPrHandle h) {
@@ -833,6 +978,7 @@ BOOL InitBMPrGDIObject(const BMPrHandle h,unsigned int width,unsigned int height
 	return TRUE;
 }
 
+// current GetDC/Release target in functions below
 static BMPrHandle BMPrGDICurrent = BMPrNone;
 static HDC BMPrGDIbmpDC = (HDC)NULL;
 static HBITMAP BMPrGDIbmpOld = (HBITMAP)NULL;
@@ -1586,6 +1732,61 @@ void FreeSpriteRes(void) {
 	}
 }
 
+void FreeWindowElement(const WindowElementHandle h) {
+	if (WindowElement && h < WindowElementMax) {
+		struct WindowElement *r = WindowElement + h;
+		// nothing to do yet
+		(void)r;
+	}
+}
+
+void FreeWindowElements(void) {
+	unsigned int i;
+
+	if (Spriter) {
+		DLOGT("Freeing window elements");
+		for (i=0;i < WindowElementMax;i++) FreeWindowElement(i);
+		free(WindowElement);
+		WindowElement = NULL;
+	}
+}
+
+void DrawWindowElement(HDC hDC,struct WindowElement *we) {
+	DLOGT("DrawWindowElement %d",__LINE__);
+	if (we->bmpRef != BMPrNone && (we->flags & WindowElementFlag_Enabled)) {
+		DLOGT("DrawWindowElement %d",__LINE__);
+		if (BMPr && we->bmpRef < BMPrMax) {
+			struct BMPres *br = BMPr + we->bmpRef;
+			DLOGT("DrawWindowElement %d",__LINE__);
+			if (br->bmpObj && (br->flags & BMPresFlag_Allocated)) {
+				HDC bDC = CreateCompatibleDC(NULL);
+				DLOGT("DrawWindowElement %d",__LINE__);
+				if (bDC) {
+					HBITMAP ob = (HBITMAP)SelectObject(bDC,(HGDIOBJ)br->bmpObj);
+					DLOGT("DrawWindowElement %d x=%d y=%d w=%u h=%u sx=%u sy=%u",__LINE__,we->x,we->y,we->w,we->h,we->sx,we->sy);
+					BitBlt(hDC,we->x,we->y,we->w,we->h,bDC,we->sx,we->sy,SRCCOPY);
+					SelectObject(bDC,(HGDIOBJ)ob);
+					DeleteDC(bDC);
+				}
+			}
+		}
+	}
+
+	if (we->flags & WindowElementFlag_BkUpdate)
+		WndStateFlags |= WndState_NeedBkRedraw;
+
+	we->flags &= ~(WindowElementFlag_Update | WindowElementFlag_BkUpdate);
+}
+
+void DoDrawWindowElementUpdate(HDC hDC,const WindowElementHandle h) {
+	if (WindowElement && h < WindowElementMax) {
+		const WORD chk = WindowElementFlag_Update | WindowElementFlag_Enabled;
+		struct WindowElement *we = WindowElement + h;
+		if ((we->flags & chk) == chk)
+			DrawWindowElement(hDC,we);
+	}
+}
+
 #if GAMEDEBUG
 /* DEBUG: Draw a BMPr directly on the window */
 void DrawBMPrHDC(HDC hDC,const BMPrHandle h,int x,int y) {
@@ -1613,16 +1814,30 @@ void DrawBMPrHDC(HDC hDC,const BMPrHandle h,int x,int y) {
 		}
 	}
 }
-
-void DrawBMPr(const BMPrHandle h,int x,int y) {
-	HDC hDC = GetDC(hwndMain);
-	DrawBMPrHDC(hDC,h,x,y);
-	ReleaseDC(hwndMain,hDC);
-}
 #else
 # define DrawBMPrHDC(...)
-# define DrawBMPr(...)
 #endif
+
+// NTS: To avoid painting over the window elements, this function expects the caller
+//      to set the region to update to the clip region, and then excluse from the region
+//      the rectangular area of each window element. What WM_PAINT does, for example.
+void DrawBackground(HDC hDC,RECT* updateRect) {
+	HBRUSH oldBrush,newBrush;
+	HPEN oldPen,newPen;
+
+	newPen = (HPEN)GetStockObject(NULL_PEN);
+	newBrush = (HBRUSH)GetStockObject(BLACK_BRUSH);
+
+	oldPen = SelectObject(hDC,newPen);
+	oldBrush = SelectObject(hDC,newBrush);
+
+	Rectangle(hDC,updateRect->left,updateRect->top,updateRect->right+1,updateRect->bottom+1);
+
+	SelectObject(hDC,oldBrush);
+	SelectObject(hDC,oldPen);
+
+	WndStateFlags &= ~WndState_NeedBkRedraw;
+}
 
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
 LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
@@ -1783,25 +1998,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		}
 	}
 	else if (message == WM_ERASEBKGND) {
-		RECT um;
-
-		if (GetUpdateRect(hwnd,&um,FALSE)) {
-			HBRUSH oldBrush,newBrush;
-			HPEN oldPen,newPen;
-
-			newPen = (HPEN)GetStockObject(NULL_PEN);
-			newBrush = (HBRUSH)GetStockObject(BLACK_BRUSH);
-
-			oldPen = SelectObject((HDC)wparam,newPen);
-			oldBrush = SelectObject((HDC)wparam,newBrush);
-
-			Rectangle((HDC)wparam,um.left,um.top,um.right+1,um.bottom+1);
-
-			SelectObject((HDC)wparam,oldBrush);
-			SelectObject((HDC)wparam,oldPen);
-		}
-
-		return 1; /* Important: Returning 1 signals to Windows that we processed the message. Windows 3.0 gets really screwed up if we don't! */
+		return 0; // let WM_PAINT do the background erase
 	}
 	else if (message == WM_SYSCOMMAND) {
 		if (LOWORD(wparam) >= 0xF000) {
@@ -1870,7 +2067,25 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 				if (oldPalette) RealizePalette(ps.hdc);
 			}
 
-			DrawBMPrHDC(ps.hdc,0/*BMPr*/,0/*x*/,0/*y*/);
+			/* all window elements need to be redrawn */
+			// TODO: PAINTSTRUCT provides a rcPaint member which describes the region to update, use that to
+			//       decide which elements to redraw
+			if (WindowElement) {
+				unsigned int i;
+				for (i=0;i < WindowElementMax;i++) {
+					struct WindowElement *we = WindowElement + i;
+					if (we->flags & WindowElementFlag_Enabled) {
+						we->flags |= WindowElementFlag_Update;
+						DoDrawWindowElementUpdate(ps.hdc,i);
+
+						// exclude the region from the clip region so DrawBackground() does not draw over it
+						ExcludeClipRect(ps.hdc,we->x,we->y,we->x+we->w,we->y+we->h);
+					}
+				}
+			}
+
+			if (ps.fErase || (WndStateFlags & WndState_NeedBkRedraw))
+				DrawBackground(ps.hdc,&ps.rcPaint);
 
 			if (WndHanPalette)
 				SelectPalette(ps.hdc,oldPalette,TRUE);
@@ -2310,12 +2525,22 @@ err1:
 		DLOGT("Unable to init sprite res");
 		return 1;
 	}
+	if (!InitWindowElements()) {
+		DLOGT("Unable to init window elements");
+		return 1;
+	}
 
 	LoadLogPalette("palette.png");
 	LoadBMPr(0,"sht1_8.png");
+	SetWindowElementContent(0,MAKEBMPIMAGEREF(0));
+	ShowWindowElement(0,TRUE);
 
 	ShowWindow(hwndMain,nCmdShow);
+#if WINVER < 0x30A /* Windows 3.0, if we don't process WM_ERASEBKGND on initial show, does not call WM_PAINT with fErase = TRUE */
+	InvalidateRect(hwndMain,NULL,TRUE);
+#else /* Windows 3.1 will correctly call WM_PAINT with fErase = TRUE if we do not process WM_ERASEBKGND */
 	UpdateWindow(hwndMain);
+#endif
 
 	if (GetActiveWindow() == hwndMain) WndStateFlags |= WndState_Active;
 
@@ -2333,6 +2558,7 @@ err1:
 		DispatchMessage(&msg);
 	}
 
+	FreeWindowElements();
 	FreeBMPRes();
 	FreeSpriteRes();
 	FreeColorPalette();
