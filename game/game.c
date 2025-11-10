@@ -1721,16 +1721,10 @@ void DrawBackground(HDC hDC,RECT* updateRect) {
 	WndStateFlags &= ~WndState_NeedBkRedraw;
 }
 
-void UpdateWindowElementsHDC(HDC hDC) {
+void UpdateWindowElementsHDCWithClipRegion(HDC hDC,HRGN rgn,RECT *rgnRect) {
 	unsigned int i;
 	HRGN orgn;
-	HRGN rgn;
-	RECT ur;
 
-	ur.top = ur.left = 0;
-	ur.right = WndCurrentSizeClient.x;
-	ur.bottom = WndCurrentSizeClient.y;
-	rgn = CreateRectRgn(ur.left,ur.top,ur.right,ur.bottom);
 	orgn = CreateRectRgn(0,0,0,0);
 	if (rgn && orgn) {
 		SelectClipRgn(hDC,rgn);
@@ -1766,18 +1760,36 @@ void UpdateWindowElementsHDC(HDC hDC) {
 		}
 
 		if (WndStateFlags & WndState_NeedBkRedraw)
-			DrawBackground(hDC,&ur); // clears NeedBkRedraw
+			DrawBackground(hDC,rgnRect); // clears NeedBkRedraw
 
 		SelectClipRgn(hDC,NULL);
 	}
 	if (orgn) DeleteObject(orgn);
-	if (rgn) DeleteObject(rgn);
+}
+
+void UpdateWindowElementsHDC(HDC hDC) {
+	HRGN rgn;
+	RECT ur;
+
+	ur.top = ur.left = 0;
+	ur.right = WndCurrentSizeClient.x;
+	ur.bottom = WndCurrentSizeClient.y;
+	rgn = CreateRectRgn(ur.left,ur.top,ur.right,ur.bottom);
+	if (rgn) {
+		UpdateWindowElementsHDCWithClipRegion(hDC,rgn,&ur);
+		DeleteObject(rgn);
+	}
 }
 
 void UpdateWindowElements(void) {
 	HDC hDC = GetDC(hwndMain);
 	UpdateWindowElementsHDC(hDC);
 	ReleaseDC(hwndMain,hDC);
+}
+
+void UpdateWindowElementsPaintStruct(HDC hDC,HRGN rgn,RECT *upRgn) {
+	UpdateWindowElementsHDCWithClipRegion(hDC,rgn,upRgn);
+	DeleteObject(rgn);
 }
 
 BOOL IsWindowElementVisible(const WindowElementHandle h) {
@@ -2146,6 +2158,11 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		if (GetUpdateRect(hwnd,&um,TRUE)) {
 			HPALETTE oldPalette;
 			PAINTSTRUCT ps;
+			unsigned int i;
+			HRGN rgn;
+
+			rgn = CreateRectRgn(0,0,0,0);
+			if (rgn) GetUpdateRgn(hwnd,rgn,FALSE);
 
 			BeginPaint(hwnd,&ps);
 
@@ -2158,26 +2175,23 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			// TODO: PAINTSTRUCT provides a rcPaint member which describes the region to update, use that to
 			//       decide which elements to redraw
 			if (WindowElement) {
-				unsigned int i;
 				for (i=0;i < WindowElementMax;i++) {
 					struct WindowElement *we = WindowElement + i;
-					if (we->flags & WindowElementFlag_Enabled) {
+					if (we->flags & WindowElementFlag_Enabled)
 						we->flags |= WindowElementFlag_Update;
-						DoDrawWindowElementUpdate(ps.hdc,i);
-
-						// exclude the region from the clip region so DrawBackground() does not draw over it
-						ExcludeClipRect(ps.hdc,we->x,we->y,we->x+we->w,we->y+we->h);
-					}
 				}
 			}
 
-			if (ps.fErase || (WndStateFlags & WndState_NeedBkRedraw))
-				DrawBackground(ps.hdc,&ps.rcPaint);
+			if (ps.fErase)
+				WndStateFlags |= WndState_NeedBkRedraw;
+
+			UpdateWindowElementsPaintStruct(ps.hdc,rgn,&ps.rcPaint);
 
 			if (WndHanPalette)
 				SelectPalette(ps.hdc,oldPalette,TRUE);
 
 			EndPaint(hwnd,&ps);
+			if (rgn) DeleteObject(rgn);
 		}
 
 		return 0; /* Return 0 to signal we processed the message */
