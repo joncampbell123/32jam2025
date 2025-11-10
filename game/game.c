@@ -841,86 +841,6 @@ BOOL InitWindowElements(void) {
 	return TRUE;
 }
 
-void ShowWindowElement(const WindowElementHandle h,const BOOL how) {
-	const WORD enf = how ? WindowElementFlag_Enabled : 0;
-
-	if (WindowElement && h < WindowElementMax) {
-		struct WindowElement *we = WindowElement + h;
-		if ((we->flags & WindowElementFlag_Enabled) != enf) {
-			if (how) {
-				we->flags |= enf;
-				we->flags |= WindowElementFlag_Update;
-			}
-			else {
-				we->flags &= ~enf;
-				we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
-			}
-		}
-	}
-}
-
-void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
-	if (WindowElement && h < WindowElementMax) {
-		struct WindowElement *we = WindowElement + h;
-		unsigned int nw = 0,nh = 0,nsx = 0,nsy = 0;
-
-		if (ir == ImageRefNone) {
-			// do nothing
-		}
-		else if (ImageRefGetType(ir) == ImageRefTypeBitmap) {
-			const BMPrHandle b = (BMPrHandle)ImageRefGetRef(ir);
-			we->bmpRef = BMPrNone;
-			if (BMPr && b < BMPrMax) {
-				struct BMPres *br = BMPr + b;
-				if (br->bmpObj && (br->flags & BMPresFlag_Allocated)) {
-					nw = br->width;
-					nh = br->height;
-				}
-
-				we->bmpRef = b;
-			}
-		}
-		else if (ImageRefGetType(ir) == ImageRefTypeSprite) {
-			const SpriterHandle s = (SpriterHandle)ImageRefGetRef(ir);
-			if (Spriter && s < SpriterMax) {
-				struct SpriteRes *sr = Spriter + s;
-				if (sr->bmp != BMPrNone && (sr->flags & SpriteResFlag_Allocated)) {
-					nw = sr->w;
-					nh = sr->h;
-					nsx = sr->x;
-					nsy = sr->y;
-				}
-
-				if (we->bmpRef != sr->bmp) {
-					we->flags |= WindowElementFlag_Update;
-					we->bmpRef = sr->bmp;
-				}
-			}
-			else {
-				we->bmpRef = BMPrNone;
-			}
-		}
-		else {
-			we->bmpRef = BMPrNone;
-			return;
-		}
-
-		/* if the reference or source x/y coords changed, update the element */
-		if (we->imgRef != ir || we->sx != nsx || we->sy != nsy)
-			we->flags |= WindowElementFlag_Update;
-
-		/* if the region changed size, need to redraw background AND update the element */
-		if (we->w != nw || we->h != nh)
-			we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
-
-		we->w = nw;
-		we->h = nh;
-		we->sx = nsx;
-		we->sy = nsy;
-		we->imgRef = ir;
-	}
-}
-
 BOOL IsBMPresAlloc(const BMPrHandle h) {
 	if (BMPr && h < BMPrMax) {
 		struct BMPres *b = BMPr + h;
@@ -1803,6 +1723,145 @@ void DrawBackground(HDC hDC,RECT* updateRect) {
 	WndStateFlags &= ~WndState_NeedBkRedraw;
 }
 
+void UpdateWindowElementsHDC(HDC hDC) {
+	if (WindowElement) {
+		unsigned int i;
+		for (i=0;i < WindowElementMax;i++)
+			DoDrawWindowElementUpdate(hDC,i);
+	}
+
+	if (WndStateFlags & WndState_NeedBkRedraw) {
+		HRGN rgn;
+		RECT ur;
+
+		DLOGT("UpdateWindowElement redraw background");
+
+		ur.top = ur.left = 0;
+		ur.right = WndCurrentSizeClient.x;
+		ur.bottom = WndCurrentSizeClient.y;
+		rgn = CreateRectRgn(ur.left,ur.top,ur.right,ur.bottom);
+		if (rgn) {
+			SelectClipRgn(hDC,rgn);
+			if (WindowElement) {
+				unsigned int i;
+				for (i=0;i < WindowElementMax;i++) {
+					struct WindowElement *we = WindowElement + i;
+					if (we->flags & WindowElementFlag_Enabled)
+						ExcludeClipRect(hDC,we->x,we->y,we->x+we->w,we->y+we->h);
+				}
+			}
+			DrawBackground(hDC,&ur); // clears the NeedBkRedraw
+			SelectClipRgn(hDC,NULL);
+			DeleteObject(rgn);
+		}
+	}
+}
+
+void UpdateWindowElements(void) {
+	HDC hDC = GetDC(hwndMain);
+	UpdateWindowElementsHDC(hDC);
+	ReleaseDC(hwndMain,hDC);
+}
+
+BOOL IsWindowElementVisible(const WindowElementHandle h) {
+	if (WindowElement && h < WindowElementMax) {
+		struct WindowElement *we = WindowElement + h;
+		return (we->flags & WindowElementFlag_Enabled) ? TRUE : FALSE;
+	}
+
+	return FALSE;
+}
+
+void ShowWindowElement(const WindowElementHandle h,const BOOL how) {
+	if (WindowElement && h < WindowElementMax) {
+		const WORD enf = how ? WindowElementFlag_Enabled : 0;
+		struct WindowElement *we = WindowElement + h;
+		if ((we->flags & WindowElementFlag_Enabled) != enf) {
+			if (how) {
+				we->flags |= WindowElementFlag_Update | WindowElementFlag_Enabled;
+			}
+			else {
+				we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
+				we->flags &= ~WindowElementFlag_Enabled;
+			}
+		}
+	}
+}
+
+void SetWindowElementPosition(const WindowElementHandle h,int x,int y) {
+	if (WindowElement && h < WindowElementMax) {
+		struct WindowElement *we = WindowElement + h;
+
+		if (we->w && we->h && (we->x != x || we->y != y))
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
+
+		we->x = x;
+		we->y = y;
+	}
+}
+
+void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
+	if (WindowElement && h < WindowElementMax) {
+		struct WindowElement *we = WindowElement + h;
+		unsigned int nw = 0,nh = 0,nsx = 0,nsy = 0;
+
+		if (ir == ImageRefNone) {
+			// do nothing
+		}
+		else if (ImageRefGetType(ir) == ImageRefTypeBitmap) {
+			const BMPrHandle b = (BMPrHandle)ImageRefGetRef(ir);
+			we->bmpRef = BMPrNone;
+			if (BMPr && b < BMPrMax) {
+				struct BMPres *br = BMPr + b;
+				if (br->bmpObj && (br->flags & BMPresFlag_Allocated)) {
+					nw = br->width;
+					nh = br->height;
+				}
+
+				we->bmpRef = b;
+			}
+		}
+		else if (ImageRefGetType(ir) == ImageRefTypeSprite) {
+			const SpriterHandle s = (SpriterHandle)ImageRefGetRef(ir);
+			if (Spriter && s < SpriterMax) {
+				struct SpriteRes *sr = Spriter + s;
+				if (sr->bmp != BMPrNone && (sr->flags & SpriteResFlag_Allocated)) {
+					nw = sr->w;
+					nh = sr->h;
+					nsx = sr->x;
+					nsy = sr->y;
+				}
+
+				if (we->bmpRef != sr->bmp) {
+					we->flags |= WindowElementFlag_Update;
+					we->bmpRef = sr->bmp;
+				}
+			}
+			else {
+				we->bmpRef = BMPrNone;
+			}
+		}
+		else {
+			we->bmpRef = BMPrNone;
+			return;
+		}
+
+		/* if the reference or source x/y coords changed, update the element */
+		if (we->imgRef != ir || we->sx != nsx || we->sy != nsy)
+			we->flags |= WindowElementFlag_Update;
+
+		/* if the region changed size, need to redraw background AND update the element */
+		if (we->w != nw || we->h != nh)
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
+
+		we->w = nw;
+		we->h = nh;
+		we->sx = nsx;
+		we->sy = nsy;
+		we->imgRef = ir;
+	}
+}
+
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
 LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 #else
@@ -2016,6 +2075,26 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		}
 
 		return 1;
+	}
+	else if (message == WM_LBUTTONDOWN) {
+		SetWindowElementPosition(0,LOWORD(lparam),HIWORD(lparam));
+		UpdateWindowElements();
+	}
+	else if (message == WM_RBUTTONDOWN) {
+		SetWindowElementPosition(1,LOWORD(lparam),HIWORD(lparam));
+		UpdateWindowElements();
+	}
+	else if (message == WM_KEYDOWN) {
+		if (wparam == '1') {
+			ShowWindowElement(0,IsWindowElementVisible(0)?FALSE:TRUE);
+			UpdateWindowElements();
+		}
+		else if (wparam == '2') {
+			ShowWindowElement(1,IsWindowElementVisible(1)?FALSE:TRUE);
+			UpdateWindowElements();
+		}
+
+		return 0;
 	}
 	else if (message == WM_PAINT) {
 		RECT um;
@@ -2496,8 +2575,16 @@ err1:
 
 	LoadLogPalette("palette.png");
 	LoadBMPr(0,"sht1_8.png");
+
 	SetWindowElementContent(0,MAKEBMPIMAGEREF(0));
+	SetWindowElementPosition(0,20,20);
 	ShowWindowElement(0,TRUE);
+
+	SetWindowElementContent(1,MAKEBMPIMAGEREF(0));
+	SetWindowElementPosition(1,524 + 20 + 20,20);
+	ShowWindowElement(1,TRUE);
+
+	UpdateWindowElements();
 
 	ShowWindow(hwndMain,nCmdShow);
 #if WINVER < 0x30A /* Windows 3.0, if we don't process WM_ERASEBKGND on initial show, does not call WM_PAINT with fErase = TRUE */
