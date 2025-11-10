@@ -841,9 +841,7 @@ HDC BMPrGDIObjectGetDC(const BMPrHandle h) {
 	if (BMPr && h < BMPrMax && BMPrGDICurrent == BMPrNone) {
 		struct BMPres *b = BMPr + h;
 		if (b->bmpObj) {
-			HDC hDC = GetDC(hwndMain);
-			HDC retDC = CreateCompatibleDC(hDC);
-			ReleaseDC(hwndMain,hDC);
+			HDC retDC = CreateCompatibleDC(NULL);
 
 			if (retDC) {
 				BMPrGDIbmpOld = (HBITMAP)SelectObject(retDC,b->bmpObj);
