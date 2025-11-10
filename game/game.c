@@ -2172,13 +2172,17 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			}
 
 			/* all window elements need to be redrawn */
-			// TODO: PAINTSTRUCT provides a rcPaint member which describes the region to update, use that to
-			//       decide which elements to redraw
 			if (WindowElement) {
 				for (i=0;i < WindowElementMax;i++) {
 					struct WindowElement *we = WindowElement + i;
-					if (we->flags & WindowElementFlag_Enabled)
-						we->flags |= WindowElementFlag_Update;
+					if (we->flags & WindowElementFlag_Enabled) {
+						um.left = we->x;
+						um.top = we->y;
+						um.right = we->x+we->w;
+						um.bottom = we->y+we->h;
+						if (RectInRegion(rgn,&um))
+							we->flags |= WindowElementFlag_Update;
+					}
 				}
 			}
 
