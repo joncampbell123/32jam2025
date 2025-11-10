@@ -1752,18 +1752,13 @@ void FreeWindowElements(void) {
 }
 
 void DrawWindowElement(HDC hDC,struct WindowElement *we) {
-	DLOGT("DrawWindowElement %d",__LINE__);
 	if (we->bmpRef != BMPrNone && (we->flags & WindowElementFlag_Enabled)) {
-		DLOGT("DrawWindowElement %d",__LINE__);
 		if (BMPr && we->bmpRef < BMPrMax) {
 			struct BMPres *br = BMPr + we->bmpRef;
-			DLOGT("DrawWindowElement %d",__LINE__);
 			if (br->bmpObj && (br->flags & BMPresFlag_Allocated)) {
 				HDC bDC = CreateCompatibleDC(NULL);
-				DLOGT("DrawWindowElement %d",__LINE__);
 				if (bDC) {
 					HBITMAP ob = (HBITMAP)SelectObject(bDC,(HGDIOBJ)br->bmpObj);
-					DLOGT("DrawWindowElement %d x=%d y=%d w=%u h=%u sx=%u sy=%u",__LINE__,we->x,we->y,we->w,we->h,we->sx,we->sy);
 					BitBlt(hDC,we->x,we->y,we->w,we->h,bDC,we->sx,we->sy,SRCCOPY);
 					SelectObject(bDC,(HGDIOBJ)ob);
 					DeleteDC(bDC);
