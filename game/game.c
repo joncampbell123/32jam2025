@@ -1787,37 +1787,6 @@ void DoDrawWindowElementUpdate(HDC hDC,const WindowElementHandle h) {
 	}
 }
 
-#if GAMEDEBUG
-/* DEBUG: Draw a BMPr directly on the window */
-void DrawBMPrHDC(HDC hDC,const BMPrHandle h,int x,int y) {
-	if (Spriter && h < SpriterMax) {
-		struct BMPres *r = BMPr + h;
-
-		if (r->bmpObj) {
-			HDC retDC = CreateCompatibleDC(hDC);
-
-			if (retDC) {
-				HBITMAP bmpOld = (HBITMAP)SelectObject(retDC,r->bmpObj);
-				if (bmpOld == (HBITMAP)NULL) {
-					DLOGT("Unable to select bitmap into compatdc");
-					SelectObject(retDC,bmpOld);
-					DeleteDC(retDC);
-					return;
-				}
-
-				DLOGT("BitBlt BMP #%u res",h);
-				BitBlt(hDC,x,y,r->width,r->height,retDC,0,0,SRCCOPY);
-
-				SelectObject(retDC,bmpOld);
-				DeleteDC(retDC);
-			}
-		}
-	}
-}
-#else
-# define DrawBMPrHDC(...)
-#endif
-
 // NTS: To avoid painting over the window elements, this function expects the caller
 //      to set the region to update to the clip region, and then excluse from the region
 //      the rectangular area of each window element. What WM_PAINT does, for example.
