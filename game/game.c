@@ -1878,10 +1878,7 @@ void DoDrawWindowElementUpdate(HDC hDC,const WindowElementHandle h) {
 	}
 }
 
-// NTS: To avoid painting over the window elements, this function expects the caller
-//      to set the region to update to the clip region, and then excluse from the region
-//      the rectangular area of each window element. What WM_PAINT does, for example.
-void DrawBackground(HDC hDC,RECT* updateRect) {
+void DrawBackgroundSub(HDC hDC,RECT* updateRect) {
 	HPEN oldPen,newPen;
 	HBRUSH oldBrush;
 
@@ -1898,7 +1895,13 @@ void DrawBackground(HDC hDC,RECT* updateRect) {
 
 	SelectObject(hDC,oldBrush);
 	SelectObject(hDC,oldPen);
+}
 
+// NTS: To avoid painting over the window elements, this function expects the caller
+//      to set the region to update to the clip region, and then excluse from the region
+//      the rectangular area of each window element. What WM_PAINT does, for example.
+void DrawBackground(HDC hDC,RECT* updateRect) {
+	DrawBackgroundSub(hDC,updateRect);
 	WndStateFlags &= ~WndState_NeedBkRedraw;
 }
 
