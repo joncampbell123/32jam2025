@@ -1346,6 +1346,8 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 	struct minipng_PLTE_color *plte = NULL;
 	struct png_idat_reader pir = {0};
 	struct minipng_IHDR ihdr = {0};
+	unsigned char *tRNS = NULL; // PNG tRNS (transparency map)
+	unsigned short tRNSlen = 0;
 	unsigned char *bihraw = NULL; // combined BITMAPINFOHEADER and palette for GDI to use
 	unsigned int plte_colors = 0;
 	unsigned char *slice = NULL;
@@ -1416,6 +1418,17 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 			}
 			else {
 				DLOGT("ERROR: Unable to malloc PNG PLTE palette colors=%u",pclr);
+			}
+		}
+		else if (chktype == 0x74524E53/*tRNS*/) {
+			if (length <= 256) {
+				/* NTS: tRNS can be (and often is) shorter than the color palette, which of course implies
+				 *      that any palette entries beyond the end of tRNS are opaque */
+				tRNSlen = length;
+				DLOGT("PNG has tRNS transparency map, %u colors long",tRNSlen);
+
+				tRNS = malloc(tRNSlen);
+				if (tRNS) read(fd,tRNS,tRNSlen);
 			}
 		}
 		else if (chktype == 0x49444154/*IDAT*/) {
@@ -1581,6 +1594,10 @@ finish:
 	if (bmpDC) {
 		BMPrGDIObjectReleaseDC(h);
 		bmpDC = (HDC)NULL;
+	}
+	if (tRNS) {
+		free(tRNS);
+		tRNS = NULL;
 	}
 	if (slice) {
 		free(slice);
