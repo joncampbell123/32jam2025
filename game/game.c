@@ -360,6 +360,18 @@ struct WindowElement*		WindowElement = NULL;
 
 /////////////////////////////////////////////////////////////
 
+struct FontResource {
+	HFONT			fontObj;
+	short int		height,ascent,descent,avwidth,maxwidth;
+};
+
+typedef WORD			FontHandle;
+WORD near			FontsMax = 4;
+struct FontResource*		Fonts = NULL;
+#define FontHandleNone		((WORD)(-1))
+
+/////////////////////////////////////////////////////////////
+
 int clamp0(int x) {
 	return x >= 0 ? x : 0;
 }
@@ -825,6 +837,100 @@ void LoadLogPalette(const char *p) {
 static const struct BMPres near BMPrInit = { .bmpObj = (HBITMAP)NULL, .width = 0, .height = 0, .flags = 0 };
 static const struct SpriteRes near SpriterInit = { .bmp = BMPrNone, .x = 0, .y = 0, .w = 0, .h = 0 };
 static const struct WindowElement near WindowElementInit = { .imgRef = ImageRefNone, .x = 0, .y = 0, .w = 0, .h = 0, .flags = 0 };
+static const struct FontResource near FontResourceInit = { .fontObj = (HFONT)NULL, .height = 0, .ascent = 0, .descent = 0, .avwidth = 0, .maxwidth = 0 };
+
+BOOL InitFonts(void) {
+	unsigned int i;
+
+	if (!Fonts && FontsMax != 0) {
+		DLOGT("Allocating font res array, %u max",FontsMax);
+		Fonts = malloc(FontsMax * sizeof(struct FontResource));
+		if (!Fonts) {
+			DLOGT("Failed to allocate array");
+			return FALSE;
+		}
+		for (i=0;i < FontsMax;i++) Fonts[i] = FontResourceInit;
+	}
+
+	return TRUE;
+}
+
+void FreeFontRes(const FontHandle f) {
+	if (Fonts && f < FontsMax) {
+		struct FontResource *fr = Fonts + f;
+		if (fr->fontObj) {
+			DLOGT("Freeing font resource #%u",f);
+			DeleteObject(fr->fontObj);
+			fr->fontObj = (HFONT)NULL;
+		}
+	}
+}
+
+void FreeFonts(void) {
+	unsigned int i;
+
+	if (Fonts) {
+		DLOGT("Freeing font res");
+		for (i=0;i < FontsMax;i++) FreeFontRes(i);
+		free(Fonts);
+		Fonts = NULL;
+	}
+}
+
+#define FontrFlagBold			0x0001u
+#define FontrFlagItalic			0x0002u
+
+// Windows height rules:
+//   height > 0 describes cell height
+//   height < 0 describes character height
+//   height == 0 picks a default
+//   width == 0 to pick a default width
+BOOL LoadFontr(const FontHandle fh,int height,int width,unsigned int flags,const char *fontName) {
+	FreeFontRes(fh);
+
+	if (Fonts && fh < FontsMax && fontName) {
+		struct FontResource *fr = Fonts + fh;
+
+		DLOGT("Loading font resource: height=%u width=%u font=\"%s\"",height,width,fontName);
+		if (flags & FontrFlagBold) DLOGT("Flag: BOLD");
+		if (flags & FontrFlagItalic) DLOGT("Flag: ITALIC");
+
+		fr->fontObj = CreateFont(height,width,/*escapement*/0,/*orientation*/0,
+			/*weight*/(flags & FontrFlagBold) ? FW_BOLD : FW_NORMAL,
+			/*italic*/(flags & FontrFlagItalic) ? TRUE : FALSE,
+			/*underline*/FALSE,
+			/*strikeout*/FALSE,
+			ANSI_CHARSET/*TODO: Flag value to specify SHIFTJIS_CHARSET someday?*/,
+			OUT_DEFAULT_PRECIS,
+			CLIP_DEFAULT_PRECIS,
+			DEFAULT_QUALITY,
+			DEFAULT_PITCH,
+			fontName);
+
+		if (!fr->fontObj) {
+			DLOGT("CreateFont failed");
+			return FALSE;
+		}
+
+		{
+			HDC hDC = GetDC(hwndMain);
+			HFONT fhold = (HFONT)SelectObject(hDC,fr->fontObj);
+			TEXTMETRIC tm = {0};
+			GetTextMetrics(hDC,&tm);
+			fr->height = tm.tmHeight;
+			fr->ascent = tm.tmAscent;
+			fr->descent = tm.tmDescent;
+			fr->avwidth = tm.tmAveCharWidth;
+			fr->maxwidth = tm.tmMaxCharWidth;
+			DLOGT("Created font metrics: height=%u ascent=%u descent=%u avgwidth=%u maxwidth=%u",
+				fr->height,fr->ascent,fr->descent,fr->avwidth,fr->maxwidth);
+			SelectObject(hDC,fhold);
+			ReleaseDC(hwndMain,hDC);
+		}
+	}
+
+	return TRUE;
+}
 
 BOOL InitBMPRes(void) {
 	unsigned int i;
@@ -914,7 +1020,7 @@ BOOL InitBMPrGDIObject(const BMPrHandle h,unsigned int width,unsigned int height
 		}
 
 		if (b->bmpObj == (HBITMAP)NULL && width > 0 && height > 0) {
-			HDC hDC = GetDC(hwndMain);
+			HDC hDC = GetDC(hwndMain); // This DC has realized a palette that we want to use, do not use CreateCompatibleDC()
 			b->width = width;
 			b->height = height;
 			b->flags = BMPresFlag_Allocated;
@@ -1003,6 +1109,13 @@ void BMPrGDIObjectReleaseDC(const BMPrHandle h) {
 		else {
 			DLOGT(__FUNCTION__ " attempt to release #%u res when none are in use, not releasing",h);
 		}
+	}
+}
+
+void InitBlankBMPr(const BMPrHandle h,unsigned int width,unsigned int height) {
+	if (!InitBMPrGDIObject(h,width,height,0)) {
+		DLOGT("Unable to init GDI bitmap for blank BMPr");
+		return;
 	}
 }
 
@@ -2089,6 +2202,38 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 	}
 }
 
+// Generic demonstration function---may disappear later
+void DrawTextBMPr(const BMPrHandle h,const FontHandle fh,const char *txt) {
+	if ((BMPr && h < BMPrMax) && (Fonts && fh < FontsMax)) {
+		struct BMPres *br = BMPr + h;
+		struct FontResource *fr = Fonts + fh;
+		HDC bmpDC = BMPrGDIObjectGetDC(h);
+		const unsigned int txtlen = strlen(txt);
+		if (bmpDC) {
+			RECT um;
+			HFONT fhold;
+
+			if (fr->fontObj) fhold = (HFONT)SelectObject(bmpDC,fr->fontObj);
+
+			um.left = um.top = 0;
+			um.right = br->width;
+			um.bottom = br->height;
+			DrawBackgroundSub(bmpDC,&um);
+
+			SetBkMode(bmpDC,TRANSPARENT);
+			SetTextAlign(bmpDC,TA_CENTER|TA_TOP);
+			SetTextColor(bmpDC,RGB(0,255,0));
+			TextOut(bmpDC,br->width/2,(br->height - fr->height)/2,txt,txtlen);
+
+			if (fr->fontObj) SelectObject(bmpDC,fhold);
+
+			BMPrGDIObjectReleaseDC(h);
+
+			br->flags |= WindowElementFlag_Update;
+		}
+	}
+}
+
 BYTE near MouseCapture = 0;
 
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
@@ -2353,9 +2498,11 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		}
 		else if (wparam == 'A') {
 			SetBackgroundColor(RGB(255,128,0));
+			DrawTextBMPr(/*BMPr*/1,/*FontRes*/0,"Hello world");
 		}
 		else if (wparam == 'B') {
 			SetBackgroundColor(RGB(63,63,63));
+			DrawTextBMPr(/*BMPr*/1,/*FontRes*/0,"Hello world");
 		}
 
 		return 0;
@@ -2846,9 +2993,17 @@ err1:
 		DLOGT("Unable to init background brush");
 		return 1;
 	}
+	if (!InitFonts()) {
+		DLOGT("Unable to init fonts");
+		return 1;
+	}
 
 	LoadLogPalette("palette.png");
 	LoadBMPr(0,"sht1_8.png");
+
+	LoadFontr(0,/*height (by char)*/-14,/*width (default)*/0,/*flags*/0,"Arial");
+	InitBlankBMPr(1,320,32);
+	DrawTextBMPr(/*BMPr*/1,/*FontRes*/0,"Hello world! This is a text region");
 
 	SetWindowElementContent(0,MAKEBMPIMAGEREF(0));
 	SetWindowElementPosition(0,20,20);
@@ -2857,6 +3012,10 @@ err1:
 	SetWindowElementContent(1,MAKEBMPIMAGEREF(0));
 	SetWindowElementPosition(1,524 + 20 + 20,20);
 	ShowWindowElement(1,TRUE);
+
+	SetWindowElementContent(2,MAKEBMPIMAGEREF(1));
+	SetWindowElementPosition(2,20,210);
+	ShowWindowElement(2,TRUE);
 
 	UpdateWindowElements();
 
@@ -2884,6 +3043,7 @@ err1:
 	}
 
 	FreeWindowElements();
+	FreeFonts();
 	FreeBMPRes();
 	FreeSpriteRes();
 	FreeColorPalette();
