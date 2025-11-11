@@ -269,6 +269,10 @@ BYTE near			WindowsVersionFlags = 0;
 struct WndScreenInfo_t near	WndScreenInfo = { 0, 0, 0, 0, 0, 0 };
 struct WndGraphicsCaps_t near	WndGraphicsCaps = { 0 };
 
+// background brush
+HBRUSH				WndBkBrush = (HBRUSH)NULL;
+COLORREF			WndBkColor = RGB(0,0,0);
+
 #if WINVER < 0x400
 /* Windows 3.x compensation for off by 1 (or 2) bugs in AdjustWindowRect */
 int near			WndAdjustWindowRectBug_yadd = 0;
@@ -551,6 +555,31 @@ BOOL InitColorPalette(void) {
 
 	/* NTS: Do not init the palette object until the call is made to load a logical palette */
 	return TRUE;
+}
+
+BOOL InitBackgroundBrush(void) {
+	if (!WndBkBrush) {
+		WndBkBrush = CreateSolidBrush(WndBkColor);
+		if (!WndBkBrush) return FALSE;
+	}
+
+	return TRUE;
+}
+
+void FreeBackgroundBrush(void) {
+	if (WndBkBrush) {
+		DeleteObject(WndBkBrush);
+		WndBkBrush = (HBRUSH)NULL;
+	}
+}
+
+void SetBackgroundColor(COLORREF x) {
+	if (WndBkColor != x) {
+		FreeBackgroundBrush();
+		WndBkColor = x;
+		InitBackgroundBrush();
+		InvalidateRect(hwndMain,NULL,TRUE);
+	}
 }
 
 void FreeLogPalette(void) {
@@ -1709,14 +1738,17 @@ void DoDrawWindowElementUpdate(HDC hDC,const WindowElementHandle h) {
 //      to set the region to update to the clip region, and then excluse from the region
 //      the rectangular area of each window element. What WM_PAINT does, for example.
 void DrawBackground(HDC hDC,RECT* updateRect) {
-	HBRUSH oldBrush,newBrush;
 	HPEN oldPen,newPen;
+	HBRUSH oldBrush;
 
 	newPen = (HPEN)GetStockObject(NULL_PEN);
-	newBrush = (HBRUSH)GetStockObject(BLACK_BRUSH);
 
 	oldPen = SelectObject(hDC,newPen);
-	oldBrush = SelectObject(hDC,newBrush);
+
+	if (WndBkBrush)
+		oldBrush = SelectObject(hDC,WndBkBrush);
+	else
+		oldBrush = SelectObject(hDC,(HBRUSH)GetStockObject(BLACK_BRUSH));
 
 	Rectangle(hDC,updateRect->left,updateRect->top,updateRect->right+1,updateRect->bottom+1);
 
@@ -2171,6 +2203,12 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		else if (wparam == '2') {
 			ShowWindowElement(1,IsWindowElementVisible(1)?FALSE:TRUE);
 			UpdateWindowElements();
+		}
+		else if (wparam == 'A') {
+			SetBackgroundColor(RGB(255,128,0));
+		}
+		else if (wparam == 'B') {
+			SetBackgroundColor(RGB(63,63,63));
 		}
 
 		return 0;
@@ -2657,6 +2695,10 @@ err1:
 		DLOGT("Unable to init window elements");
 		return 1;
 	}
+	if (!InitBackgroundBrush()) {
+		DLOGT("Unable to init background brush");
+		return 1;
+	}
 
 	LoadLogPalette("palette.png");
 	LoadBMPr(0,"sht1_8.png");
@@ -2698,6 +2740,7 @@ err1:
 	FreeBMPRes();
 	FreeSpriteRes();
 	FreeColorPalette();
+	FreeBackgroundBrush();
 
 	return msg.wParam;
 }
