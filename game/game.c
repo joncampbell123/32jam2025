@@ -54,6 +54,9 @@
 // WindowsVersionFlags
 #define WindowsVersionFlags_NT			0x00000001u /* Windows NT */
 
+// Init GDI bmp
+#define GDIWantTransparencyMask			0x0001u
+
 struct WndStyle_t {
 	DWORD			style;
 	DWORD			styleEx;
@@ -289,7 +292,8 @@ struct BMPres {
 	unsigned short		flags;
 };
 
-#define BMPresFlag_Allocated	0x0001u /* slot is allocated, whether or not there is a bitmap object */
+#define BMPresFlag_Allocated			0x0001u /* slot is allocated, whether or not there is a bitmap object */
+#define BMPresFlag_TransparencyMask		0x0002u /* bitmap has transparency mask */
 
 typedef WORD			BMPrHandle;
 WORD near			BMPrMax = 4;
@@ -899,7 +903,7 @@ void FreeBMPrGDIObject(const BMPrHandle h) {
 	}
 }
 
-BOOL InitBMPrGDIObject(const BMPrHandle h,unsigned int width,unsigned int height) {
+BOOL InitBMPrGDIObject(const BMPrHandle h,unsigned int width,unsigned int height,unsigned int flags) {
 	if (BMPr && h < BMPrMax) {
 		struct BMPres *b = BMPr + h;
 
@@ -914,7 +918,13 @@ BOOL InitBMPrGDIObject(const BMPrHandle h,unsigned int width,unsigned int height
 			b->width = width;
 			b->height = height;
 			b->flags = BMPresFlag_Allocated;
-			b->bmpObj = CreateCompatibleBitmap(hDC,width,height);
+			if (flags & GDIWantTransparencyMask) {
+				b->flags |= BMPresFlag_TransparencyMask;
+				b->bmpObj = CreateCompatibleBitmap(hDC,width,height * 2);
+			}
+			else {
+				b->bmpObj = CreateCompatibleBitmap(hDC,width,height);
+			}
 			ReleaseDC(hwndMain,hDC);
 
 			if (!b->bmpObj) {
@@ -1113,7 +1123,7 @@ void LoadBMPrFromBMP(const int fd,struct BMPres *br,const BMPrHandle h) {
 		goto finish;
 	}
 
-	if (!InitBMPrGDIObject(h,bih.biWidth,bih.biHeight)) { /* updates br->width, br->height */
+	if (!InitBMPrGDIObject(h,bih.biWidth,bih.biHeight,0)) { /* updates br->width, br->height */
 		DLOGT("Unable to init GDI bitmap for BMP");
 		goto finish;
 	}
@@ -1349,11 +1359,14 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 	unsigned char *tRNS = NULL; // PNG tRNS (transparency map)
 	unsigned short tRNSlen = 0;
 	unsigned char *bihraw = NULL; // combined BITMAPINFOHEADER and palette for GDI to use
+	unsigned char *bihraw2 = NULL; // combined BITMAPINFOHEADER and palette for GDI to use for mask
 	unsigned int plte_colors = 0;
+	unsigned char *slice2 = NULL;
 	unsigned char *slice = NULL;
 	unsigned int pngstride = 0;
 	unsigned int stride,i,y,lh;
 	unsigned int sliceheight;
+	unsigned int gdiFlags = 0;
 	unsigned int bihSize = 0;
 	HDC bmpDC = (HDC)NULL;
 	unsigned char tmp[9];
@@ -1421,7 +1434,7 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 			}
 		}
 		else if (chktype == 0x74524E53/*tRNS*/) {
-			if (length <= 256) {
+			if (length > 0 && length <= 256) {
 				/* NTS: tRNS can be (and often is) shorter than the color palette, which of course implies
 				 *      that any palette entries beyond the end of tRNS are opaque */
 				tRNSlen = length;
@@ -1471,7 +1484,18 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 	}
 	memset(bihraw,0,bihSize);
 
-	if (!InitBMPrGDIObject(h,ihdr.width,ihdr.height)) { /* updates br->width, br->height */
+	/* if tRNS is present, and indexed color, and any colors are transparent, ask the GDI init for a transparency mask */
+	if (ihdr.color_type == 3/*indexed*/ && tRNS && tRNSlen > 0 && plte_colors != 0) {
+		for (i=0;i < tRNSlen && i < plte_colors;i++) {
+			if (tRNS[i] < 0x80) {
+				gdiFlags |= GDIWantTransparencyMask;
+				DLOGT("PNG first tRNS transparent color is %u, will allocate transparency mask",i);
+				break;
+			}
+		}
+	}
+
+	if (!InitBMPrGDIObject(h,ihdr.width,ihdr.height,gdiFlags)) { /* updates br->width, br->height */
 		DLOGT("Unable to init GDI bitmap for BMP");
 		goto finish;
 	}
@@ -1503,7 +1527,6 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 		BITMAPINFOHEADER *bih = (BITMAPINFOHEADER*)bihraw;
 		bih->biSize = sizeof(BITMAPINFOHEADER);
 		bih->biWidth = ihdr.width;
-		bih->biHeight = ihdr.height;
 		bih->biPlanes = 1;
 		bih->biBitCount = ihdr.bit_depth;
 		bih->biCompression = 0;
@@ -1515,7 +1538,15 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 			goto finish;
 		}
 
-		bih->biSizeImage = stride * ihdr.height;
+		if (gdiFlags & GDIWantTransparencyMask) {
+			bih->biHeight = ihdr.height * 2;
+			bih->biSizeImage = stride * ihdr.height * 2;
+		}
+		else {
+			bih->biHeight = ihdr.height;
+			bih->biSizeImage = stride * ihdr.height;
+		}
+
 		if (bih->biBitCount <= 8) {
 			RGBQUAD *pal = (RGBQUAD*)(bihraw + bih->biSize);
 
@@ -1527,6 +1558,19 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 					pal[i].rgbGreen = plte[i].green;
 					pal[i].rgbBlue = plte[i].blue;
 					pal[i].rgbReserved = 0;
+				}
+			}
+
+			if ((gdiFlags & GDIWantTransparencyMask) && ihdr.color_type == 3/*indexed*/ && tRNS && tRNSlen > 0) {
+				bihraw2 = malloc(bihSize);
+				if (bihraw2) {
+					// copy only the BITMAPINFOHEADER and then generate a new palette consisting of either
+					// black or white, in order to generate the sprite mask properly.
+					pal = (RGBQUAD*)(bihraw2 + bih->biSize);
+					memcpy(bihraw2,bihraw,bih->biSize);
+					for (i=0;i < plte_colors;i++) {
+						pal[i].rgbRed = pal[i].rgbGreen = pal[i].rgbBlue = i ? 0xFF : 0x00;
+					}
 				}
 			}
 		}
@@ -1572,9 +1616,44 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 
 		DLOGT("PNG slice load y=%u h=%u of height=%u bytes=%lu",y,lh,br->height,(unsigned long)lh * (unsigned long)stride);
 
+		if (gdiFlags & GDIWantTransparencyMask) {
+			slice2 = malloc(sliceheight * stride);
+			if (!slice2) {
+				DLOGT("ERROR: Cannot allocate memory for BMP data loading (2)");
+				goto finish;
+			}
+		}
+
 		{
+			unsigned char BlackColor;
 			unsigned char filter;
+			unsigned int ny,my;
 			unsigned int sy,sr;
+
+			if (gdiFlags & GDIWantTransparencyMask) {
+				/* The transparent color must be mapped to black in the BITMAPINFOHEADER palette in order for
+				 * SRCPAINT and SRCAND to work properly to produce proper sprite transparency */
+				BlackColor = 0;
+				for (i=0;i < tRNSlen;i++) {
+					if (tRNS[i] < 0x80) {
+						BITMAPINFOHEADER *bih = (BITMAPINFOHEADER*)bihraw;
+						RGBQUAD *pal = (RGBQUAD*)(bihraw + bih->biSize);
+
+						pal[i].rgbRed = pal[i].rgbGreen = pal[i].rgbBlue = 0;
+
+						BlackColor = i;
+						DLOGT("PNG transparency black color is %u",BlackColor);
+						break;
+					}
+				}
+			}
+
+			ny = my = br->height-y-lh;
+
+			// NTS: Because of the double height, and bitmaps are upside down, it is the normal non-mask data that must be
+			//      offset by br->height, not the mask!
+			if (gdiFlags & GDIWantTransparencyMask)
+				ny += br->height;
 
 			for (sy=0;sy < lh;sy++) {
 				sr = png_idat_read(&pir,&filter,1,fd); // filter byte
@@ -1582,9 +1661,48 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 				if (sr != pngstride) DLOGT("PNG IDAT decompress short read want=%u got=%u sy=%u y=%u lh=%u",pngstride,sr,sy,sy+y,lh);
 			}
 
+			if (gdiFlags & GDIWantTransparencyMask) {
+				// copy the slice to another buffer to become the mask.
+				memcpy(slice2,slice,stride * lh);
+
+				// filter transparent pixels to black so the OR operation works.
+				{
+					unsigned int i = 0,t = stride * lh;
+
+					while (i < t) {
+						const unsigned char c = slice[i];
+
+						if (c < tRNSlen && tRNS[c] < 0x80)
+							slice[i] = BlackColor;
+
+						i++;
+					}
+				}
+
+				// filter all pixels to either black OR white based on transparency alone in order
+				// for the sprite mask (AND operation) to work
+				{
+					unsigned int i = 0,t = stride * lh;
+
+					while (i < t) {
+						const unsigned char c = slice2[i];
+
+						if (c < tRNSlen)
+							slice2[i++] = (tRNS[c] >= 0x80) ? 0x00 : 0x01;
+						else
+							slice2[i++] = 0x00;
+					}
+				}
+			}
+
 			{
-				const int done = SetDIBits(bmpDC,br->bmpObj,br->height-y-lh,lh,slice,(BITMAPINFO*)bihraw,DIB_RGB_COLORS);
+				const int done = SetDIBits(bmpDC,br->bmpObj,ny,lh,slice,(BITMAPINFO*)bihraw,DIB_RGB_COLORS);
 				if (done < lh) DLOGT("SetDIBits() wrote less scanlines want=%d got=%d",lh,done);
+			}
+
+			if (gdiFlags & GDIWantTransparencyMask) {
+				const int done = SetDIBits(bmpDC,br->bmpObj,my,lh,slice2,(BITMAPINFO*)bihraw2,DIB_RGB_COLORS);
+				if (done < lh) DLOGT("SetDIBits() wrote less scanlines (mask) want=%d got=%d",lh,done);
 			}
 		}
 	}
@@ -1603,6 +1721,10 @@ finish:
 		free(slice);
 		slice = NULL;
 	}
+	if (slice2) {
+		free(slice2);
+		slice2 = NULL;
+	}
 	if (plte) {
 		free(plte);
 		plte = NULL;
@@ -1611,6 +1733,11 @@ finish:
 		free(bihraw);
 		bihraw = NULL;
 	}
+	if (bihraw2) {
+		free(bihraw2);
+		bihraw2 = NULL;
+	}
+
 }
 
 BOOL LoadBMPr(const BMPrHandle h,const char *p) {

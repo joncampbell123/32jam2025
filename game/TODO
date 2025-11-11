@@ -6,21 +6,6 @@ TODO:
 
 - Test draw BMP goes to compositing buffer, and then composed to screen.
 
-- PNG image loader: Read tRNS chunk to determine which colors are transparent. In the
-  Windows 3.1/95 world, colors are either opaque or invisible (used as a color key for
-  sprite transparency). Opacity is either 100% or 0%.
-
-- BMP resource list: Add second HBITMAP for AND mask to make sprite transparency possible.
-  In offscreen composition, AND the screen by the mask and then OR (or XOR) the image.
-  The second HBITMAP will always be 1bpp monochrome.
-
-- PNG image loader: Use tRNS map to determine which colors are transparent, or if the
-  PNG has any transparency at all, and if so, generate the second HBITMAP for the
-  sprite mask, setting any pixel that is transparent to black, or else white.
-
-- BMP resource draw function: If there is a second HBITMAP for the mask, AND by the
-  mask and OR (or XOR) by the image.
-
 - PNG image loader: The way that 1bpp monochrome images have transparency is by encoding
   the image as 2bpp, even if only to encode 3 colors, so that one color can be transparent.
   If 2bpp and there is a tRNS chunk that marks at least one color as transparent, and
@@ -32,6 +17,14 @@ TODO:
   PNG images.
 
 DONE:
+
+- PNG image loader: Read tRNS chunk to determine which colors are transparent. In the
+  Windows 3.1/95 world, colors are either opaque or invisible (used as a color key for
+  sprite transparency). Opacity is either 100% or 0%.
+
+- PNG image loader: Use tRNS map to determine which colors are transparent, or if the
+  PNG has any transparency at all, and if so, generate the second HBITMAP for the
+  sprite mask, setting any pixel that is transparent to black, or else white.
 
 - Windows 95 fullscreen mode: Add a fullscreen window flag. This flag, if set while
   fullscreen, instructs the game to query Windows 95 for the desktop area NOT covered
