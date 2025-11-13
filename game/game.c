@@ -365,6 +365,10 @@ struct WindowElement*				WindowElement = NULL;
 static const struct WindowElement near		WindowElementInit = { .imgRef = ImageRefNone, .x = 0, .y = 0, .w = 0, .h = 0, .flags = 0 };
 #define WindowElementHandleNone			((WORD)(-1))
 
+static inline struct WindowElement *GetWindowElementNRC(const WindowElementHandle h) {
+	return WindowElement + h;
+}
+
 struct WindowElement *GetWindowElement(const WindowElementHandle h) {
 	if (WindowElement && h < WindowElementMax) return WindowElement + h;
 	return NULL;
@@ -2086,11 +2090,9 @@ void FreeSpriteRes(void) {
 }
 
 void FreeWindowElement(const WindowElementHandle h) {
-	if (WindowElement && h < WindowElementMax) {
-		struct WindowElement *r = WindowElement + h;
-		// nothing to do yet
-		(void)r;
-	}
+	struct WindowElement *r = GetWindowElement(h);
+	// nothing to do yet
+	(void)r;
 }
 
 void FreeWindowElements(void) {
@@ -2144,8 +2146,9 @@ void DrawWindowElement(HDC hDC,struct WindowElement *we) {
 }
 
 void DoDrawWindowElementUpdate(HDC hDC,const WindowElementHandle h) {
-	if (WindowElement && h < WindowElementMax) {
-		struct WindowElement *we = WindowElement + h;
+	struct WindowElement *we = GetWindowElement(h);
+
+	if (we) {
 		if (we->flags & WindowElementFlag_Update)
 			DrawWindowElement(hDC,we);
 	}
@@ -2193,8 +2196,7 @@ void UpdateWindowElementsHDCWithClipRegion(HDC hDC,HRGN rgn,RECT *rgnRect) {
 		if (WindowElement) {
 			i = WindowElementMax;
 			while ((i--) != 0) {
-				struct WindowElement *we = WindowElement + i;
-
+				struct WindowElement *we = GetWindowElementNRC(i);
 				if (we->flags & WindowElementFlag_Enabled) {
 					/* detect overlap using orgn, then add the current element to orgn */
 					{
@@ -2270,26 +2272,22 @@ void UpdateWindowElementsPaintStruct(HDC hDC,HRGN rgn,RECT *upRgn) {
 /////////////////////////////////////////////////////////////
 
 BOOL IsWindowElementVisible(const WindowElementHandle h) {
-	if (WindowElement && h < WindowElementMax) {
-		struct WindowElement *we = WindowElement + h;
-		return (we->flags & WindowElementFlag_Enabled) ? TRUE : FALSE;
-	}
-
+	struct WindowElement *we = GetWindowElement(h);
+	if (we) return (we->flags & WindowElementFlag_Enabled) ? TRUE : FALSE;
 	return FALSE;
 }
 
 void ShowWindowElement(const WindowElementHandle h,const BOOL how) {
-	if (WindowElement && h < WindowElementMax) {
-		const WORD enf = how ? WindowElementFlag_Enabled : 0;
-		struct WindowElement *we = WindowElement + h;
-		if ((we->flags & WindowElementFlag_Enabled) != enf) {
-			if (how) {
-				we->flags |= WindowElementFlag_Update | WindowElementFlag_Enabled;
-			}
-			else {
-				we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
-				we->flags &= ~WindowElementFlag_Enabled;
-			}
+	const WORD enf = how ? WindowElementFlag_Enabled : 0;
+	struct WindowElement *we = GetWindowElement(h);
+
+	if (we && (we->flags & WindowElementFlag_Enabled) != enf) {
+		if (how) {
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_Enabled;
+		}
+		else {
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
+			we->flags &= ~WindowElementFlag_Enabled;
 		}
 	}
 }
@@ -2298,7 +2296,7 @@ WindowElementHandle WindowElementFromPoint(int x,int y) {
 	if (WindowElement) {
 		unsigned int i = WindowElementMax;
 		while ((i--) != 0) {
-			struct WindowElement *we = WindowElement + i;
+			struct WindowElement *we = GetWindowElementNRC(i);
 			if (we->flags & WindowElementFlag_Enabled) {
 				if (x >= we->x && x < (we->x+we->w) && y >= we->y && y < (we->y+we->h))
 					return (WindowElementHandle)i;
@@ -2310,9 +2308,9 @@ WindowElementHandle WindowElementFromPoint(int x,int y) {
 }
 
 void SetWindowElementPosition(const WindowElementHandle h,int x,int y) {
-	if (WindowElement && h < WindowElementMax) {
-		struct WindowElement *we = WindowElement + h;
+	struct WindowElement *we = GetWindowElement(h);
 
+	if (we) {
 		if (we->w && we->h && (we->x != x || we->y != y))
 			we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
 
@@ -2322,8 +2320,9 @@ void SetWindowElementPosition(const WindowElementHandle h,int x,int y) {
 }
 
 void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
-	if (WindowElement && h < WindowElementMax) {
-		struct WindowElement *we = WindowElement + h;
+	struct WindowElement *we = GetWindowElement(h);
+
+	if (we) {
 		unsigned int nw = 0,nh = 0,nsx = 0,nsy = 0;
 
 		if (ir == ImageRefNone) {
@@ -2652,10 +2651,12 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		MouseCapture |= 1;
 
 		MouseDragWinElem = WindowElementFromPoint(LOWORD(lparam),HIWORD(lparam));
-		if (WindowElement && MouseDragWinElem < WindowElementMax) {
-			struct WindowElement *we = WindowElement + MouseDragWinElem;
-			MouseDragWinElemOrigin.x = LOWORD(lparam) - we->x;
-			MouseDragWinElemOrigin.y = HIWORD(lparam) - we->y;
+		{
+			struct WindowElement *we = GetWindowElement(MouseDragWinElem);
+			if (we) {
+				MouseDragWinElemOrigin.x = LOWORD(lparam) - we->x;
+				MouseDragWinElemOrigin.y = HIWORD(lparam) - we->y;
+			}
 		}
 	}
 	else if (message == WM_LBUTTONUP) {
@@ -2721,7 +2722,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			/* all window elements need to be redrawn */
 			if (WindowElement) {
 				for (i=0;i < WindowElementMax;i++) {
-					struct WindowElement *we = WindowElement + i;
+					struct WindowElement *we = GetWindowElementNRC(i);
 					if (we->flags & WindowElementFlag_Enabled) {
 						um.left = we->x;
 						um.top = we->y;
