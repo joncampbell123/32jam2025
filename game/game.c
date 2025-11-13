@@ -1604,7 +1604,7 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 	}
 
 	if (ihdr.width == 0 || ihdr.height == 0 || ihdr.width > 2048 || ihdr.height > 2048 ||
-		!(ihdr.bit_depth == 1 || ihdr.bit_depth == 4 || ihdr.bit_depth == 8) ||
+		!(ihdr.bit_depth == 1 || ihdr.bit_depth == 2 || ihdr.bit_depth == 4 || ihdr.bit_depth == 8) ||
 		ihdr.compression_method != 0 || ihdr.filter_method != 0 || ihdr.interlace_method != 0) {
 		DLOGT("PNG format not supported");
 		goto finish;
@@ -1669,9 +1669,16 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 		BITMAPINFOHEADER *bih = (BITMAPINFOHEADER*)bihraw;
 		bih->biSize = sizeof(BITMAPINFOHEADER);
 		bih->biWidth = ihdr.width;
-		bih->biPlanes = 1;
-		bih->biBitCount = ihdr.bit_depth;
 		bih->biCompression = 0;
+		bih->biPlanes = 1;
+
+		if (ihdr.color_type == 3/*indexed*/ && ihdr.bit_depth == 2) {
+			/* WinGDI does not support 2bpp, convert to 4bpp in place on load */
+			bih->biBitCount = 4;
+		}
+		else {
+			bih->biBitCount = ihdr.bit_depth;
+		}
 
 		stride = (unsigned int)(((((unsigned long)bih->biWidth * (unsigned long)bih->biBitCount) + 31ul) & (~31ul)) >> 3ul);
 		pngstride = (unsigned int)((((unsigned long)ihdr.bit_depth * (unsigned long)ihdr.width) + 7ul) / 8ul);
@@ -1798,9 +1805,24 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 				ny += br->height;
 
 			for (sy=0;sy < lh;sy++) {
+				BITMAPINFOHEADER *bih = (BITMAPINFOHEADER*)bihraw;
+
 				sr = png_idat_read(&pir,&filter,1,fd); // filter byte
 				sr = png_idat_read(&pir,slice+((lh-1u-sy)*stride),pngstride,fd);
 				if (sr != pngstride) DLOGT("PNG IDAT decompress short read want=%u got=%u sy=%u y=%u lh=%u",pngstride,sr,sy,sy+y,lh);
+
+				/* convert 2bpp to 4bpp, in place, backwards */
+				/* NTS: This 2bpp processing is the only way to handle monochrome image with transparency */
+				if (ihdr.color_type == 3/*indexed*/ && ihdr.bit_depth == 2 && bih->biBitCount == 4 && pngstride != 0 && (pngstride*2) <= stride) {
+					unsigned char *row = slice+((lh-1u-sy)*stride);
+					unsigned int i = pngstride;
+
+					while ((i--) != 0) {
+						const unsigned char b2 = row[i];
+						row[i*2 + 0] = (((b2 >> 6u) & 3u) << 4u) + ((b2 >> 4u) & 3u);
+						row[i*2 + 1] = (((b2 >> 2u) & 3u) << 4u) + ( b2        & 3u);
+					}
+				}
 			}
 
 			if (gdiFlags & GDIWantTransparencyMask) {
@@ -3108,7 +3130,7 @@ err1:
 	else if (WndScreenInfo.TotalBitsPerPixel >= 3)
 		LoadBMPr(0,"sht1_3.png");
 	else
-		LoadBMPr(0,"sht1_1o.png");
+		LoadBMPr(0,"sht1_1.png");
 
 	InitSpriteGridFromBMP(0/*base sprite*/,0/*BMP*/,
 		-4/*x*/,0/*y*/,
