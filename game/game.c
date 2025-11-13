@@ -346,12 +346,16 @@ typedef WORD					ImageRef;
 // NTS: This code copies down the subregion of a sprite. Changing the sprite source rect after setting it to
 //      the window element will not change the subregion. Changing the bitmap assigned to the sprite will not
 //      change the bitmap displayed.
+// NTS: Windows 3.1/95 may have 2D acceleration but that is not guaranteed, performance may not be very fast.
+//      If integer scaling is involved here, performance will definitely drop unless the driver provides some
+//      hardware aceeleration for that too, which for Windows 3.1 is very unlikely.
 struct WindowElement {
 	ImageRef				imgRef;
 	int					x,y; /* signed, to allow partially offscreen if that's what you want */
 	unsigned int				w,h;
 	unsigned int				sx,sy; /* source x,y coordinates of bitmap */
 	WORD					flags;
+	BYTE					scale; /* integer scale - 1 */
 };
 
 #define WindowElementFlag_Enabled		0x0001u /* window element is enabled */
@@ -362,7 +366,7 @@ struct WindowElement {
 typedef WORD					WindowElementHandle;
 WORD near					WindowElementMax = 8;
 struct WindowElement*				WindowElement = NULL;
-static const struct WindowElement near		WindowElementInit = { .imgRef = ImageRefNone, .x = 0, .y = 0, .w = 0, .h = 0, .flags = 0 };
+static const struct WindowElement near		WindowElementInit = { .imgRef = ImageRefNone, .x = 0, .y = 0, .w = 0, .h = 0, .flags = 0, .scale = 0 };
 #define WindowElementHandleNone			((WORD)(-1))
 
 static inline struct WindowElement *GetWindowElementNRC(const WindowElementHandle h) {
@@ -2131,7 +2135,11 @@ void DrawWindowElement(HDC hDC,struct WindowElement *we) {
 				SelectObject(hDC,GetStockObject(WHITE_BRUSH));
 				Rectangle(hDC,we->x,we->y,we->x+we->w+1,we->y+we->h+1);
 #endif
-				BitBlt(hDC,we->x,we->y,we->w,we->h,bDC,we->sx,we->sy,SRCCOPY);
+				if (we->scale)
+					StretchBlt(hDC,we->x,we->y,we->w,we->h,bDC,we->sx,we->sy,we->w / (we->scale + 1u),we->h / (we->scale + 1u),SRCCOPY);
+				else
+					BitBlt(hDC,we->x,we->y,we->w,we->h,bDC,we->sx,we->sy,SRCCOPY);
+
 				SelectObject(bDC,(HGDIOBJ)ob);
 				DeleteDC(bDC);
 			}
@@ -2318,6 +2326,11 @@ void SetWindowElementPosition(const WindowElementHandle h,int x,int y) {
 	}
 }
 
+void SetWindowElementScale(const WindowElementHandle h,const unsigned int scale) {
+	struct WindowElement *we = GetWindowElement(h);
+	if (we && scale > 0u && scale <= 8u) we->scale = scale - 1;
+}
+
 void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 	struct WindowElement *we = GetWindowElement(h);
 
@@ -2345,6 +2358,10 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 				nsy = sr->y;
 			}
 		}
+
+		/* we allow integer scaling up i.e. for pixel art or when rendering is slower than display, etc */
+		nw *= ((unsigned int)we->scale + 1u);
+		nh *= ((unsigned int)we->scale + 1u);
 
 		/* if the reference or source x/y coords changed, update the element */
 		if (we->imgRef != ir || we->sx != nsx || we->sy != nsy)
