@@ -893,13 +893,12 @@ BOOL InitFonts(void) {
 }
 
 void FreeFontRes(const FontHandle f) {
-	if (Fonts && f < FontsMax) {
-		struct FontResource *fr = Fonts + f;
-		if (fr->fontObj) {
-			DLOGT("Freeing font resource #%u",f);
-			DeleteObject(fr->fontObj);
-			fr->fontObj = (HFONT)NULL;
-		}
+	struct FontResource *fr = GetFontResource(f);
+
+	if (fr && fr->fontObj) {
+		DLOGT("Freeing font resource #%u",f);
+		DeleteObject(fr->fontObj);
+		fr->fontObj = (HFONT)NULL;
 	}
 }
 
@@ -925,10 +924,10 @@ void FreeFonts(void) {
 //   height == 0 picks a default
 //   width == 0 to pick a default width
 BOOL LoadFontr(const FontHandle fh,int height,int width,unsigned int flags,const char *fontName) {
-	FreeFontRes(fh);
+	struct FontResource *fr = GetFontResource(fh);
 
-	if (Fonts && fh < FontsMax && fontName) {
-		struct FontResource *fr = Fonts + fh;
+	if (fr) {
+		FreeFontRes(fh);
 
 		DLOGT("Loading font resource: height=%u width=%u font=\"%s\"",height,width,fontName);
 		if (flags & FontrFlagBold) DLOGT("Flag: BOLD");
@@ -2367,12 +2366,13 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 
 // Generic demonstration function---may disappear later
 void DrawTextBMPr(const BMPrHandle h,const FontHandle fh,const char *txt) {
+	struct FontResource *fr = GetFontResource(fh);
+	const unsigned int txtlen = strlen(txt);
 	struct BMPres *br = GetBMPr(h);
 
-	if (br && (Fonts && fh < FontsMax)) {
-		struct FontResource *fr = Fonts + fh;
+	if (br && fr) {
 		HDC bmpDC = BMPrGDIObjectGetDC(h);
-		const unsigned int txtlen = strlen(txt);
+
 		if (bmpDC) {
 			RECT um;
 			HFONT fhold;
