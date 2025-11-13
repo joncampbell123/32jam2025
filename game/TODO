@@ -6,17 +6,17 @@ TODO:
 
 - Test draw BMP goes to compositing buffer, and then composed to screen.
 
-- PNG image loader: The way that 1bpp monochrome images have transparency is by encoding
-  the image as 2bpp, even if only to encode 3 colors, so that one color can be transparent.
-  If 2bpp and there is a tRNS chunk that marks at least one color as transparent, and
-  the PLTE has only 3 colors, convert the 2bpp on load to a 1bpp image and 1bpp mask.
-
 - PNG image loader: If at some point this code is to support "truecolor" PNG images,
   support for the various filtering modes will have to be implemented. Most programs
   do not do filtering for indexed color but will always do filtering for truecolor
   PNG images.
 
 DONE:
+
+- PNG image loader: The way that 1bpp monochrome images have transparency is by encoding
+  the image as 2bpp, even if only to encode 3 colors, so that one color can be transparent.
+  If 2bpp and there is a tRNS chunk that marks at least one color as transparent, and
+  the PLTE has only 3 colors, convert the 2bpp on load to a 1bpp image and 1bpp mask.
 
 - PNG image loader: Read tRNS chunk to determine which colors are transparent. In the
   Windows 3.1/95 world, colors are either opaque or invisible (used as a color key for

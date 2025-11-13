@@ -2317,7 +2317,13 @@ void DrawTextBMPr(const BMPrHandle h,const FontHandle fh,const char *txt) {
 
 			SetBkMode(bmpDC,TRANSPARENT);
 			SetTextAlign(bmpDC,TA_CENTER|TA_TOP);
-			SetTextColor(bmpDC,RGB(0,255,0));
+
+			/* NTS: Apparently bright green on monochrome 1bpp displays is not enough to display as white */
+			if (WndScreenInfo.TotalBitsPerPixel >= 4)
+				SetTextColor(bmpDC,RGB(0,255,0));
+			else
+				SetTextColor(bmpDC,RGB(255,255,255));
+
 			TextOut(bmpDC,br->width/2,(br->height - fr->height)/2,txt,txtlen);
 
 			if (fr->fontObj) SelectObject(bmpDC,fhold);
