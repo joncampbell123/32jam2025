@@ -400,6 +400,14 @@ int clamp0(int x) {
 	return x >= 0 ? x : 0;
 }
 
+uint32_t bytswp32(uint32_t t) {
+	t = (t << 16) | (t >> 16);
+	t = ((t & 0xFF00FF00) >> 8) | ((t & 0x00FF00FF) << 8);
+	return t;
+}
+
+/////////////////////////////////////////////////////////////
+
 #if GAMEDEBUG
 # ifndef WIN32
 static char dlogtmp[256];
@@ -440,6 +448,8 @@ void debuglogprintf(unsigned int fl,const char *fmt,...) {
 }
 #endif
 
+/////////////////////////////////////////////////////////////
+
 BOOL CheckMultiInstanceFindWindow(const BOOL mustError) {
 	if (!(WndConfigFlags & WndCFG_MultiInstance)) {
 		HWND hwnd = FindWindow(WndProcClass,NULL);
@@ -467,6 +477,8 @@ BOOL CheckMultiInstanceFindWindow(const BOOL mustError) {
 
 	return FALSE;
 }
+
+/////////////////////////////////////////////////////////////
 
 void WinClientSizeInFullScreen(RECT *d,const struct WndStyle_t *style,const BOOL fMenu) {
 	(void)fMenu;
@@ -500,6 +512,8 @@ void WinClientSizeToWindowSize(POINT *d,const POINT *s,const struct WndStyle_t *
 	if (fMenu) d->y += WndAdjustWindowRectBug_yadd;
 #endif
 }
+
+/////////////////////////////////////////////////////////////
 
 BOOL InitLogPalette(void) {
 	if (!WndLogPalette) {
@@ -597,6 +611,30 @@ BOOL InitColorPalette(void) {
 	return TRUE;
 }
 
+void FreeLogPalette(void) {
+	if (WndLogPalette) {
+		DLOGT("Freeing logical palette");
+		UnrealizePaletteObject();
+		free(WndLogPalette);
+		WndLogPalette = NULL;
+	}
+}
+
+void FreePaletteObject(void) {
+	if (WndHanPalette) {
+		DLOGT("Freeing GDI palette object");
+		DeleteObject(WndHanPalette);
+		WndHanPalette = (HPALETTE)NULL;
+	}
+}
+
+void FreeColorPalette(void) {
+	FreeLogPalette();
+	FreePaletteObject();
+}
+
+/////////////////////////////////////////////////////////////
+
 BOOL InitBackgroundBrush(void) {
 	if (!WndBkBrush) {
 		WndBkBrush = CreateSolidBrush(WndBkColor);
@@ -622,27 +660,7 @@ void SetBackgroundColor(COLORREF x) {
 	}
 }
 
-void FreeLogPalette(void) {
-	if (WndLogPalette) {
-		DLOGT("Freeing logical palette");
-		UnrealizePaletteObject();
-		free(WndLogPalette);
-		WndLogPalette = NULL;
-	}
-}
-
-void FreePaletteObject(void) {
-	if (WndHanPalette) {
-		DLOGT("Freeing GDI palette object");
-		DeleteObject(WndHanPalette);
-		WndHanPalette = (HPALETTE)NULL;
-	}
-}
-
-void FreeColorPalette(void) {
-	FreeLogPalette();
-	FreePaletteObject();
-}
+/////////////////////////////////////////////////////////////
 
 void LoadLogPaletteBMP(const int fd,PALETTEENTRY *pels,UINT colors) {
 	BITMAPFILEHEADER bfh;
@@ -717,11 +735,7 @@ void LoadLogPaletteBMP(const int fd,PALETTEENTRY *pels,UINT colors) {
 	}
 }
 
-uint32_t bytswp32(uint32_t t) {
-	t = (t << 16) | (t >> 16);
-	t = ((t & 0xFF00FF00) >> 8) | ((t & 0x00FF00FF) << 8);
-	return t;
-}
+/////////////////////////////////////////////////////////////
 
 /* PNG IHDR [https://www.w3.org/TR/PNG/#11IHDR]. Fields are big endian. */
 #pragma pack(push,1)
@@ -742,6 +756,8 @@ struct minipng_PLTE_color {
     uint8_t         red,green,blue;         /* +0x00,+0x01,+0x02 */
 };                                          /* =0x03 */
 #pragma pack(pop)
+
+/////////////////////////////////////////////////////////////
 
 void LoadLogPalettePNG(const int fd,PALETTEENTRY *pels,UINT colors) {
 	unsigned char tmp[9];
@@ -810,6 +826,8 @@ void LoadLogPalettePNG(const int fd,PALETTEENTRY *pels,UINT colors) {
 	}
 }
 
+/////////////////////////////////////////////////////////////
+
 void LoadLogPalette(const char *p) {
 	if (WndLogPalette) {
 		int fd = open(p,O_RDONLY|O_BINARY);
@@ -858,6 +876,8 @@ void LoadLogPalette(const char *p) {
 	}
 }
 
+/////////////////////////////////////////////////////////////
+
 BOOL InitFonts(void) {
 	unsigned int i;
 
@@ -895,6 +915,8 @@ void FreeFonts(void) {
 		Fonts = NULL;
 	}
 }
+
+/////////////////////////////////////////////////////////////
 
 #define FontrFlagBold			0x0001u
 #define FontrFlagItalic			0x0002u
@@ -950,6 +972,8 @@ BOOL LoadFontr(const FontHandle fh,int height,int width,unsigned int flags,const
 
 	return TRUE;
 }
+
+/////////////////////////////////////////////////////////////
 
 BOOL InitBMPRes(void) {
 	unsigned int i;
@@ -1028,6 +1052,8 @@ void FreeBMPrGDIObject(const BMPrHandle h) {
 	}
 }
 
+/////////////////////////////////////////////////////////////
+
 void InitSpriteGridFromBMP(SpriterHandle sh,const BMPrHandle bh,int bx,int by,const unsigned int cols,const unsigned int rows,const unsigned int cellwidth,const unsigned int cellheight) {
 	unsigned int r,c;
 	int cx,cy;
@@ -1056,6 +1082,8 @@ void InitSpriteGridFromBMP(SpriterHandle sh,const BMPrHandle bh,int bx,int by,co
 		}
 	}
 }
+
+/////////////////////////////////////////////////////////////
 
 BOOL InitBMPrGDIObject(const BMPrHandle h,unsigned int width,unsigned int height,unsigned int flags) {
 	if (BMPr && h < BMPrMax) {
@@ -1090,6 +1118,8 @@ BOOL InitBMPrGDIObject(const BMPrHandle h,unsigned int width,unsigned int height
 
 	return TRUE;
 }
+
+/////////////////////////////////////////////////////////////
 
 // current GetDC/Release target in functions below
 static BMPrHandle BMPrGDICurrent = BMPrNone;
@@ -1160,12 +1190,16 @@ void BMPrGDIObjectReleaseDC(const BMPrHandle h) {
 	}
 }
 
+/////////////////////////////////////////////////////////////
+
 void InitBlankBMPr(const BMPrHandle h,unsigned int width,unsigned int height) {
 	if (!InitBMPrGDIObject(h,width,height,0)) {
 		DLOGT("Unable to init GDI bitmap for blank BMPr");
 		return;
 	}
 }
+
+/////////////////////////////////////////////////////////////
 
 void LoadBMPrFromBMP(const int fd,struct BMPres *br,const BMPrHandle h) {
 	unsigned char *bihraw = NULL; // combined BITMAPINFOHEADER and palette for GDI to use
@@ -1347,6 +1381,8 @@ finish:
 	}
 }
 
+/////////////////////////////////////////////////////////////
+
 struct png_idat_reader {
 	unsigned char*		ibuf;
 	unsigned int		ibuflen;
@@ -1512,6 +1548,8 @@ BOOL png_idat_reader_init(struct png_idat_reader *pr,off_t ofs) {
 
 	return TRUE;
 }
+
+/////////////////////////////////////////////////////////////
 
 void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 	struct minipng_PLTE_color *plte = NULL;
@@ -1964,8 +2002,9 @@ finish:
 		free(bihraw2);
 		bihraw2 = NULL;
 	}
-
 }
+
+/////////////////////////////////////////////////////////////
 
 BOOL LoadBMPr(const BMPrHandle h,const char *p) {
 	if (BMPr && h < BMPrMax) {
@@ -2019,6 +2058,8 @@ void FreeBMPr(const BMPrHandle h) {
 	}
 }
 
+/////////////////////////////////////////////////////////////
+
 void FreeBMPRes(void) {
 	unsigned int i;
 
@@ -2071,6 +2112,8 @@ void FreeWindowElements(void) {
 	}
 }
 
+/////////////////////////////////////////////////////////////
+
 void DrawWindowElement(HDC hDC,struct WindowElement *we) {
 	if (we->bmpRef != BMPrNone && (we->flags & WindowElementFlag_Enabled)) {
 		if (BMPr && we->bmpRef < BMPrMax) {
@@ -2105,6 +2148,8 @@ void DoDrawWindowElementUpdate(HDC hDC,const WindowElementHandle h) {
 	}
 }
 
+/////////////////////////////////////////////////////////////
+
 void DrawBackgroundSub(HDC hDC,RECT* updateRect) {
 	HPEN oldPen,newPen;
 	HBRUSH oldBrush;
@@ -2131,6 +2176,8 @@ void DrawBackground(HDC hDC,RECT* updateRect) {
 	DrawBackgroundSub(hDC,updateRect);
 	WndStateFlags &= ~WndState_NeedBkRedraw;
 }
+
+/////////////////////////////////////////////////////////////
 
 void UpdateWindowElementsHDCWithClipRegion(HDC hDC,HRGN rgn,RECT *rgnRect) {
 	unsigned int i;
@@ -2216,6 +2263,8 @@ void UpdateWindowElementsPaintStruct(HDC hDC,HRGN rgn,RECT *upRgn) {
 	UpdateWindowElementsHDCWithClipRegion(hDC,rgn,upRgn);
 	DeleteObject(rgn);
 }
+
+/////////////////////////////////////////////////////////////
 
 BOOL IsWindowElementVisible(const WindowElementHandle h) {
 	if (WindowElement && h < WindowElementMax) {
@@ -2316,6 +2365,8 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 	}
 }
 
+/////////////////////////////////////////////////////////////
+
 // Generic demonstration function---may disappear later
 void DrawTextBMPr(const BMPrHandle h,const FontHandle fh,const char *txt) {
 	if ((BMPr && h < BMPrMax) && (Fonts && fh < FontsMax)) {
@@ -2354,9 +2405,13 @@ void DrawTextBMPr(const BMPrHandle h,const FontHandle fh,const char *txt) {
 	}
 }
 
+/////////////////////////////////////////////////////////////
+
 UINT near SpriteAnimFrame = 0;
 BYTE near MouseCapture = 0;
 UINT near AnimTimerId = 0;
+
+/////////////////////////////////////////////////////////////
 
 BOOL InitAnimTimer(void) {
 	if (!AnimTimerId) {
@@ -2373,6 +2428,8 @@ void FreeAnimTimer(void) {
 		AnimTimerId = 0;
 	}
 }
+
+/////////////////////////////////////////////////////////////
 
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
 LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
@@ -2721,6 +2778,8 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 
 	return 0;
 }
+
+/////////////////////////////////////////////////////////////
 
 /* NOTES:
  *   For Win16, programmers generally use WINAPI WinMain(...) but WINAPI is defined in such a way
