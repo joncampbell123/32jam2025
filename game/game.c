@@ -1060,7 +1060,7 @@ BOOL InitWindowElements(void) {
 }
 
 BOOL IsBMPresAlloc(const BMPrHandle h) {
-	struct BMPres *b = GetBMPr(h);
+	const struct BMPres *b = GetBMPr(h);
 	if (b && b->flags & BMPresFlag_Allocated) return TRUE;
 	return FALSE;
 }
@@ -1147,7 +1147,7 @@ static HDC BMPrGDIbmpDC = (HDC)NULL;
 static HBITMAP BMPrGDIbmpOld = (HBITMAP)NULL;
 
 HDC BMPrGDIObjectGetDC(const BMPrHandle h) {
-	struct BMPres *b = GetBMPr(h);
+	const struct BMPres *b = GetBMPr(h);
 
 	if (b && BMPrGDICurrent == BMPrNone && b->bmpObj) {
 		HDC retDC = CreateCompatibleDC(NULL);
@@ -1180,7 +1180,7 @@ HDC BMPrGDIObjectGetDC(const BMPrHandle h) {
 }
 
 void BMPrGDIObjectReleaseDC(const BMPrHandle h) {
-	struct BMPres *b = GetBMPr(h);
+	const struct BMPres *b = GetBMPr(h);
 
 	if (b && BMPrGDICurrent != BMPrNone && BMPrGDICurrent == h) {
 		if (BMPrGDIbmpDC) {
@@ -2111,13 +2111,13 @@ void DrawWindowElement(HDC hDC,struct WindowElement *we) {
 		HBITMAP bmp = (HBITMAP)NULL;
 
 		if (ImageRefGetType(we->imgRef) == ImageRefTypeBitmap) {
-			struct BMPres *br = GetBMPr((BMPrHandle)ImageRefGetRef(we->imgRef));
+			const struct BMPres *br = GetBMPr((BMPrHandle)ImageRefGetRef(we->imgRef));
 			if (br && br->bmpObj) bmp = br->bmpObj;
 		}
 		else if (ImageRefGetType(we->imgRef) == ImageRefTypeSprite) {
-			struct SpriteRes *sr = GetSpriter((SpriterHandle)ImageRefGetRef(we->imgRef));
+			const struct SpriteRes *sr = GetSpriter((SpriterHandle)ImageRefGetRef(we->imgRef));
 			if (sr) {
-				struct BMPres *br = GetBMPr(sr->bmp);
+				const struct BMPres *br = GetBMPr(sr->bmp);
 				if (br && br->bmpObj) bmp = br->bmpObj;
 			}
 		}
