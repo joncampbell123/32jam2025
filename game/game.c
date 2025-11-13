@@ -287,50 +287,62 @@ HPALETTE near			WndHanPalette = (HPALETTE)NULL;
 
 // loaded bitmap resource
 struct BMPres {
-	HBITMAP			bmpObj;
-	unsigned short		width,height;
-	unsigned short		flags;
+	HBITMAP					bmpObj;
+	unsigned short				width,height;
+	unsigned short				flags;
 };
 
 #define BMPresFlag_Allocated			0x0001u /* slot is allocated, whether or not there is a bitmap object */
 #define BMPresFlag_TransparencyMask		0x0002u /* bitmap has transparency mask */
 
-typedef WORD			BMPrHandle;
-WORD near			BMPrMax = 4;
-struct BMPres*			BMPr = NULL;
-#define BMPrNone		((WORD)(-1))
+typedef WORD					BMPrHandle;
+WORD near					BMPrMax = 4;
+struct BMPres*					BMPr = NULL;
+static const struct BMPres near			BMPrInit = { .bmpObj = (HBITMAP)NULL, .width = 0, .height = 0, .flags = 0 };
+#define BMPrNone				((WORD)(-1))
+
+struct BMPres *GetBMPr(const BMPrHandle h) {
+	if (BMPr && h < BMPrMax) return BMPr + h;
+	return NULL;
+}
 
 // sprite within bitmap
 struct SpriteRes {
-	BMPrHandle		bmp;
-	unsigned short		x,y,w,h; /* subregion of bmp */
-	WORD			flags;
+	BMPrHandle				bmp;
+	unsigned short				x,y,w,h; /* subregion of bmp */
+	WORD					flags;
 };
 
-#define SpriteResFlag_Allocated		0x0001u /* slot is allocated */
-#define SpriteResFlag_IgnoreMask	0x0002u /* even if the bitmap has a transparency mask, do not use it */
-#define SpriteResFlag_HFlip		0x0004u /* horizontally flip */
-#define SpriteResFlag_VFlip		0x0008u /* vertically flip */
+#define SpriteResFlag_Allocated			0x0001u /* slot is allocated */
+#define SpriteResFlag_IgnoreMask		0x0002u /* even if the bitmap has a transparency mask, do not use it */
+#define SpriteResFlag_HFlip			0x0004u /* horizontally flip */
+#define SpriteResFlag_VFlip			0x0008u /* vertically flip */
 
-typedef WORD			SpriterHandle;
-WORD near			SpriterMax = 64;
-struct SpriteRes*		Spriter = NULL;
-#define SpriterNone		((WORD)(-1))
+typedef WORD					SpriterHandle;
+WORD near					SpriterMax = 64;
+struct SpriteRes*				Spriter = NULL;
+static const struct SpriteRes near		SpriterInit = { .bmp = BMPrNone, .x = 0, .y = 0, .w = 0, .h = 0 };
+#define SpriterNone				((WORD)(-1))
+
+struct SpriteRes *GetSpriter(const SpriterHandle h) {
+	if (Spriter && h < SpriterMax) return Spriter + h;
+	return NULL;
+}
 
 // combo bitmap/sprite reference number. An imageref is a reference to a sprite or bitmap
-typedef WORD			ImageRef;
-#define ImageRefNone		((WORD)(-1))
-#define ImageRefTypeShift	((WORD)(14))
-#define ImageRefRefMask		((WORD)((1u << ImageRefTypeShift) - 1u))
-#define ImageRefTypeMask	((WORD)(~((1u << ImageRefTypeShift) - 1u)))
+typedef WORD					ImageRef;
+#define ImageRefNone				((WORD)(-1))
+#define ImageRefTypeShift			((WORD)(14))
+#define ImageRefRefMask				((WORD)((1u << ImageRefTypeShift) - 1u))
+#define ImageRefTypeMask			((WORD)(~((1u << ImageRefTypeShift) - 1u)))
 /* ^ NTS: shift=14, 1 << 14 = 0x4000, (1 << 14) - 1 = 0x3FFF, ~0x3FFF = 0xC000 */
-#define ImageRefTypeBitmap	((WORD)(0))
-#define ImageRefTypeSprite	((WORD)(1))
-#define ImageRefGetRef(x)	(((WORD)(x)) & ImageRefRefMask)
-#define ImageRefGetType(x)	((((WORD)(x)) & ImageRefTypeMask) >> ((WORD)ImageRefTypeShift))
-#define ImageRefMakeType(x)	((((WORD)(x)) << ImageRefTypeShift) & ImageRefTypeMask)
-#define MAKEBMPIMAGEREF(x)	(((WORD)(x)) | ImageRefMakeType(ImageRefTypeBitmap))
-#define MAKESPRITEIMAGEREF(x)	(((WORD)(x)) | ImageRefMakeType(ImageRefTypeSprite))
+#define ImageRefTypeBitmap			((WORD)(0))
+#define ImageRefTypeSprite			((WORD)(1))
+#define ImageRefGetRef(x)			(((WORD)(x)) & ImageRefRefMask)
+#define ImageRefGetType(x)			((((WORD)(x)) & ImageRefTypeMask) >> ((WORD)ImageRefTypeShift))
+#define ImageRefMakeType(x)			((((WORD)(x)) << ImageRefTypeShift) & ImageRefTypeMask)
+#define MAKEBMPIMAGEREF(x)			(((WORD)(x)) | ImageRefMakeType(ImageRefTypeBitmap))
+#define MAKESPRITEIMAGEREF(x)			(((WORD)(x)) | ImageRefMakeType(ImageRefTypeSprite))
 
 /////////////////////////////////////////////////////////////
 
@@ -340,35 +352,47 @@ typedef WORD			ImageRef;
 //      the window element will not change the subregion. Changing the bitmap assigned to the sprite will not
 //      change the bitmap displayed.
 struct WindowElement {
-	ImageRef		imgRef;
-	BMPrHandle		bmpRef;
-	int			x,y; /* signed, to allow partially offscreen if that's what you want */
-	unsigned int		w,h;
-	unsigned int		sx,sy; /* source x,y coordinates of bitmap */
-	WORD			flags;
+	ImageRef				imgRef;
+	BMPrHandle				bmpRef; /* TODO: Get rid of this */
+	int					x,y; /* signed, to allow partially offscreen if that's what you want */
+	unsigned int				w,h;
+	unsigned int				sx,sy; /* source x,y coordinates of bitmap */
+	WORD					flags;
 };
 
-#define WindowElementFlag_Enabled	0x0001u /* window element is enabled */
-#define WindowElementFlag_Update	0x0002u /* window element needs to be redrawn fully */
-#define WindowElementFlag_BkUpdate	0x0004u /* window element will need to also trigger window background redraw */
-#define WindowElementFlag_Overlapped	0x0008u /* window element is overlapped by another */
+#define WindowElementFlag_Enabled		0x0001u /* window element is enabled */
+#define WindowElementFlag_Update		0x0002u /* window element needs to be redrawn fully */
+#define WindowElementFlag_BkUpdate		0x0004u /* window element will need to also trigger window background redraw */
+#define WindowElementFlag_Overlapped		0x0008u /* window element is overlapped by another */
 
-typedef WORD			WindowElementHandle;
-WORD near			WindowElementMax = 8;
-struct WindowElement*		WindowElement = NULL;
-#define WindowElementHandleNone	((WORD)(-1))
+typedef WORD					WindowElementHandle;
+WORD near					WindowElementMax = 8;
+struct WindowElement*				WindowElement = NULL;
+static const struct WindowElement near		WindowElementInit = { .imgRef = ImageRefNone, .x = 0, .y = 0, .w = 0, .h = 0, .flags = 0 };
+#define WindowElementHandleNone			((WORD)(-1))
+
+struct WindowElement *GetWindowElement(const WindowElementHandle h) {
+	if (WindowElement && h < WindowElementMax) return WindowElement + h;
+	return NULL;
+}
 
 /////////////////////////////////////////////////////////////
 
 struct FontResource {
-	HFONT			fontObj;
-	short int		height,ascent,descent,avwidth,maxwidth;
+	HFONT					fontObj;
+	short int				height,ascent,descent,avwidth,maxwidth;
 };
 
-typedef WORD			FontHandle;
-WORD near			FontsMax = 4;
-struct FontResource*		Fonts = NULL;
-#define FontHandleNone		((WORD)(-1))
+typedef WORD					FontHandle;
+WORD near					FontsMax = 4;
+struct FontResource*				Fonts = NULL;
+static const struct FontResource near		FontResourceInit = { .fontObj = (HFONT)NULL, .height = 0, .ascent = 0, .descent = 0, .avwidth = 0, .maxwidth = 0 };
+#define FontHandleNone				((WORD)(-1))
+
+struct FontResource *GetFontResource(const FontHandle h) {
+	if (Fonts && h < FontsMax) return Fonts + h;
+	return NULL;
+}
 
 /////////////////////////////////////////////////////////////
 
@@ -833,11 +857,6 @@ void LoadLogPalette(const char *p) {
 		DLOGT("Ignoring palette load from %s, video mode does not use a palette",p);
 	}
 }
-
-static const struct BMPres near BMPrInit = { .bmpObj = (HBITMAP)NULL, .width = 0, .height = 0, .flags = 0 };
-static const struct SpriteRes near SpriterInit = { .bmp = BMPrNone, .x = 0, .y = 0, .w = 0, .h = 0 };
-static const struct WindowElement near WindowElementInit = { .imgRef = ImageRefNone, .x = 0, .y = 0, .w = 0, .h = 0, .flags = 0 };
-static const struct FontResource near FontResourceInit = { .fontObj = (HFONT)NULL, .height = 0, .ascent = 0, .descent = 0, .avwidth = 0, .maxwidth = 0 };
 
 BOOL InitFonts(void) {
 	unsigned int i;
