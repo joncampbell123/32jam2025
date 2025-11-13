@@ -348,7 +348,6 @@ typedef WORD					ImageRef;
 //      change the bitmap displayed.
 struct WindowElement {
 	ImageRef				imgRef;
-	BMPrHandle				bmpRef; /* TODO: Get rid of this */
 	int					x,y; /* signed, to allow partially offscreen if that's what you want */
 	unsigned int				w,h;
 	unsigned int				sx,sy; /* source x,y coordinates of bitmap */
@@ -2111,12 +2110,27 @@ void FreeWindowElements(void) {
 /////////////////////////////////////////////////////////////
 
 void DrawWindowElement(HDC hDC,struct WindowElement *we) {
-	if (we->bmpRef != BMPrNone && (we->flags & WindowElementFlag_Enabled)) {
-		struct BMPres *br = GetBMPr(we->bmpRef);
-		if (br && br->bmpObj && (br->flags & BMPresFlag_Allocated)) {
+	if ((we->flags & WindowElementFlag_Enabled) && we->imgRef != ImageRefNone) {
+		HBITMAP bmp = (HBITMAP)NULL;
+
+		if (ImageRefGetType(we->imgRef) == ImageRefTypeBitmap) {
+			const BMPrHandle b = (BMPrHandle)ImageRefGetRef(we->imgRef);
+			struct BMPres *br = GetBMPr(b);
+			if (br && br->bmpObj) bmp = br->bmpObj;
+		}
+		else if (ImageRefGetType(we->imgRef) == ImageRefTypeSprite) {
+			const SpriterHandle s = (SpriterHandle)ImageRefGetRef(we->imgRef);
+			if (Spriter && s < SpriterMax) {
+				struct SpriteRes *sr = Spriter + s;
+				struct BMPres *br = GetBMPr(sr->bmp);
+				if (br && br->bmpObj) bmp = br->bmpObj;
+			}
+		}
+
+		if (bmp) {
 			HDC bDC = CreateCompatibleDC(NULL);
 			if (bDC) {
-				HBITMAP ob = (HBITMAP)SelectObject(bDC,(HGDIOBJ)br->bmpObj);
+				HBITMAP ob = (HBITMAP)SelectObject(bDC,(HGDIOBJ)bmp);
 #if 0//DEBUG: Show the redraw by making it momentarily flicker white
 				SelectObject(hDC,GetStockObject(WHITE_BRUSH));
 				Rectangle(hDC,we->x,we->y,we->x+we->w+1,we->y+we->h+1);
@@ -2313,8 +2327,6 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 				nw = br->width;
 				nh = br->height;
 			}
-
-			we->bmpRef = b;
 		}
 		else if (ImageRefGetType(ir) == ImageRefTypeSprite) {
 			const SpriterHandle s = (SpriterHandle)ImageRefGetRef(ir);
@@ -2326,19 +2338,7 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 					nsx = sr->x;
 					nsy = sr->y;
 				}
-
-				if (we->bmpRef != sr->bmp) {
-					we->flags |= WindowElementFlag_Update;
-					we->bmpRef = sr->bmp;
-				}
 			}
-			else {
-				we->bmpRef = BMPrNone;
-			}
-		}
-		else {
-			we->bmpRef = BMPrNone;
-			return;
 		}
 
 		/* if the reference or source x/y coords changed, update the element */
