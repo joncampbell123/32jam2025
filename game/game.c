@@ -313,7 +313,7 @@ struct SpriteRes {
 #define SpriteResFlag_VFlip		0x0008u /* vertically flip */
 
 typedef WORD			SpriterHandle;
-WORD near			SpriterMax = 4;
+WORD near			SpriterMax = 64;
 struct SpriteRes*		Spriter = NULL;
 #define SpriterNone		((WORD)(-1))
 
@@ -1005,6 +1005,28 @@ void FreeBMPrGDIObject(const BMPrHandle h) {
 			DLOGT("Freeing BMP #%u res GDI object",h);
 			DeleteObject((HGDIOBJ)(b->bmpObj));
 			b->bmpObj = (HBITMAP)NULL;
+		}
+	}
+}
+
+void InitSpriteGridFromBMP(SpriterHandle sh,const BMPrHandle bh,unsigned int bx,unsigned int by,const unsigned int cols,const unsigned int rows,const unsigned int cellwidth,const unsigned int cellheight) {
+	unsigned int r,c;
+
+	DLOGT("Sprite ref gen from grid bx=%u by=%u cols=%u rows=%u cellwidth=%u cellheight=%u",
+		bx,by,cols,rows,cellwidth,cellheight);
+
+	for (r=0;r < rows;r++) {
+		for (c=0;c < cols;c++) {
+			if (Spriter && sh < SpriterMax) {
+				struct SpriteRes *sr = Spriter + (sh++);
+				sr->bmp = bh;
+				sr->x = bx + (c * cellwidth);
+				sr->y = by + (r * cellheight);
+				sr->w = cellwidth;
+				sr->h = cellheight;
+				sr->flags = SpriteResFlag_Allocated;
+				DLOGT("Init sprite bmp #%u spride #%u x=%u y=%u w=%u h=%u",bh,sh-1,sr->x,sr->y,sr->w,sr->h);
+			}
 		}
 	}
 }
@@ -2234,7 +2256,25 @@ void DrawTextBMPr(const BMPrHandle h,const FontHandle fh,const char *txt) {
 	}
 }
 
+UINT near SpriteAnimFrame = 0;
 BYTE near MouseCapture = 0;
+UINT near AnimTimerId = 0;
+
+BOOL InitAnimTimer(void) {
+	if (!AnimTimerId) {
+		AnimTimerId = SetTimer(hwndMain,0,1000 / 10,NULL);
+		if (!AnimTimerId) return FALSE;
+	}
+
+	return TRUE;
+}
+
+void FreeAnimTimer(void) {
+	if (AnimTimerId) {
+		KillTimer(hwndMain,AnimTimerId);
+		AnimTimerId = 0;
+	}
+}
 
 #if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
 LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
@@ -2569,6 +2609,13 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			if (message == WM_QUERYNEWPALETTE)
 				return changed;
 		}
+	}
+	else if (message == WM_TIMER) {
+		if (++SpriteAnimFrame >= (12*4))
+			SpriteAnimFrame = 0;
+
+		SetWindowElementContent(0,MAKESPRITEIMAGEREF(SpriteAnimFrame));
+		UpdateWindowElements();
 	}
 	else {
 		return DefWindowProc(hwnd,message,wparam,lparam);
@@ -2997,15 +3044,32 @@ err1:
 		DLOGT("Unable to init fonts");
 		return 1;
 	}
+	if (!InitAnimTimer()) {
+		DLOGT("Unable to init anim timer");
+		return 1;
+	}
 
 	LoadLogPalette("palette.png");
-	LoadBMPr(0,"sht1_8.png");
+	if (WndScreenInfo.TotalBitsPerPixel >= 8)
+		LoadBMPr(0,"sht1_8.png");
+	else if (WndScreenInfo.TotalBitsPerPixel >= 4)
+		LoadBMPr(0,"sht1_4.png");
+	else if (WndScreenInfo.TotalBitsPerPixel >= 3)
+		LoadBMPr(0,"sht1_3.png");
+	else
+		LoadBMPr(0,"sht1_1o.png");
+
+	InitSpriteGridFromBMP(0/*base sprite*/,0/*BMP*/,
+		0/*x*/,0/*y*/,
+		12/*cols*/,4/*rows*/,
+		44/*cell width*/,62/*cell height*/);
 
 	LoadFontr(0,/*height (by char)*/-14,/*width (default)*/0,/*flags*/0,"Arial");
 	InitBlankBMPr(1,320,32);
 	DrawTextBMPr(/*BMPr*/1,/*FontRes*/0,"Hello world! This is a text region");
 
-	SetWindowElementContent(0,MAKEBMPIMAGEREF(0));
+	SpriteAnimFrame = 0;
+	SetWindowElementContent(0,MAKESPRITEIMAGEREF(SpriteAnimFrame));
 	SetWindowElementPosition(0,20,20);
 	ShowWindowElement(0,TRUE);
 
@@ -3042,6 +3106,7 @@ err1:
 		DispatchMessage(&msg);
 	}
 
+	FreeAnimTimer();
 	FreeWindowElements();
 	FreeFonts();
 	FreeBMPRes();
