@@ -2366,7 +2366,7 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 
 // Generic demonstration function---may disappear later
 void DrawTextBMPr(const BMPrHandle h,const FontHandle fh,const char *txt) {
-	struct FontResource *fr = GetFontResource(fh);
+	const struct FontResource *fr = GetFontResource(fh);
 	const unsigned int txtlen = strlen(txt);
 	struct BMPres *br = GetBMPr(h);
 
