@@ -1066,11 +1066,8 @@ BOOL IsBMPresAlloc(const BMPrHandle h) {
 }
 
 BOOL IsSpriteResAlloc(const SpriterHandle h) {
-	if (BMPr && h < SpriterMax) {
-		struct SpriteRes *r = Spriter + h;
-		if (r->bmp != BMPrNone) return TRUE;
-	}
-
+	struct SpriteRes *r = GetSpriter(h);
+	if (r && r->bmp != BMPrNone) return TRUE;
 	return FALSE;
 }
 
@@ -1085,8 +1082,9 @@ void InitSpriteGridFromBMP(SpriterHandle sh,const BMPrHandle bh,int bx,int by,co
 
 	for (r=0;r < rows;r++) {
 		for (c=0;c < cols;c++) {
-			if (Spriter && sh < SpriterMax) {
-				struct SpriteRes *sr = Spriter + (sh++);
+			struct SpriteRes *sr = GetSpriter(sh++);
+
+			if (sr) {
 				sr->bmp = bh;
 				cx = bx + (c * cellwidth);
 				cy = by + (r * cellheight);
@@ -2067,13 +2065,12 @@ BOOL LoadBMPr(const BMPrHandle h,const char *p) {
 /////////////////////////////////////////////////////////////
 
 void FreeSpriter(const SpriterHandle h) {
-	if (Spriter && h < SpriterMax) {
-		struct SpriteRes *r = Spriter + h;
-		if (r->bmp != BMPrNone) {
-			DLOGT("Freeing sprite #%u res",h);
-			r->x = r->y = r->w = r->h = 0;
-			r->bmp = BMPrNone;
-		}
+	struct SpriteRes *r = GetSpriter(h);
+
+	if (r && r->bmp != BMPrNone) {
+		DLOGT("Freeing sprite #%u res",h);
+		r->x = r->y = r->w = r->h = 0;
+		r->bmp = BMPrNone;
 	}
 }
 
@@ -2114,14 +2111,12 @@ void DrawWindowElement(HDC hDC,struct WindowElement *we) {
 		HBITMAP bmp = (HBITMAP)NULL;
 
 		if (ImageRefGetType(we->imgRef) == ImageRefTypeBitmap) {
-			const BMPrHandle b = (BMPrHandle)ImageRefGetRef(we->imgRef);
-			struct BMPres *br = GetBMPr(b);
+			struct BMPres *br = GetBMPr((BMPrHandle)ImageRefGetRef(we->imgRef));
 			if (br && br->bmpObj) bmp = br->bmpObj;
 		}
 		else if (ImageRefGetType(we->imgRef) == ImageRefTypeSprite) {
-			const SpriterHandle s = (SpriterHandle)ImageRefGetRef(we->imgRef);
-			if (Spriter && s < SpriterMax) {
-				struct SpriteRes *sr = Spriter + s;
+			struct SpriteRes *sr = GetSpriter((SpriterHandle)ImageRefGetRef(we->imgRef));
+			if (sr) {
 				struct BMPres *br = GetBMPr(sr->bmp);
 				if (br && br->bmpObj) bmp = br->bmpObj;
 			}
