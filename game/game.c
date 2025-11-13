@@ -1066,7 +1066,7 @@ BOOL IsBMPresAlloc(const BMPrHandle h) {
 }
 
 BOOL IsSpriteResAlloc(const SpriterHandle h) {
-	struct SpriteRes *r = GetSpriter(h);
+	const struct SpriteRes *r = GetSpriter(h);
 	if (r && r->bmp != BMPrNone) return TRUE;
 	return FALSE;
 }
@@ -2315,8 +2315,7 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 			// do nothing
 		}
 		else if (ImageRefGetType(ir) == ImageRefTypeBitmap) {
-			const BMPrHandle b = (BMPrHandle)ImageRefGetRef(ir);
-			struct BMPres *br = GetBMPr(b);
+			const struct BMPres *br = GetBMPr((BMPrHandle)ImageRefGetRef(ir));
 
 			if (br && br->bmpObj && (br->flags & BMPresFlag_Allocated)) {
 				nw = br->width;
@@ -2324,15 +2323,13 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 			}
 		}
 		else if (ImageRefGetType(ir) == ImageRefTypeSprite) {
-			const SpriterHandle s = (SpriterHandle)ImageRefGetRef(ir);
-			if (Spriter && s < SpriterMax) {
-				struct SpriteRes *sr = Spriter + s;
-				if (sr->bmp != BMPrNone && (sr->flags & SpriteResFlag_Allocated)) {
-					nw = sr->w;
-					nh = sr->h;
-					nsx = sr->x;
-					nsy = sr->y;
-				}
+			const struct SpriteRes *sr = GetSpriter((SpriterHandle)ImageRefGetRef(ir));
+
+			if (sr && sr->bmp != BMPrNone && (sr->flags & SpriteResFlag_Allocated)) {
+				nw = sr->w;
+				nh = sr->h;
+				nsx = sr->x;
+				nsy = sr->y;
 			}
 		}
 
