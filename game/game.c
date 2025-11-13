@@ -1009,8 +1009,9 @@ void FreeBMPrGDIObject(const BMPrHandle h) {
 	}
 }
 
-void InitSpriteGridFromBMP(SpriterHandle sh,const BMPrHandle bh,unsigned int bx,unsigned int by,const unsigned int cols,const unsigned int rows,const unsigned int cellwidth,const unsigned int cellheight) {
+void InitSpriteGridFromBMP(SpriterHandle sh,const BMPrHandle bh,int bx,int by,const unsigned int cols,const unsigned int rows,const unsigned int cellwidth,const unsigned int cellheight) {
 	unsigned int r,c;
+	int cx,cy;
 
 	DLOGT("Sprite ref gen from grid bx=%u by=%u cols=%u rows=%u cellwidth=%u cellheight=%u",
 		bx,by,cols,rows,cellwidth,cellheight);
@@ -1020,10 +1021,16 @@ void InitSpriteGridFromBMP(SpriterHandle sh,const BMPrHandle bh,unsigned int bx,
 			if (Spriter && sh < SpriterMax) {
 				struct SpriteRes *sr = Spriter + (sh++);
 				sr->bmp = bh;
-				sr->x = bx + (c * cellwidth);
-				sr->y = by + (r * cellheight);
+				cx = bx + (c * cellwidth);
+				cy = by + (r * cellheight);
 				sr->w = cellwidth;
 				sr->h = cellheight;
+				if (cx < 0) { sr->w += cx; cx = 0; }
+				if (cy < 0) { sr->h += cy; cy = 0; }
+				if ((int)(sr->w) <= 0) continue;
+				if ((int)(sr->h) <= 0) continue;
+				sr->x = (unsigned int)cx;
+				sr->y = (unsigned int)cy;
 				sr->flags = SpriteResFlag_Allocated;
 				DLOGT("Init sprite bmp #%u spride #%u x=%u y=%u w=%u h=%u",bh,sh-1,sr->x,sr->y,sr->w,sr->h);
 			}
@@ -3060,7 +3067,7 @@ err1:
 		LoadBMPr(0,"sht1_1o.png");
 
 	InitSpriteGridFromBMP(0/*base sprite*/,0/*BMP*/,
-		0/*x*/,0/*y*/,
+		-4/*x*/,0/*y*/,
 		12/*cols*/,4/*rows*/,
 		44/*cell width*/,62/*cell height*/);
 
