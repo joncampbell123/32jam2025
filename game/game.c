@@ -1007,12 +1007,10 @@ void FreeBMPRes(void) {
 void FreeBMPrGDIObject(const BMPrHandle h) {
 	struct BMPres *b = GetBMPr(h);
 
-	if (b) {
-		if (b->bmpObj != (HBITMAP)NULL) {
-			DLOGT("Freeing BMP #%u res GDI object",h);
-			DeleteObject((HGDIOBJ)(b->bmpObj));
-			b->bmpObj = (HBITMAP)NULL;
-		}
+	if (b && b->bmpObj != (HBITMAP)NULL) {
+		DLOGT("Freeing BMP #%u res GDI object",h);
+		DeleteObject((HGDIOBJ)(b->bmpObj));
+		b->bmpObj = (HBITMAP)NULL;
 	}
 }
 
@@ -1063,11 +1061,8 @@ BOOL InitWindowElements(void) {
 }
 
 BOOL IsBMPresAlloc(const BMPrHandle h) {
-	if (BMPr && h < BMPrMax) {
-		struct BMPres *b = BMPr + h;
-		if (b->flags & BMPresFlag_Allocated) return TRUE;
-	}
-
+	struct BMPres *b = GetBMPr(h);
+	if (b && b->flags & BMPresFlag_Allocated) return TRUE;
 	return FALSE;
 }
 
@@ -1114,9 +1109,9 @@ void InitSpriteGridFromBMP(SpriterHandle sh,const BMPrHandle bh,int bx,int by,co
 /////////////////////////////////////////////////////////////
 
 BOOL InitBMPrGDIObject(const BMPrHandle h,unsigned int width,unsigned int height,unsigned int flags) {
-	if (BMPr && h < BMPrMax) {
-		struct BMPres *b = BMPr + h;
+	struct BMPres *b = GetBMPr(h);
 
+	if (b) {
 		/* free only if change in dimensions */
 		if (b->bmpObj != (HBITMAP)NULL && (b->width != width || b->height != height)) {
 			DLOGT("Init GDI BMP object #%u res, width and height changed, freeing bitmap",h);
@@ -1155,33 +1150,32 @@ static HDC BMPrGDIbmpDC = (HDC)NULL;
 static HBITMAP BMPrGDIbmpOld = (HBITMAP)NULL;
 
 HDC BMPrGDIObjectGetDC(const BMPrHandle h) {
-	if (BMPr && h < BMPrMax && BMPrGDICurrent == BMPrNone) {
-		struct BMPres *b = BMPr + h;
-		if (b->bmpObj) {
-			HDC retDC = CreateCompatibleDC(NULL);
+	struct BMPres *b = GetBMPr(h);
 
-			if (retDC) {
-				BMPrGDIbmpOld = (HBITMAP)SelectObject(retDC,b->bmpObj);
-				if (BMPrGDIbmpOld == (HBITMAP)NULL) {
-					DLOGT("Unable to select bitmap into compatdc");
-					DeleteDC(retDC);
-					return NULL;
-				}
+	if (b && BMPrGDICurrent == BMPrNone && b->bmpObj) {
+		HDC retDC = CreateCompatibleDC(NULL);
 
-				if (WndHanPalette) {
-					if (SelectPalette(retDC,WndHanPalette,FALSE) == (HPALETTE)NULL)
-						DLOGT("ERROR: Cannot select palette into BMP compat DC");
-
-					RealizePalette(retDC);
-				}
-
-				BMPrGDICurrent = h;
-				BMPrGDIbmpDC = retDC;
-				return retDC;
+		if (retDC) {
+			BMPrGDIbmpOld = (HBITMAP)SelectObject(retDC,b->bmpObj);
+			if (BMPrGDIbmpOld == (HBITMAP)NULL) {
+				DLOGT("Unable to select bitmap into compatdc");
+				DeleteDC(retDC);
+				return NULL;
 			}
-			else {
-				DLOGT("Unable to CreateCompatibleDC");
+
+			if (WndHanPalette) {
+				if (SelectPalette(retDC,WndHanPalette,FALSE) == (HPALETTE)NULL)
+					DLOGT("ERROR: Cannot select palette into BMP compat DC");
+
+				RealizePalette(retDC);
 			}
+
+			BMPrGDICurrent = h;
+			BMPrGDIbmpDC = retDC;
+			return retDC;
+		}
+		else {
+			DLOGT("Unable to CreateCompatibleDC");
 		}
 	}
 
@@ -1189,32 +1183,27 @@ HDC BMPrGDIObjectGetDC(const BMPrHandle h) {
 }
 
 void BMPrGDIObjectReleaseDC(const BMPrHandle h) {
-	if (BMPr && h < BMPrMax) {
-		if (BMPrGDICurrent != BMPrNone) {
-			if (BMPrGDICurrent == h) {
-				if (BMPrGDIbmpDC) {
-					if (BMPrGDIbmpOld != (HBITMAP)NULL) {
-						SelectObject(BMPrGDIbmpDC,BMPrGDIbmpOld);
-						BMPrGDIbmpOld = (HBITMAP)NULL;
-					}
+	struct BMPres *b = GetBMPr(h);
 
-					if (WndHanPalette) {
-						if (SelectPalette(BMPrGDIbmpDC,(HPALETTE)GetStockObject(DEFAULT_PALETTE),FALSE) == (HPALETTE)NULL)
-							DLOGT("ERROR: Cannot select stock palette into BMP compat DC");
-					}
+	if (b && BMPrGDICurrent != BMPrNone && BMPrGDICurrent == h) {
+		if (BMPrGDIbmpDC) {
+			if (BMPrGDIbmpOld != (HBITMAP)NULL) {
+				SelectObject(BMPrGDIbmpDC,BMPrGDIbmpOld);
+				BMPrGDIbmpOld = (HBITMAP)NULL;
+			}
 
-					DeleteDC(BMPrGDIbmpDC);
-					BMPrGDIbmpDC = (HDC)NULL;
-				}
-				BMPrGDICurrent = BMPrNone;
+			if (WndHanPalette) {
+				if (SelectPalette(BMPrGDIbmpDC,(HPALETTE)GetStockObject(DEFAULT_PALETTE),FALSE) == (HPALETTE)NULL)
+					DLOGT("ERROR: Cannot select stock palette into BMP compat DC");
 			}
-			else  {
-				DLOGT(__FUNCTION__ " attempt to release #%u res when #%u is the one in use, not releasing",h,BMPrGDICurrent);
-			}
+
+			DeleteDC(BMPrGDIbmpDC);
+			BMPrGDIbmpDC = (HDC)NULL;
 		}
-		else {
-			DLOGT(__FUNCTION__ " attempt to release #%u res when none are in use, not releasing",h);
-		}
+		BMPrGDICurrent = BMPrNone;
+	}
+	else {
+		DLOGT(__FUNCTION__ " attempt to release #%u res when current is #%u",h,BMPrGDICurrent);
 	}
 }
 
@@ -2035,8 +2024,9 @@ finish:
 /////////////////////////////////////////////////////////////
 
 BOOL LoadBMPr(const BMPrHandle h,const char *p) {
-	if (BMPr && h < BMPrMax) {
-		struct BMPres *b = BMPr + h;
+	struct BMPres *b = GetBMPr(h);
+
+	if (b) {
 		int fd;
 
 		fd = open(p,O_RDONLY|O_BINARY);
@@ -2122,20 +2112,18 @@ void FreeWindowElements(void) {
 
 void DrawWindowElement(HDC hDC,struct WindowElement *we) {
 	if (we->bmpRef != BMPrNone && (we->flags & WindowElementFlag_Enabled)) {
-		if (BMPr && we->bmpRef < BMPrMax) {
-			struct BMPres *br = BMPr + we->bmpRef;
-			if (br->bmpObj && (br->flags & BMPresFlag_Allocated)) {
-				HDC bDC = CreateCompatibleDC(NULL);
-				if (bDC) {
-					HBITMAP ob = (HBITMAP)SelectObject(bDC,(HGDIOBJ)br->bmpObj);
+		struct BMPres *br = GetBMPr(we->bmpRef);
+		if (br && br->bmpObj && (br->flags & BMPresFlag_Allocated)) {
+			HDC bDC = CreateCompatibleDC(NULL);
+			if (bDC) {
+				HBITMAP ob = (HBITMAP)SelectObject(bDC,(HGDIOBJ)br->bmpObj);
 #if 0//DEBUG: Show the redraw by making it momentarily flicker white
-					SelectObject(hDC,GetStockObject(WHITE_BRUSH));
-					Rectangle(hDC,we->x,we->y,we->x+we->w+1,we->y+we->h+1);
+				SelectObject(hDC,GetStockObject(WHITE_BRUSH));
+				Rectangle(hDC,we->x,we->y,we->x+we->w+1,we->y+we->h+1);
 #endif
-					BitBlt(hDC,we->x,we->y,we->w,we->h,bDC,we->sx,we->sy,SRCCOPY);
-					SelectObject(bDC,(HGDIOBJ)ob);
-					DeleteDC(bDC);
-				}
+				BitBlt(hDC,we->x,we->y,we->w,we->h,bDC,we->sx,we->sy,SRCCOPY);
+				SelectObject(bDC,(HGDIOBJ)ob);
+				DeleteDC(bDC);
 			}
 		}
 	}
@@ -2319,16 +2307,14 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 		}
 		else if (ImageRefGetType(ir) == ImageRefTypeBitmap) {
 			const BMPrHandle b = (BMPrHandle)ImageRefGetRef(ir);
-			we->bmpRef = BMPrNone;
-			if (BMPr && b < BMPrMax) {
-				struct BMPres *br = BMPr + b;
-				if (br->bmpObj && (br->flags & BMPresFlag_Allocated)) {
-					nw = br->width;
-					nh = br->height;
-				}
+			struct BMPres *br = GetBMPr(b);
 
-				we->bmpRef = b;
+			if (br && br->bmpObj && (br->flags & BMPresFlag_Allocated)) {
+				nw = br->width;
+				nh = br->height;
 			}
+
+			we->bmpRef = b;
 		}
 		else if (ImageRefGetType(ir) == ImageRefTypeSprite) {
 			const SpriterHandle s = (SpriterHandle)ImageRefGetRef(ir);
@@ -2375,8 +2361,9 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 
 // Generic demonstration function---may disappear later
 void DrawTextBMPr(const BMPrHandle h,const FontHandle fh,const char *txt) {
-	if ((BMPr && h < BMPrMax) && (Fonts && fh < FontsMax)) {
-		struct BMPres *br = BMPr + h;
+	struct BMPres *br = GetBMPr(h);
+
+	if (br && (Fonts && fh < FontsMax)) {
 		struct FontResource *fr = Fonts + fh;
 		HDC bmpDC = BMPrGDIObjectGetDC(h);
 		const unsigned int txtlen = strlen(txt);
