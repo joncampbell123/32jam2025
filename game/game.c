@@ -1804,35 +1804,79 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
 			}
 
 			if (gdiFlags & GDIWantTransparencyMask) {
+				BITMAPINFOHEADER *bih = (BITMAPINFOHEADER*)bihraw;
+
 				// copy the slice to another buffer to become the mask.
 				memcpy(slice2,slice,stride * lh);
 
 				// filter transparent pixels to black so the OR operation works.
-				{
-					unsigned int i = 0,t = stride * lh;
+				if (bih->biBitCount == 8) {
+					{
+						unsigned int i = 0,t = stride * lh;
 
-					while (i < t) {
-						const unsigned char c = slice[i];
+						while (i < t) {
+							const unsigned char c = slice[i];
 
-						if (c < tRNSlen && tRNS[c] < 0x80)
-							slice[i] = BlackColor;
+							if (c < tRNSlen && tRNS[c] < 0x80)
+								slice[i] = BlackColor;
 
-						i++;
+							i++;
+						}
+					}
+
+					// filter all pixels to either black OR white based on transparency alone in order
+					// for the sprite mask (AND operation) to work
+					{
+						unsigned int i = 0,t = stride * lh;
+
+						while (i < t) {
+							const unsigned char c = slice2[i];
+
+							if (c < tRNSlen)
+								slice2[i++] = (tRNS[c] >= 0x80) ? 0x00 : 0x01;
+							else
+								slice2[i++] = 0x00;
+						}
 					}
 				}
+				else if (bih->biBitCount == 4) {
+					{
+						unsigned int i = 0,t = stride * lh;
 
-				// filter all pixels to either black OR white based on transparency alone in order
-				// for the sprite mask (AND operation) to work
-				{
-					unsigned int i = 0,t = stride * lh;
+						while (i < t) {
+							unsigned char c1 =  slice[i]        & 0xFu;
+							unsigned char c2 = (slice[i] >> 4u) & 0xFu;
 
-					while (i < t) {
-						const unsigned char c = slice2[i];
+							if (c1 < tRNSlen && tRNS[c1] < 0x80)
+								c1 = BlackColor;
+							if (c2 < tRNSlen && tRNS[c2] < 0x80)
+								c2 = BlackColor;
 
-						if (c < tRNSlen)
-							slice2[i++] = (tRNS[c] >= 0x80) ? 0x00 : 0x01;
-						else
-							slice2[i++] = 0x00;
+							slice[i++] = c1 | (c2 << 4u);
+						}
+					}
+
+					// filter all pixels to either black OR white based on transparency alone in order
+					// for the sprite mask (AND operation) to work
+					{
+						unsigned int i = 0,t = stride * lh;
+
+						while (i < t) {
+							unsigned char c1 =  slice2[i]        & 0xFu;
+							unsigned char c2 = (slice2[i] >> 4u) & 0xFu;
+
+							if (c1 < tRNSlen)
+								c1 = (tRNS[c1] >= 0x80) ? 0x00 : 0x01;
+							else
+								c1 = 0x00;
+
+							if (c2 < tRNSlen)
+								c2 = (tRNS[c2] >= 0x80) ? 0x00 : 0x01;
+							else
+								c2 = 0x00;
+
+							slice2[i++] = c1 | (c2 << 4u);
+						}
 					}
 				}
 			}
