@@ -301,11 +301,6 @@ struct BMPres*					BMPr = NULL;
 static const struct BMPres near			BMPrInit = { .bmpObj = (HBITMAP)NULL, .width = 0, .height = 0, .flags = 0 };
 #define BMPrNone				((WORD)(-1))
 
-struct BMPres *GetBMPr(const BMPrHandle h) {
-	if (BMPr && h < BMPrMax) return BMPr + h;
-	return NULL;
-}
-
 // sprite within bitmap
 struct SpriteRes {
 	BMPrHandle				bmp;
@@ -975,6 +970,13 @@ BOOL LoadFontr(const FontHandle fh,int height,int width,unsigned int flags,const
 
 /////////////////////////////////////////////////////////////
 
+void FreeBMPr(const BMPrHandle h);
+
+struct BMPres *GetBMPr(const BMPrHandle h) {
+	if (BMPr && h < BMPrMax) return BMPr + h;
+	return NULL;
+}
+
 BOOL InitBMPRes(void) {
 	unsigned int i;
 
@@ -990,6 +992,43 @@ BOOL InitBMPRes(void) {
 
 	return TRUE;
 }
+
+void FreeBMPRes(void) {
+	unsigned int i;
+
+	if (BMPr) {
+		DLOGT("Freeing BMP res");
+		for (i=0;i < BMPrMax;i++) FreeBMPr(i);
+		free(BMPr);
+		BMPr = NULL;
+	}
+}
+
+void FreeBMPrGDIObject(const BMPrHandle h) {
+	struct BMPres *b = GetBMPr(h);
+
+	if (b) {
+		if (b->bmpObj != (HBITMAP)NULL) {
+			DLOGT("Freeing BMP #%u res GDI object",h);
+			DeleteObject((HGDIOBJ)(b->bmpObj));
+			b->bmpObj = (HBITMAP)NULL;
+		}
+	}
+}
+
+void FreeBMPr(const BMPrHandle h) {
+	struct BMPres *b = GetBMPr(h);
+
+	if (b) {
+		FreeBMPrGDIObject(h);
+		if (b->flags & BMPresFlag_Allocated) {
+			DLOGT("Freeing BMP #%u res",h);
+			b->width = b->height = b->flags = 0;
+		}
+	}
+}
+
+/////////////////////////////////////////////////////////////
 
 BOOL InitSpriteRes(void) {
 	unsigned int i;
@@ -1039,17 +1078,6 @@ BOOL IsSpriteResAlloc(const SpriterHandle h) {
 	}
 
 	return FALSE;
-}
-
-void FreeBMPrGDIObject(const BMPrHandle h) {
-	if (BMPr && h < BMPrMax) {
-		struct BMPres *b = BMPr + h;
-		if (b->bmpObj != (HBITMAP)NULL) {
-			DLOGT("Freeing BMP #%u res GDI object",h);
-			DeleteObject((HGDIOBJ)(b->bmpObj));
-			b->bmpObj = (HBITMAP)NULL;
-		}
-	}
 }
 
 /////////////////////////////////////////////////////////////
@@ -2047,29 +2075,7 @@ BOOL LoadBMPr(const BMPrHandle h,const char *p) {
 	return TRUE;
 }
 
-void FreeBMPr(const BMPrHandle h) {
-	FreeBMPrGDIObject(h);
-	if (BMPr && h < BMPrMax) {
-		struct BMPres *b = BMPr + h;
-		if (b->flags & BMPresFlag_Allocated) {
-			DLOGT("Freeing BMP #%u res",h);
-			b->width = b->height = b->flags = 0;
-		}
-	}
-}
-
 /////////////////////////////////////////////////////////////
-
-void FreeBMPRes(void) {
-	unsigned int i;
-
-	if (BMPr) {
-		DLOGT("Freeing BMP res");
-		for (i=0;i < BMPrMax;i++) FreeBMPr(i);
-		free(BMPr);
-		BMPr = NULL;
-	}
-}
 
 void FreeSpriter(const SpriterHandle h) {
 	if (Spriter && h < SpriterMax) {
