@@ -2294,6 +2294,21 @@ void ShowWindowElement(const WindowElementHandle h,const BOOL how) {
 	}
 }
 
+WindowElementHandle WindowElementFromPoint(int x,int y) {
+	if (WindowElement) {
+		unsigned int i = WindowElementMax;
+		while ((i--) != 0) {
+			struct WindowElement *we = WindowElement + i;
+			if (we->flags & WindowElementFlag_Enabled) {
+				if (x >= we->x && x < (we->x+we->w) && y >= we->y && y < (we->y+we->h))
+					return (WindowElementHandle)i;
+			}
+		}
+	}
+
+	return WindowElementHandleNone;
+}
+
 void SetWindowElementPosition(const WindowElementHandle h,int x,int y) {
 	if (WindowElement && h < WindowElementMax) {
 		struct WindowElement *we = WindowElement + h;
@@ -2394,6 +2409,8 @@ void DrawTextBMPr(const BMPrHandle h,const FontHandle fh,const char *txt) {
 
 UINT near SpriteAnimFrame = 0;
 BYTE near MouseCapture = 0;
+WindowElementHandle near MouseDragWinElem = WindowElementHandleNone;
+POINT near MouseDragWinElemOrigin = {0,0};
 UINT near AnimTimerId = 0;
 
 /////////////////////////////////////////////////////////////
@@ -2634,12 +2651,16 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		if (MouseCapture == 0) SetCapture(hwnd);
 		MouseCapture |= 1;
 
-		SetWindowElementPosition(0,LOWORD(lparam),HIWORD(lparam));
-		UpdateWindowElements();
+		MouseDragWinElem = WindowElementFromPoint(LOWORD(lparam),HIWORD(lparam));
+		if (WindowElement && MouseDragWinElem < WindowElementMax) {
+			struct WindowElement *we = WindowElement + MouseDragWinElem;
+			MouseDragWinElemOrigin.x = LOWORD(lparam) - we->x;
+			MouseDragWinElemOrigin.y = HIWORD(lparam) - we->y;
+		}
 	}
 	else if (message == WM_LBUTTONUP) {
 		if (MouseCapture & 1) {
-			SetWindowElementPosition(0,LOWORD(lparam),HIWORD(lparam));
+			SetWindowElementPosition(MouseDragWinElem,LOWORD(lparam) - MouseDragWinElemOrigin.x,HIWORD(lparam) - MouseDragWinElemOrigin.y);
 			UpdateWindowElements();
 		}
 
@@ -2649,22 +2670,13 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 	else if (message == WM_RBUTTONDOWN) {
 		if (MouseCapture == 0) SetCapture(hwnd);
 		MouseCapture |= 2;
-
-		SetWindowElementPosition(1,LOWORD(lparam),HIWORD(lparam));
-		UpdateWindowElements();
 	}
 	else if (message == WM_RBUTTONUP) {
-		if (MouseCapture & 2) {
-			SetWindowElementPosition(1,LOWORD(lparam),HIWORD(lparam));
-			UpdateWindowElements();
-		}
-
 		MouseCapture &= ~2;
 		if (MouseCapture == 0) ReleaseCapture();
 	}
 	else if (message == WM_MOUSEMOVE) {
-		if (MouseCapture & 1) SetWindowElementPosition(0,LOWORD(lparam),HIWORD(lparam));
-		if (MouseCapture & 2) SetWindowElementPosition(1,LOWORD(lparam),HIWORD(lparam));
+		if (MouseCapture & 1) SetWindowElementPosition(MouseDragWinElem,LOWORD(lparam) - MouseDragWinElemOrigin.x,HIWORD(lparam) - MouseDragWinElemOrigin.y);
 		if (MouseCapture) UpdateWindowElements();
 	}
 	else if (message == WM_KEYDOWN) {
