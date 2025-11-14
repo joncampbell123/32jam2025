@@ -43,14 +43,10 @@ $(EXT_ZLIB_EXAMPLE_EXE_LIB): $(EXT_ZLIB_LIB) $(EXT_ZLIB_LIB_LIB) $(SUBDIR)$(HPS)
 	../tool/win2xstubpatch.pl $(EXT_ZLIB_EXAMPLE_EXE_LIB)
 !endif
 
-$(SUBDIR)$(HPS)example.obj: example.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
-	@$(CC) @tmp.cmd
-
 # NTS we have to construct the command line into tmp.cmd because for MS-DOS
 # systems all arguments would exceed the pitiful 128 char command line limit
 .c.obj:
-	%write tmp.cmd $(CFLAGS_THIS) $(CFLAGS_CON) $[@
+	%write tmp.cmd $(CFLAGS_THIS) $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
 all: lib exe .symbolic
