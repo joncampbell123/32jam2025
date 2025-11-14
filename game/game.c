@@ -2477,7 +2477,7 @@ void UpdateCurrentTime(void) {
 
 	d = (int64_t)(acCurrentTimeWM - acCurrentTimeMM);
 
-#if 1//DEBUG
+#if 0//DEBUG
 	DLOGT("UpdateCurrentTime mm=%lu wm=%lu dmm=%ld dwm=%ld amm=%llu dmm=%llu mm-wm=%lld",
 		(unsigned long)CurrentTimeMM,
 		(unsigned long)CurrentTimeWM,
