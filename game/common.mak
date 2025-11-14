@@ -38,7 +38,7 @@ $(GAME_RES): game.rc
 	$(RC) $(RCFLAGS_THIS) $(RCFLAGS) -fo=$(SUBDIR)$(HPS)game.res  $[@
 !endif
 
-ZLIBIMP=../zlibifo/$(SUBDIR)$(HPS)lib/zlibifo.lib
+ZLIBIMP=../zlibifo/$(SUBDIR)$(HPS)zlibifo.lib
 $(ZLIBIMP):
 	@cd ../zlibifo
 	@$(MAKECMD) build lib $(SUBDIR)

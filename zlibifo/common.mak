@@ -5,21 +5,19 @@ CFLAGS_THIS = -fr=nul -i.. -dHAVE_CONFIG_H -dSTDC
 
 !include "../vars.mak"
 
-SUBDIR_LIB = $(SUBDIR)$(HPS)lib
-
 #--------------------
-OBJS_LIB = $(SUBDIR_LIB)$(HPS)adler32.obj $(SUBDIR_LIB)$(HPS)compress.obj $(SUBDIR_LIB)$(HPS)crc32.obj $(SUBDIR_LIB)$(HPS)deflate.obj $(SUBDIR_LIB)$(HPS)infback.obj $(SUBDIR_LIB)$(HPS)inffast.obj $(SUBDIR_LIB)$(HPS)inflate.obj $(SUBDIR_LIB)$(HPS)inftrees.obj $(SUBDIR_LIB)$(HPS)trees.obj $(SUBDIR_LIB)$(HPS)uncompr.obj $(SUBDIR_LIB)$(HPS)zutil.obj $(SUBDIR_LIB)$(HPS)libmain.obj
+OBJS_LIB = $(SUBDIR)$(HPS)adler32.obj $(SUBDIR)$(HPS)compress.obj $(SUBDIR)$(HPS)crc32.obj $(SUBDIR)$(HPS)deflate.obj $(SUBDIR)$(HPS)infback.obj $(SUBDIR)$(HPS)inffast.obj $(SUBDIR)$(HPS)inflate.obj $(SUBDIR)$(HPS)inftrees.obj $(SUBDIR)$(HPS)trees.obj $(SUBDIR)$(HPS)uncompr.obj $(SUBDIR)$(HPS)zutil.obj $(SUBDIR)$(HPS)libmain.obj
 
-EXT_ZLIB_EXAMPLE_EXE_LIB = $(SUBDIR_LIB)$(HPS)example.exe
-EXT_ZLIB_LIB_LIB=$(SUBDIR_LIB)$(HPS)zlibifo.lib
+EXT_ZLIB_EXAMPLE_EXE_LIB = $(SUBDIR)$(HPS)example.exe
+EXT_ZLIB_LIB_LIB=$(SUBDIR)$(HPS)zlibifo.lib
 
 #--------------------
 $(EXT_ZLIB_LIB_LIB): $(OBJS_LIB)
-	wlib -q -b -c $(EXT_ZLIB_LIB_LIB) -+$(SUBDIR_LIB)$(HPS)adler32.obj -+$(SUBDIR_LIB)$(HPS)compress.obj -+$(SUBDIR_LIB)$(HPS)crc32.obj -+$(SUBDIR_LIB)$(HPS)deflate.obj -+$(SUBDIR_LIB)$(HPS)infback.obj -+$(SUBDIR_LIB)$(HPS)inffast.obj -+$(SUBDIR_LIB)$(HPS)inflate.obj -+$(SUBDIR_LIB)$(HPS)inftrees.obj -+$(SUBDIR_LIB)$(HPS)trees.obj -+$(SUBDIR_LIB)$(HPS)uncompr.obj -+$(SUBDIR_LIB)$(HPS)zutil.obj -+$(SUBDIR_LIB)$(HPS)libmain.obj
+	wlib -q -b -c $(EXT_ZLIB_LIB_LIB) -+$(SUBDIR)$(HPS)adler32.obj -+$(SUBDIR)$(HPS)compress.obj -+$(SUBDIR)$(HPS)crc32.obj -+$(SUBDIR)$(HPS)deflate.obj -+$(SUBDIR)$(HPS)infback.obj -+$(SUBDIR)$(HPS)inffast.obj -+$(SUBDIR)$(HPS)inflate.obj -+$(SUBDIR)$(HPS)inftrees.obj -+$(SUBDIR)$(HPS)trees.obj -+$(SUBDIR)$(HPS)uncompr.obj -+$(SUBDIR)$(HPS)zutil.obj -+$(SUBDIR)$(HPS)libmain.obj
 
 #----------------------------------------------------------
-$(EXT_ZLIB_EXAMPLE_EXE_LIB): $(EXT_ZLIB_LIB) $(EXT_ZLIB_LIB_LIB) $(SUBDIR_LIB)$(HPS)example.obj
-	%write tmp.cmd option quiet system $(WLINK_SYSTEM) file $(SUBDIR_LIB)$(HPS)example.obj library $(EXT_ZLIB_LIB_LIB) name $(EXT_ZLIB_EXAMPLE_EXE_LIB)
+$(EXT_ZLIB_EXAMPLE_EXE_LIB): $(EXT_ZLIB_LIB) $(EXT_ZLIB_LIB_LIB) $(SUBDIR)$(HPS)example.obj
+	%write tmp.cmd option quiet system $(WLINK_SYSTEM) file $(SUBDIR)$(HPS)example.obj library $(EXT_ZLIB_LIB_LIB) name $(EXT_ZLIB_EXAMPLE_EXE_LIB)
 !ifeq TARGET_MSDOS 16
 	%write tmp.cmd option protmode # Protected mode Windows only, this shit won't run properly in real-mode Windows for weird arcane reasons!
 	%write tmp.cmd option MODNAME=$(MODULENAME_BASE)_ZLIBIFO_LIB_EXAMPLE
@@ -33,7 +31,7 @@ $(EXT_ZLIB_EXAMPLE_EXE_LIB): $(EXT_ZLIB_LIB) $(EXT_ZLIB_LIB_LIB) $(SUBDIR_LIB)$(
 	@$(WIN386_EXE_TO_REX_IF_REX) $(EXT_ZLIB_EXAMPLE_EXE_LIB)
 	@wbind $(EXT_ZLIB_EXAMPLE_EXE_LIB) -q -n
 !endif
-	@$(COPY) ..$(HPS)dos32a.dat $(SUBDIR_LIB)$(HPS)dos4gw.exe
+	@$(COPY) ..$(HPS)dos32a.dat $(SUBDIR)$(HPS)dos4gw.exe
 !ifdef WIN_NE_SETVER_BUILD
 	$(WIN_NE_SETVER_BUILD) $(EXT_ZLIB_EXAMPLE_EXE_LIB)
 !endif
@@ -42,57 +40,57 @@ $(EXT_ZLIB_EXAMPLE_EXE_LIB): $(EXT_ZLIB_LIB) $(EXT_ZLIB_LIB_LIB) $(SUBDIR_LIB)$(
 	../tool/win2xstubpatch.pl $(EXT_ZLIB_EXAMPLE_EXE_LIB)
 !endif
 
-$(SUBDIR_LIB)$(HPS)example.obj: example.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR_LIB)$(HPS).obj $(CFLAGS) $[@
+$(SUBDIR)$(HPS)example.obj: example.c
+	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
 #----------------------------------------------------------
-$(SUBDIR_LIB)$(HPS)adler32.obj: adler32.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR_LIB)$(HPS).obj $(CFLAGS) $[@
+$(SUBDIR)$(HPS)adler32.obj: adler32.c
+	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
-$(SUBDIR_LIB)$(HPS)compress.obj: compress.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR_LIB)$(HPS).obj $(CFLAGS) $[@
+$(SUBDIR)$(HPS)compress.obj: compress.c
+	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
-$(SUBDIR_LIB)$(HPS)crc32.obj: crc32.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR_LIB)$(HPS).obj $(CFLAGS) $[@
+$(SUBDIR)$(HPS)crc32.obj: crc32.c
+	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
-$(SUBDIR_LIB)$(HPS)deflate.obj: deflate.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR_LIB)$(HPS).obj $(CFLAGS) $[@
+$(SUBDIR)$(HPS)deflate.obj: deflate.c
+	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
-$(SUBDIR_LIB)$(HPS)infback.obj: infback.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR_LIB)$(HPS).obj $(CFLAGS) $[@
+$(SUBDIR)$(HPS)infback.obj: infback.c
+	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
-$(SUBDIR_LIB)$(HPS)inffast.obj: inffast.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR_LIB)$(HPS).obj $(CFLAGS) $[@
+$(SUBDIR)$(HPS)inffast.obj: inffast.c
+	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
-$(SUBDIR_LIB)$(HPS)inflate.obj: inflate.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR_LIB)$(HPS).obj $(CFLAGS) $[@
+$(SUBDIR)$(HPS)inflate.obj: inflate.c
+	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
-$(SUBDIR_LIB)$(HPS)inftrees.obj: inftrees.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR_LIB)$(HPS).obj $(CFLAGS) $[@
+$(SUBDIR)$(HPS)inftrees.obj: inftrees.c
+	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
-$(SUBDIR_LIB)$(HPS)trees.obj: trees.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR_LIB)$(HPS).obj $(CFLAGS) $[@
+$(SUBDIR)$(HPS)trees.obj: trees.c
+	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
-$(SUBDIR_LIB)$(HPS)uncompr.obj: uncompr.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR_LIB)$(HPS).obj $(CFLAGS) $[@
+$(SUBDIR)$(HPS)uncompr.obj: uncompr.c
+	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
-$(SUBDIR_LIB)$(HPS)zutil.obj: zutil.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR_LIB)$(HPS).obj $(CFLAGS) $[@
+$(SUBDIR)$(HPS)zutil.obj: zutil.c
+	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
-$(SUBDIR_LIB)$(HPS)libmain.obj: libmain.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR_LIB)$(HPS).obj $(CFLAGS) $[@
+$(SUBDIR)$(HPS)libmain.obj: libmain.c
+	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
 all: lib exe .symbolic
