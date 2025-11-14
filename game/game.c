@@ -363,6 +363,7 @@ struct WindowElement {
 #define WindowElementFlag_BkUpdate		0x0008u /* window element will need to also trigger window background redraw */
 #define WindowElementFlag_Overlapped		0x0010u /* window element is overlapped by another */
 #define WindowElementFlag_NoAutoSize		0x0020u /* do not auto resize window element on content change */
+#define WindowElementFlag_OwnsImage		0x0040u /* this window element owns the imageRef (must be bitmap), and will free it automatically */
 
 typedef WORD					WindowElementHandle;
 WORD near					WindowElementMax = 8;
@@ -2095,6 +2096,18 @@ void FreeSpriteRes(void) {
 
 void ShowWindowElement(const WindowElementHandle h,const BOOL how);
 
+void WindowElementFreeOwnedImage(const WindowElementHandle h) {
+	struct WindowElement *we = GetWindowElement(h);
+	if (we && (we->flags & WindowElementFlag_OwnsImage)) {
+		if (we->imgRef != ImageRefNone && ImageRefGetType(we->imgRef) == ImageRefTypeBitmap) {
+			DLOGT("Window element #%u owns a bitmap and is freeing it now",h);
+			FreeBMPr((BMPrHandle)ImageRefGetRef(we->imgRef));
+			we->flags &= ~(WindowElementFlag_OwnsImage);
+			we->imgRef = ImageRefNone;
+		}
+	}
+}
+
 WindowElementHandle AllocWindowElement(void) {
 	if (WindowElement) {
 		unsigned int i;
@@ -2118,8 +2131,9 @@ void FreeWindowElement(const WindowElementHandle h) {
 		if (we->flags & WindowElementFlag_Allocated) {
 			DLOGT("Window element #%u freeing",h);
 			ShowWindowElement(h,FALSE);
+			WindowElementFreeOwnedImage(h);
 			we->flags &= ~(WindowElementFlag_Allocated);
-			we->imgRef = BMPrNone;
+			we->imgRef = ImageRefNone;
 		}
 	}
 }
