@@ -393,6 +393,10 @@ struct FontResource*				Fonts = NULL;
 static const struct FontResource near		FontResourceInit = { .fontObj = (HFONT)NULL, .height = 0, .ascent = 0, .descent = 0, .avwidth = 0, .maxwidth = 0 };
 #define FontHandleNone				((WORD)(-1))
 
+static inline struct FontResource *GetFontResourceNRC(const FontHandle h) {
+	return Fonts + h;
+}
+
 struct FontResource *GetFontResource(const FontHandle h) {
 	if (Fonts && h < FontsMax) return Fonts + h;
 	return NULL;
@@ -935,7 +939,7 @@ BOOL LoadFontr(const FontHandle fh,int height,int width,unsigned int flags,const
 	if (fr) {
 		FreeFontRes(fh);
 
-		DLOGT("Loading font resource: height=%u width=%u font=\"%s\"",height,width,fontName);
+		DLOGT("Loading font resource into #%u: height=%u width=%u font=\"%s\"",fh,height,width,fontName);
 		if (flags & FontrFlagBold) DLOGT("Flag: BOLD");
 		if (flags & FontrFlagItalic) DLOGT("Flag: ITALIC");
 
@@ -1082,6 +1086,25 @@ BOOL IsSpriteResAlloc(const SpriterHandle h) {
 	const struct SpriteRes *r = GetSpriter(h);
 	if (r && r->bmp != BMPrNone) return TRUE;
 	return FALSE;
+}
+
+/////////////////////////////////////////////////////////////
+
+FontHandle AllocFont(void) {
+	if (Fonts) {
+		unsigned int i;
+
+		for (i=0;i < FontsMax;i++) {
+			struct FontResource *we = GetFontResourceNRC(i);
+			if (we->fontObj == (HFONT)NULL) {
+				DLOGT("Font #%u allocated",i);
+				return (FontHandle)i;
+			}
+		}
+	}
+
+	DLOGT("Unable to allocate font");
+	return FontHandleNone;
 }
 
 /////////////////////////////////////////////////////////////
@@ -3407,9 +3430,10 @@ err1:
 	}
 
 	{
+		FontHandle fh = AllocFont();
 		BMPrHandle bh = AllocBMPr();
 
-		LoadFontr(0,/*height (by char)*/-14,/*width (default)*/0,/*flags*/0,"Arial");
+		LoadFontr(fh,/*height (by char)*/-14,/*width (default)*/0,/*flags*/0,"Arial");
 		InitBlankBMPr(bh,320,32);
 		DrawTextBMPr(/*BMPr*/bh,/*FontRes*/0,"Hello world! This is a text region");
 	}
