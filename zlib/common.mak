@@ -1,7 +1,7 @@
 # this makefile is included from all the dos*.mak files, do not use directly
 # NTS: HPS is either \ (DOS) or / (Linux)
 NOW_BUILDING = EXT_ZLIB_LIB
-CFLAGS_THIS = -fr=nul -i.. -dHAVE_CONFIG_H -dSTDC
+CFLAGS_THIS = -fr=nul -i.. -dHAVE_CONFIG_H -dSTDC -fo=$(SUBDIR)$(HPS).obj
 
 !include "../vars.mak"
 
@@ -47,49 +47,10 @@ $(SUBDIR)$(HPS)example.obj: example.c
 	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
-#----------------------------------------------------------
-$(SUBDIR)$(HPS)adler32.obj: adler32.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
-	@$(CC) @tmp.cmd
-
-$(SUBDIR)$(HPS)compress.obj: compress.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
-	@$(CC) @tmp.cmd
-
-$(SUBDIR)$(HPS)crc32.obj: crc32.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
-	@$(CC) @tmp.cmd
-
-$(SUBDIR)$(HPS)deflate.obj: deflate.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
-	@$(CC) @tmp.cmd
-
-$(SUBDIR)$(HPS)infback.obj: infback.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
-	@$(CC) @tmp.cmd
-
-$(SUBDIR)$(HPS)inffast.obj: inffast.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
-	@$(CC) @tmp.cmd
-
-$(SUBDIR)$(HPS)inflate.obj: inflate.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
-	@$(CC) @tmp.cmd
-
-$(SUBDIR)$(HPS)inftrees.obj: inftrees.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
-	@$(CC) @tmp.cmd
-
-$(SUBDIR)$(HPS)trees.obj: trees.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
-	@$(CC) @tmp.cmd
-
-$(SUBDIR)$(HPS)uncompr.obj: uncompr.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
-	@$(CC) @tmp.cmd
-
-$(SUBDIR)$(HPS)zutil.obj: zutil.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
+# NTS we have to construct the command line into tmp.cmd because for MS-DOS
+# systems all arguments would exceed the pitiful 128 char command line limit
+.c.obj:
+	%write tmp.cmd $(CFLAGS_THIS) $(CFLAGS_CON) $[@
 	@$(CC) @tmp.cmd
 
 all: lib exe .symbolic
