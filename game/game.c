@@ -2325,30 +2325,25 @@ void SetWindowElementPosition(const WindowElementHandle h,int x,int y) {
 	}
 }
 
-void SetWindowElementScale(const WindowElementHandle h,const unsigned int scale) {
-	struct WindowElement *we = GetWindowElement(h);
-	if (we && scale > 0u && scale <= 8u) we->scale = scale - 1;
-}
-
-void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
+void UpdateWindowElementDimensions(const WindowElementHandle h) {
 	struct WindowElement *we = GetWindowElement(h);
 
 	if (we) {
 		unsigned int nw = 0,nh = 0,nsx = 0,nsy = 0;
 
-		if (ir == ImageRefNone) {
+		if (we->imgRef == ImageRefNone) {
 			// do nothing
 		}
-		else if (ImageRefGetType(ir) == ImageRefTypeBitmap) {
-			const struct BMPres *br = GetBMPr((BMPrHandle)ImageRefGetRef(ir));
+		else if (ImageRefGetType(we->imgRef) == ImageRefTypeBitmap) {
+			const struct BMPres *br = GetBMPr((BMPrHandle)ImageRefGetRef(we->imgRef));
 
 			if (br && br->bmpObj && (br->flags & BMPresFlag_Allocated)) {
 				nw = br->width;
 				nh = br->height;
 			}
 		}
-		else if (ImageRefGetType(ir) == ImageRefTypeSprite) {
-			const struct SpriteRes *sr = GetSpriter((SpriterHandle)ImageRefGetRef(ir));
+		else if (ImageRefGetType(we->imgRef) == ImageRefTypeSprite) {
+			const struct SpriteRes *sr = GetSpriter((SpriterHandle)ImageRefGetRef(we->imgRef));
 
 			if (sr && sr->bmp != BMPrNone && (sr->flags & SpriteResFlag_Allocated)) {
 				nw = sr->w;
@@ -2363,7 +2358,7 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 		nh *= ((unsigned int)we->scale + 1u);
 
 		/* if the reference or source x/y coords changed, update the element */
-		if (we->imgRef != ir || we->sx != nsx || we->sy != nsy)
+		if (we->sx != nsx || we->sy != nsy)
 			we->flags |= WindowElementFlag_Update;
 
 		/* if the region changed size, need to redraw background AND update the element */
@@ -2374,7 +2369,24 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 		we->h = nh;
 		we->sx = nsx;
 		we->sy = nsy;
+	}
+}
+
+void SetWindowElementScale(const WindowElementHandle h,const unsigned int scale) {
+	struct WindowElement *we = GetWindowElement(h);
+	if (we && scale > 0u && scale <= 8u && we->scale != (scale - 1u)) {
+		we->scale = scale - 1u;
+		we->flags |= WindowElementFlag_Update;
+		UpdateWindowElementDimensions(h);
+	}
+}
+
+void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
+	struct WindowElement *we = GetWindowElement(h);
+	if (we && we->imgRef != ir) {
 		we->imgRef = ir;
+		we->flags |= WindowElementFlag_Update;
+		UpdateWindowElementDimensions(h);
 	}
 }
 
