@@ -2427,23 +2427,23 @@ UINT near SpriteAnimFrame = 0;
 BYTE near MouseCapture = 0;
 WindowElementHandle near MouseDragWinElem = WindowElementHandleNone;
 POINT near MouseDragWinElemOrigin = {0,0};
-UINT near AnimTimerId = 0;
+UINT near IdleTimerId = 0;
 
 /////////////////////////////////////////////////////////////
 
-BOOL InitAnimTimer(void) {
-	if (!AnimTimerId) {
-		AnimTimerId = SetTimer(hwndMain,0,1000 / 10,NULL);
-		if (!AnimTimerId) return FALSE;
+BOOL InitIdleTimer(void) {
+	if (!IdleTimerId) {
+		IdleTimerId = SetTimer(hwndMain,0,1000 / 10,NULL);
+		if (!IdleTimerId) return FALSE;
 	}
 
 	return TRUE;
 }
 
-void FreeAnimTimer(void) {
-	if (AnimTimerId) {
-		KillTimer(hwndMain,AnimTimerId);
-		AnimTimerId = 0;
+void FreeIdleTimer(void) {
+	if (IdleTimerId) {
+		KillTimer(hwndMain,IdleTimerId);
+		IdleTimerId = 0;
 	}
 }
 
@@ -3216,7 +3216,7 @@ err1:
 		DLOGT("Unable to init fonts");
 		return 1;
 	}
-	if (!InitAnimTimer()) {
+	if (!InitIdleTimer()) {
 		DLOGT("Unable to init anim timer");
 		return 1;
 	}
@@ -3278,7 +3278,7 @@ err1:
 		DispatchMessage(&msg);
 	}
 
-	FreeAnimTimer();
+	FreeIdleTimer();
 	FreeWindowElements();
 	FreeFonts();
 	FreeBMPRes();
