@@ -6,14 +6,14 @@ CFLAGS_THIS = -fr=nul -i.. -dHAVE_CONFIG_H -dSTDC
 !include "../vars.mak"
 
 #--------------------
-OBJS_LIB = $(SUBDIR)$(HPS)adler32.obj $(SUBDIR)$(HPS)compress.obj $(SUBDIR)$(HPS)crc32.obj $(SUBDIR)$(HPS)deflate.obj $(SUBDIR)$(HPS)infback.obj $(SUBDIR)$(HPS)inffast.obj $(SUBDIR)$(HPS)inflate.obj $(SUBDIR)$(HPS)inftrees.obj $(SUBDIR)$(HPS)trees.obj $(SUBDIR)$(HPS)uncompr.obj $(SUBDIR)$(HPS)zutil.obj $(SUBDIR)$(HPS)libmain.obj
+OBJS_LIB = $(SUBDIR)$(HPS)adler32.obj $(SUBDIR)$(HPS)compress.obj $(SUBDIR)$(HPS)crc32.obj $(SUBDIR)$(HPS)deflate.obj $(SUBDIR)$(HPS)infback.obj $(SUBDIR)$(HPS)inffast.obj $(SUBDIR)$(HPS)inflate.obj $(SUBDIR)$(HPS)inftrees.obj $(SUBDIR)$(HPS)trees.obj $(SUBDIR)$(HPS)uncompr.obj $(SUBDIR)$(HPS)zutil.obj
 
 EXT_ZLIB_EXAMPLE_EXE_LIB = $(SUBDIR)$(HPS)example.exe
 EXT_ZLIB_LIB_LIB=$(SUBDIR)$(HPS)zlibifo.lib
 
 #--------------------
 $(EXT_ZLIB_LIB_LIB): $(OBJS_LIB)
-	wlib -q -b -c $(EXT_ZLIB_LIB_LIB) -+$(SUBDIR)$(HPS)adler32.obj -+$(SUBDIR)$(HPS)compress.obj -+$(SUBDIR)$(HPS)crc32.obj -+$(SUBDIR)$(HPS)deflate.obj -+$(SUBDIR)$(HPS)infback.obj -+$(SUBDIR)$(HPS)inffast.obj -+$(SUBDIR)$(HPS)inflate.obj -+$(SUBDIR)$(HPS)inftrees.obj -+$(SUBDIR)$(HPS)trees.obj -+$(SUBDIR)$(HPS)uncompr.obj -+$(SUBDIR)$(HPS)zutil.obj -+$(SUBDIR)$(HPS)libmain.obj
+	wlib -q -b -c $(EXT_ZLIB_LIB_LIB) -+$(SUBDIR)$(HPS)adler32.obj -+$(SUBDIR)$(HPS)compress.obj -+$(SUBDIR)$(HPS)crc32.obj -+$(SUBDIR)$(HPS)deflate.obj -+$(SUBDIR)$(HPS)infback.obj -+$(SUBDIR)$(HPS)inffast.obj -+$(SUBDIR)$(HPS)inflate.obj -+$(SUBDIR)$(HPS)inftrees.obj -+$(SUBDIR)$(HPS)trees.obj -+$(SUBDIR)$(HPS)uncompr.obj -+$(SUBDIR)$(HPS)zutil.obj
 
 #----------------------------------------------------------
 $(EXT_ZLIB_EXAMPLE_EXE_LIB): $(EXT_ZLIB_LIB) $(EXT_ZLIB_LIB_LIB) $(SUBDIR)$(HPS)example.obj
@@ -86,10 +86,6 @@ $(SUBDIR)$(HPS)uncompr.obj: uncompr.c
 	@$(CC) @tmp.cmd
 
 $(SUBDIR)$(HPS)zutil.obj: zutil.c
-	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
-	@$(CC) @tmp.cmd
-
-$(SUBDIR)$(HPS)libmain.obj: libmain.c
 	%write tmp.cmd $(CFLAGS_THIS) -fo=$(SUBDIR)$(HPS).obj $(CFLAGS) $[@
 	@$(CC) @tmp.cmd
 
