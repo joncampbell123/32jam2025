@@ -985,6 +985,10 @@ struct BMPres *GetBMPr(const BMPrHandle h) {
 	return NULL;
 }
 
+static inline struct BMPres *GetBMPrNRC(const BMPrHandle h) {
+	return BMPr + h;
+}
+
 BOOL InitBMPRes(void) {
 	unsigned int i;
 
@@ -1078,6 +1082,25 @@ BOOL IsSpriteResAlloc(const SpriterHandle h) {
 	const struct SpriteRes *r = GetSpriter(h);
 	if (r && r->bmp != BMPrNone) return TRUE;
 	return FALSE;
+}
+
+/////////////////////////////////////////////////////////////
+
+BMPrHandle AllocBMPr(void) {
+	if (BMPr) {
+		unsigned int i;
+
+		for (i=0;i < BMPrMax;i++) {
+			struct BMPres *we = GetBMPrNRC(i);
+			if (!(we->flags & BMPresFlag_Allocated)) {
+				DLOGT("BMPr #%u allocated",i);
+				return (BMPrHandle)i;
+			}
+		}
+	}
+
+	DLOGT("Unable to allocate BMPr");
+	return BMPrNone;
 }
 
 /////////////////////////////////////////////////////////////
@@ -3364,23 +3387,32 @@ err1:
 	}
 
 	LoadLogPalette("palette.png");
-	if (WndScreenInfo.TotalBitsPerPixel >= 8)
-		LoadBMPr(0,"sht1_8.png");
-	else if (WndScreenInfo.TotalBitsPerPixel >= 4)
-		LoadBMPr(0,"sht1_4.png");
-	else if (WndScreenInfo.TotalBitsPerPixel >= 3)
-		LoadBMPr(0,"sht1_3.png");
-	else
-		LoadBMPr(0,"sht1_1.png");
 
-	InitSpriteGridFromBMP(0/*base sprite*/,0/*BMP*/,
-		-4/*x*/,0/*y*/,
-		12/*cols*/,4/*rows*/,
-		44/*cell width*/,62/*cell height*/);
+	{
+		BMPrHandle bh = AllocBMPr();
 
-	LoadFontr(0,/*height (by char)*/-14,/*width (default)*/0,/*flags*/0,"Arial");
-	InitBlankBMPr(1,320,32);
-	DrawTextBMPr(/*BMPr*/1,/*FontRes*/0,"Hello world! This is a text region");
+		if (WndScreenInfo.TotalBitsPerPixel >= 8)
+			LoadBMPr(bh,"sht1_8.png");
+		else if (WndScreenInfo.TotalBitsPerPixel >= 4)
+			LoadBMPr(bh,"sht1_4.png");
+		else if (WndScreenInfo.TotalBitsPerPixel >= 3)
+			LoadBMPr(bh,"sht1_3.png");
+		else
+			LoadBMPr(bh,"sht1_1.png");
+
+		InitSpriteGridFromBMP(0/*base sprite*/,bh/*BMP*/,
+			-4/*x*/,0/*y*/,
+			12/*cols*/,4/*rows*/,
+			44/*cell width*/,62/*cell height*/);
+	}
+
+	{
+		BMPrHandle bh = AllocBMPr();
+
+		LoadFontr(0,/*height (by char)*/-14,/*width (default)*/0,/*flags*/0,"Arial");
+		InitBlankBMPr(bh,320,32);
+		DrawTextBMPr(/*BMPr*/bh,/*FontRes*/0,"Hello world! This is a text region");
+	}
 
 	SpriteAnimFrame = 0;
 
