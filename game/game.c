@@ -311,9 +311,6 @@ struct SpriteRes {
 };
 
 #define SpriteResFlag_Allocated			0x0001u /* slot is allocated */
-#define SpriteResFlag_IgnoreMask		0x0002u /* even if the bitmap has a transparency mask, do not use it */
-#define SpriteResFlag_HFlip			0x0004u /* horizontally flip */
-#define SpriteResFlag_VFlip			0x0008u /* vertically flip */
 
 typedef WORD					SpriterHandle;
 WORD near					SpriterMax = 64;
