@@ -15,3 +15,13 @@
   To read binary data, you need to add O_BINARY. Note that DOS and Windows are
   the only platforms to require O_BINARY, it's not even defined on other platforms.
 
+- The following functions are listed as exports in Windows 3.1 Win32s but are not
+  actually implemented:
+
+  CreateDIBSection
+  CreateThread (or any thread related function--Win32s does not implement threads)
+
+- Windows 3.1 Win32s: CreateMutex works but all mutexes are local to your application.
+  You cannot use a named mutex to synchronize across processes like you can in
+  Windows 95/NT or later.
+
