@@ -357,11 +357,12 @@ struct WindowElement {
 	BYTE					scale; /* integer scale - 1 */
 };
 
-#define WindowElementFlag_Enabled		0x0001u /* window element is enabled */
-#define WindowElementFlag_Update		0x0002u /* window element needs to be redrawn fully */
-#define WindowElementFlag_BkUpdate		0x0004u /* window element will need to also trigger window background redraw */
-#define WindowElementFlag_Overlapped		0x0008u /* window element is overlapped by another */
-#define WindowElementFlag_NoAutoSize		0x0010u /* do not auto resize window element on content change */
+#define WindowElementFlag_Allocated		0x0001u /* window element is allocated */
+#define WindowElementFlag_Enabled		0x0002u /* window element is enabled */
+#define WindowElementFlag_Update		0x0004u /* window element needs to be redrawn fully */
+#define WindowElementFlag_BkUpdate		0x0008u /* window element will need to also trigger window background redraw */
+#define WindowElementFlag_Overlapped		0x0010u /* window element is overlapped by another */
+#define WindowElementFlag_NoAutoSize		0x0020u /* do not auto resize window element on content change */
 
 typedef WORD					WindowElementHandle;
 WORD near					WindowElementMax = 8;
@@ -2092,10 +2093,35 @@ void FreeSpriteRes(void) {
 	}
 }
 
+void ShowWindowElement(const WindowElementHandle h,const BOOL how);
+
+WindowElementHandle AllocWindowElement(void) {
+	if (WindowElement) {
+		unsigned int i;
+
+		for (i=0;i < WindowElementMax;i++) {
+			struct WindowElement *we = GetWindowElementNRC(i);
+			if (!(we->flags & WindowElementFlag_Allocated)) {
+				DLOGT("Window element #%u allocated",i);
+				return (WindowElementHandle)i;
+			}
+		}
+	}
+
+	DLOGT("Unable to allocate window element");
+	return WindowElementHandleNone;
+}
+
 void FreeWindowElement(const WindowElementHandle h) {
-	struct WindowElement *r = GetWindowElement(h);
-	// nothing to do yet
-	(void)r;
+	struct WindowElement *we = GetWindowElement(h);
+	if (we) {
+		if (we->flags & WindowElementFlag_Allocated) {
+			DLOGT("Window element #%u freeing",h);
+			ShowWindowElement(h,FALSE);
+			we->flags &= ~(WindowElementFlag_Allocated);
+			we->imgRef = BMPrNone;
+		}
+	}
 }
 
 void FreeWindowElements(void) {
@@ -2215,13 +2241,13 @@ void UpdateWindowElementsHDCWithClipRegion(HDC hDC,HRGN rgn,RECT *rgnRect) {
 						if (RectInRegion(orgn,&um)) {
 							we->flags |= WindowElementFlag_Overlapped;
 							if (WndStateFlags & WndState_NeedBkRedraw)
-								we->flags |= WindowElementFlag_Update;
+								we->flags |= WindowElementFlag_Update | WindowElementFlag_Allocated;
 						}
 						else {
 							if (we->flags & WindowElementFlag_Overlapped) {
 								we->flags &= ~WindowElementFlag_Overlapped;
 								if (WndStateFlags & WndState_NeedBkRedraw)
-									we->flags |= WindowElementFlag_Update;
+									we->flags |= WindowElementFlag_Update | WindowElementFlag_Allocated;
 							}
 						}
 					}
@@ -2290,10 +2316,10 @@ void ShowWindowElement(const WindowElementHandle h,const BOOL how) {
 
 	if (we && (we->flags & WindowElementFlag_Enabled) != enf) {
 		if (how) {
-			we->flags |= WindowElementFlag_Update | WindowElementFlag_Enabled;
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_Enabled | WindowElementFlag_Allocated;
 		}
 		else {
-			we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate | WindowElementFlag_Allocated;
 			we->flags &= ~WindowElementFlag_Enabled;
 		}
 	}
@@ -2319,7 +2345,7 @@ void SetWindowElementPosition(const WindowElementHandle h,int x,int y) {
 
 	if (we) {
 		if (we->w && we->h && (we->x != x || we->y != y))
-			we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate | WindowElementFlag_Allocated;
 
 		we->x = x;
 		we->y = y;
@@ -2359,7 +2385,7 @@ void UpdateWindowElementDimensions(const WindowElementHandle h) {
 
 		/* if the reference or source x/y coords changed, update the element */
 		if (we->sx != nsx || we->sy != nsy) {
-			we->flags |= WindowElementFlag_Update;
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_Allocated;
 			we->sx = nsx;
 			we->sy = nsy;
 		}
@@ -2367,7 +2393,7 @@ void UpdateWindowElementDimensions(const WindowElementHandle h) {
 		/* if the region changed size, need to redraw background AND update the element */
 		if (we->w != nw || we->h != nh) {
 			if (!(we->flags & WindowElementFlag_NoAutoSize)) {
-				we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
+				we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate | WindowElementFlag_Allocated;
 				we->w = nw;
 				we->h = nh;
 			}
@@ -2380,7 +2406,7 @@ void SetWindowElementScale(const WindowElementHandle h,const unsigned int scale)
 	struct WindowElement *we = GetWindowElement(h);
 	if (we && scale > 0u && scale <= 8u && we->scale != (scale - 1u)) {
 		we->scale = scale - 1u;
-		we->flags |= WindowElementFlag_Update;
+		we->flags |= WindowElementFlag_Update | WindowElementFlag_Allocated;
 		UpdateWindowElementDimensions(h);
 	}
 }
@@ -2389,7 +2415,7 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 	struct WindowElement *we = GetWindowElement(h);
 	if (we && we->imgRef != ir) {
 		we->imgRef = ir;
-		we->flags |= WindowElementFlag_Update;
+		we->flags |= WindowElementFlag_Update | WindowElementFlag_Allocated;
 		UpdateWindowElementDimensions(h);
 	}
 }
@@ -2431,7 +2457,7 @@ void DrawTextBMPr(const BMPrHandle h,const FontHandle fh,const char *txt) {
 
 			BMPrGDIObjectReleaseDC(h);
 
-			br->flags |= WindowElementFlag_Update;
+			br->flags |= WindowElementFlag_Update | WindowElementFlag_Allocated;
 		}
 	}
 }
@@ -2847,7 +2873,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 						um.right = we->x+we->w;
 						um.bottom = we->y+we->h;
 						if (RectInRegion(rgn,&um))
-							we->flags |= WindowElementFlag_Update;
+							we->flags |= WindowElementFlag_Update | WindowElementFlag_Allocated;
 					}
 				}
 			}
@@ -3343,17 +3369,27 @@ err1:
 	DrawTextBMPr(/*BMPr*/1,/*FontRes*/0,"Hello world! This is a text region");
 
 	SpriteAnimFrame = 0;
-	SetWindowElementContent(0,MAKESPRITEIMAGEREF(SpriteAnimFrame));
-	SetWindowElementPosition(0,20,20);
-	ShowWindowElement(0,TRUE);
 
-	SetWindowElementContent(1,MAKEBMPIMAGEREF(0));
-	SetWindowElementPosition(1,524 + 20 + 20,20);
-	ShowWindowElement(1,TRUE);
+	{
+		WindowElementHandle wh = AllocWindowElement();
+		SetWindowElementContent(wh,MAKESPRITEIMAGEREF(SpriteAnimFrame));
+		SetWindowElementPosition(wh,20,20);
+		ShowWindowElement(wh,TRUE);
+	}
 
-	SetWindowElementContent(2,MAKEBMPIMAGEREF(1));
-	SetWindowElementPosition(2,20,210);
-	ShowWindowElement(2,TRUE);
+	{
+		WindowElementHandle wh = AllocWindowElement();
+		SetWindowElementContent(wh,MAKEBMPIMAGEREF(0));
+		SetWindowElementPosition(wh,120 + 20 + 20,20);
+		ShowWindowElement(wh,TRUE);
+	}
+
+	{
+		WindowElementHandle wh = AllocWindowElement();
+		SetWindowElementContent(wh,MAKEBMPIMAGEREF(1));
+		SetWindowElementPosition(wh,20,210);
+		ShowWindowElement(wh,TRUE);
+	}
 
 	UpdateWindowElements();
 
