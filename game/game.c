@@ -3,6 +3,7 @@
 #endif
 
 #include <windows.h>
+#include <mmsystem.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -47,6 +48,7 @@
 #define WndState_Maximized		0x00000002u
 #define WndState_Active			0x00000004u
 #define WndState_NeedBkRedraw		0x00000008u /* redraw the background */
+#define WndState_NotIdle		0x00000010u /* if set, PeekMessage() and manage game, else GetMessage() and use idle timer */
 
 // WndGraphicsCaps.flags
 #define WndGraphicsCaps_Flags_DIBTopDown	0x00000001u /* Windows 95/NT4 top-down DIBs are supported */
@@ -2429,6 +2431,77 @@ WindowElementHandle near MouseDragWinElem = WindowElementHandleNone;
 POINT near MouseDragWinElemOrigin = {0,0};
 UINT near IdleTimerId = 0;
 
+// NTS: The reason time is tracked in ms using both timeGetTime() and GetTickCount() is
+//      because of some interesting quirks about timeGetTime() in Windows 3.1 that do
+//      not occur in Windows 95/NT and later.
+//
+//      timeGetTime() appears to get "stuck" within a 55ms period if this program does
+//      not process the message processing queue enough. Which means if you try to do
+//      an animation loop in Windows 3.1 that takes longer than 50ms without processing
+//      the message queue, and the loop only terminates when, say 100ms has passed,
+//      the loop will never break. While this doesn't happen often, it can happen from
+//      experience if you use the timer to do smooth BitBlt or GDI drawing effects, as
+//      experienced while developing the DEC VT100 console window emulation in DOSLIB hw/dos.
+//
+//      To avoid the 47 day rollover, deltas in time are counted and added to a 64-bit
+//      variable.
+//
+//      This hack is not necessary in Windows 95/NT and we can safely use timeGetTime()
+//      without the additional checks.
+uint64_t near CurrentTimeMS = 0,acCurrentTimeMM = 0,acCurrentTimeWM = 0;
+DWORD near CurrentTimeMM = 0,pCurrentTimeMM = 0; // timeGetTime()
+DWORD near CurrentTimeWM = 0,pCurrentTimeWM = 0; // GetTickCount()
+
+void InitCurrentTime(void) {
+	CurrentTimeMM = pCurrentTimeMM = timeGetTime();
+	CurrentTimeWM = pCurrentTimeWM = GetTickCount();
+	DLOGT("InitCurrentTime mm=%lu wm=%lu",(unsigned long)CurrentTimeMM,(unsigned long)CurrentTimeWM);
+}
+
+void UpdateCurrentTime(void) {
+	int32_t dTimeMM,dTimeWM;
+	int64_t d;
+
+	CurrentTimeMM = timeGetTime();
+	CurrentTimeWM = GetTickCount();
+
+	dTimeMM = (int32_t)(CurrentTimeMM - pCurrentTimeMM);
+	dTimeWM = (int32_t)(CurrentTimeWM - pCurrentTimeWM);
+
+	// only allow counting forward!
+	if (dTimeMM > 0l) acCurrentTimeMM += (uint64_t)dTimeMM;
+	if (dTimeWM > 0l) acCurrentTimeWM += (uint64_t)dTimeWM;
+
+	pCurrentTimeMM = CurrentTimeMM;
+	pCurrentTimeWM = CurrentTimeWM;
+
+	d = (int64_t)(acCurrentTimeWM - acCurrentTimeMM);
+
+#if 1//DEBUG
+	DLOGT("UpdateCurrentTime mm=%lu wm=%lu dmm=%ld dwm=%ld amm=%llu dmm=%llu mm-wm=%lld",
+		(unsigned long)CurrentTimeMM,
+		(unsigned long)CurrentTimeWM,
+		(signed long)dTimeMM,
+		(signed long)dTimeWM,
+		(unsigned long long)acCurrentTimeMM,
+		(unsigned long long)acCurrentTimeWM,
+		(signed long long)d);
+#endif
+
+	if (d <= -150ll || d >= 150ll) {
+		// too far off!
+		acCurrentTimeMM = acCurrentTimeWM;
+		DLOGT("UpdateCurrentTime mm timer is too far off from wm timer, adjusting");
+	}
+	else if (d <= -60ll || d >= 60ll) {
+		if (dTimeWM != 0) { // because GetTickCount() has a coarse 55ms precision to it, so only adjust when it changes
+			const int32_t adj = (int32_t)(d / 20ll);
+			acCurrentTimeMM += (uint64_t)adj;
+			DLOGT("UpdateCurrentTime mm timer is a bit too far off from wm timer, nudging adj=%ld",(signed long)adj);
+		}
+	}
+}
+
 /////////////////////////////////////////////////////////////
 
 BOOL InitIdleTimer(void) {
@@ -2445,6 +2518,21 @@ void FreeIdleTimer(void) {
 		KillTimer(hwndMain,IdleTimerId);
 		IdleTimerId = 0;
 	}
+}
+
+void GoAppIdleNothing(void) {
+	WndStateFlags &= ~WndState_NotIdle;
+	FreeIdleTimer();
+}
+
+void GoAppIdleTimer(void) {
+	WndStateFlags &= ~WndState_NotIdle;
+	InitIdleTimer();
+}
+
+void GoAppActive(void) {
+	WndStateFlags |= WndState_NotIdle;
+	FreeIdleTimer();
 }
 
 /////////////////////////////////////////////////////////////
@@ -3195,6 +3283,7 @@ err1:
 		SetWindowPos(hwndMain,HWND_TOPMOST,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE);
 	}
 
+	InitCurrentTime();
 	InitColorPalette();
 	if (!InitBMPRes()) {
 		DLOGT("Unable to init BMP res");
@@ -3273,9 +3362,20 @@ err1:
 	ReleaseMutex(WndLocalAppMutex);
 #endif
 
-	while (GetMessage(&msg,NULL,0,0)) {
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+	while (1) {
+		UpdateCurrentTime();
+		if (WndStateFlags & WndState_NotIdle) {
+			if (PeekMessage(&msg,NULL,0,0,PM_REMOVE)) {
+				if (msg.message == WM_QUIT) break;
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
+		}
+		else {
+			if (!GetMessage(&msg,NULL,0,0)) break;
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
 	}
 
 	FreeIdleTimer();
