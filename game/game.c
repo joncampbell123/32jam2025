@@ -353,7 +353,7 @@ struct WindowElement {
 	int					x,y; /* signed, to allow partially offscreen if that's what you want */
 	unsigned int				w,h;
 	unsigned int				sx,sy; /* source x,y coordinates of bitmap */
-	WORD					flags;
+	BYTE					flags;
 	BYTE					scale; /* integer scale - 1 */
 };
 
@@ -361,6 +361,7 @@ struct WindowElement {
 #define WindowElementFlag_Update		0x0002u /* window element needs to be redrawn fully */
 #define WindowElementFlag_BkUpdate		0x0004u /* window element will need to also trigger window background redraw */
 #define WindowElementFlag_Overlapped		0x0008u /* window element is overlapped by another */
+#define WindowElementFlag_NoAutoSize		0x0010u /* do not auto resize window element on content change */
 
 typedef WORD					WindowElementHandle;
 WORD near					WindowElementMax = 8;
@@ -2358,17 +2359,21 @@ void UpdateWindowElementDimensions(const WindowElementHandle h) {
 		nh *= ((unsigned int)we->scale + 1u);
 
 		/* if the reference or source x/y coords changed, update the element */
-		if (we->sx != nsx || we->sy != nsy)
+		if (we->sx != nsx || we->sy != nsy) {
 			we->flags |= WindowElementFlag_Update;
+			we->sx = nsx;
+			we->sy = nsy;
+		}
 
 		/* if the region changed size, need to redraw background AND update the element */
-		if (we->w != nw || we->h != nh)
-			we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
+		if (we->w != nw || we->h != nh) {
+			if (!(we->flags & WindowElementFlag_NoAutoSize)) {
+				we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate;
+				we->w = nw;
+				we->h = nh;
+			}
+		}
 
-		we->w = nw;
-		we->h = nh;
-		we->sx = nsx;
-		we->sy = nsy;
 	}
 }
 
