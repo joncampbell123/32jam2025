@@ -68,10 +68,6 @@ $(GAME_EXE): $(SUBDIR)$(HPS)game.obj $(ZLIBIMP) $(GAME_RES)
 !ifdef WIN_NE_SETVER_BUILD
 	$(WIN_NE_SETVER_BUILD) $(GAME_EXE)
 !endif
-!ifeq TARGET_WINDOWS 20
-	../tool/win2xhdrpatch.pl $(GAME_EXE)
-	../tool/win2xstubpatch.pl $(GAME_EXE)
-!endif
 
 clean: .SYMBOLIC
           del $(SUBDIR)$(HPS)*.obj

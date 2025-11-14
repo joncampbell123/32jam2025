@@ -38,10 +38,6 @@ $(EXT_ZLIB_EXAMPLE_EXE_LIB): $(EXT_ZLIB_LIB) $(EXT_ZLIB_LIB_LIB) $(SUBDIR)$(HPS)
 !ifdef WIN_NE_SETVER_BUILD
 	$(WIN_NE_SETVER_BUILD) $(EXT_ZLIB_EXAMPLE_EXE_LIB)
 !endif
-!ifeq TARGET_WINDOWS 20
-	../tool/win2xhdrpatch.pl $(EXT_ZLIB_EXAMPLE_EXE_LIB)
-	../tool/win2xstubpatch.pl $(EXT_ZLIB_EXAMPLE_EXE_LIB)
-!endif
 
 # NTS we have to construct the command line into tmp.cmd because for MS-DOS
 # systems all arguments would exceed the pitiful 128 char command line limit
