@@ -33,7 +33,7 @@ if [[ "$1" == "build" || "$1" == "" ]]; then
     if [ x"$3" != x ]; then build_list="$3"; fi
 
 	for name in $build_list; do
-		mkdir -p "$name/lib" "$name/dll" || exit 1
+		mkdir -p "$name/lib" || exit 1
 		do_wmake $name "$what" || exit 1
 		bat_wmake $name "$what" || exit 1
 	done
