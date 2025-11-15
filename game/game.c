@@ -1132,6 +1132,12 @@ SpriterHandle AllocSpriter(const unsigned int count) {
 				if ((++c) >= count) {
 					for (c=0;c < count;c++) {
 						struct SpriteRes *we = GetSpriterNRC(ib+c);
+#if GAMEDEBUG
+						if ((ib+c) >= SpriterMax) {
+							DLOGT("BUG! Out of range sprite index line %d",__LINE__);
+							break;
+						}
+#endif
 						we->flags = SpriteResFlag_Allocated;
 						we->bmp = BMPrNone;
 					}
