@@ -297,24 +297,24 @@ struct BMPres {
 #define BMPresFlag_Allocated			0x0001u /* slot is allocated, whether or not there is a bitmap object */
 #define BMPresFlag_TransparencyMask		0x0002u /* bitmap has transparency mask */
 
-typedef WORD					BMPrHandle;
-WORD near					BMPrMax = 4;
-struct BMPres*					BMPr = NULL;
-static const struct BMPres near			BMPrInit = { .bmpObj = (HBITMAP)NULL, .width = 0, .height = 0, .flags = 0 };
-#define BMPrNone				((WORD)(-1))
+typedef WORD					BMPresHandle;
+WORD near					BMPresMax = 4;
+struct BMPres*					BMPres = NULL;
+static const struct BMPres near			BMPresInit = { .bmpObj = (HBITMAP)NULL, .width = 0, .height = 0, .flags = 0 };
+#define BMPresHandleNone			((WORD)(-1))
 
-struct BMPres *GetBMPr(const BMPrHandle h) {
-	if (BMPr && h < BMPrMax) return BMPr + h;
+struct BMPres *GetBMPres(const BMPresHandle h) {
+	if (BMPres && h < BMPresMax) return BMPres + h;
 	return NULL;
 }
 
-static inline struct BMPres *GetBMPrNRC(const BMPrHandle h) {
-	return BMPr + h;
+static inline struct BMPres *GetBMPresNRC(const BMPresHandle h) {
+	return BMPres + h;
 }
 
 // sprite within bitmap
 struct SpriteRes {
-	BMPrHandle				bmp;
+	BMPresHandle				bmp;
 	unsigned short				x,y,w,h; /* subregion of bmp */
 	WORD					flags;
 };
@@ -324,7 +324,7 @@ struct SpriteRes {
 typedef WORD					SpriterHandle;
 WORD near					SpriterMax = 64;
 struct SpriteRes*				Spriter = NULL;
-static const struct SpriteRes near		SpriterInit = { .bmp = BMPrNone, .x = 0, .y = 0, .w = 0, .h = 0 };
+static const struct SpriteRes near		SpriterInit = { .bmp = BMPresHandleNone, .x = 0, .y = 0, .w = 0, .h = 0 };
 #define SpriterNone				((WORD)(-1))
 
 static inline struct SpriteRes *GetSpriterNRC(const SpriterHandle h) {
@@ -998,19 +998,19 @@ BOOL LoadFontr(const FontHandle fh,int height,int width,unsigned int flags,const
 
 /////////////////////////////////////////////////////////////
 
-void FreeBMPr(const BMPrHandle h);
+void FreeBMPr(const BMPresHandle h);
 
 BOOL InitBMPRes(void) {
 	unsigned int i;
 
-	if (!BMPr && BMPrMax != 0) {
-		DLOGT("Allocating BMP res array, %u max",BMPrMax);
-		BMPr = malloc(BMPrMax * sizeof(struct BMPres));
-		if (!BMPr) {
+	if (!BMPres && BMPresMax != 0) {
+		DLOGT("Allocating BMP res array, %u max",BMPresMax);
+		BMPres = malloc(BMPresMax * sizeof(struct BMPres));
+		if (!BMPres) {
 			DLOGT("Failed to allocate array");
 			return FALSE;
 		}
-		for (i=0;i < BMPrMax;i++) BMPr[i] = BMPrInit;
+		for (i=0;i < BMPresMax;i++) BMPres[i] = BMPresInit;
 	}
 
 	return TRUE;
@@ -1019,16 +1019,16 @@ BOOL InitBMPRes(void) {
 void FreeBMPRes(void) {
 	unsigned int i;
 
-	if (BMPr) {
+	if (BMPres) {
 		DLOGT("Freeing BMP res");
-		for (i=0;i < BMPrMax;i++) FreeBMPr(i);
-		free(BMPr);
-		BMPr = NULL;
+		for (i=0;i < BMPresMax;i++) FreeBMPr(i);
+		free(BMPres);
+		BMPres = NULL;
 	}
 }
 
-void FreeBMPrGDIObject(const BMPrHandle h) {
-	struct BMPres *b = GetBMPr(h);
+void FreeBMPrGDIObject(const BMPresHandle h) {
+	struct BMPres *b = GetBMPres(h);
 
 	if (b && b->bmpObj != (HBITMAP)NULL) {
 		DLOGT("Freeing BMP #%u res GDI object",h);
@@ -1037,8 +1037,8 @@ void FreeBMPrGDIObject(const BMPrHandle h) {
 	}
 }
 
-void FreeBMPr(const BMPrHandle h) {
-	struct BMPres *b = GetBMPr(h);
+void FreeBMPr(const BMPresHandle h) {
+	struct BMPres *b = GetBMPres(h);
 
 	if (b) {
 		FreeBMPrGDIObject(h);
@@ -1083,15 +1083,15 @@ BOOL InitWindowElements(void) {
 	return TRUE;
 }
 
-BOOL IsBMPresAlloc(const BMPrHandle h) {
-	const struct BMPres *b = GetBMPr(h);
+BOOL IsBMPresAlloc(const BMPresHandle h) {
+	const struct BMPres *b = GetBMPres(h);
 	if (b && b->flags & BMPresFlag_Allocated) return TRUE;
 	return FALSE;
 }
 
 BOOL IsSpriteResAlloc(const SpriterHandle h) {
 	const struct SpriteRes *r = GetSpriter(h);
-	if (r && r->bmp != BMPrNone) return TRUE;
+	if (r && r->bmp != BMPresHandleNone) return TRUE;
 	return FALSE;
 }
 
@@ -1139,7 +1139,7 @@ SpriterHandle AllocSpriters(const unsigned int count) {
 						}
 #endif
 						we->flags = SpriteResFlag_Allocated;
-						we->bmp = BMPrNone;
+						we->bmp = BMPresHandleNone;
 					}
 					DLOGT("Allocated %u sprites starting at #%u",count,ib);
 					return (SpriterHandle)ib;
@@ -1154,27 +1154,27 @@ SpriterHandle AllocSpriters(const unsigned int count) {
 
 /////////////////////////////////////////////////////////////
 
-BMPrHandle AllocBMPr(void) {
-	if (BMPr) {
+BMPresHandle AllocBMPr(void) {
+	if (BMPres) {
 		unsigned int i;
 
-		for (i=0;i < BMPrMax;i++) {
-			struct BMPres *we = GetBMPrNRC(i);
+		for (i=0;i < BMPresMax;i++) {
+			struct BMPres *we = GetBMPresNRC(i);
 			if (!(we->flags & BMPresFlag_Allocated)) {
 				we->flags |= BMPresFlag_Allocated;
 				DLOGT("BMPr #%u allocated",i);
-				return (BMPrHandle)i;
+				return (BMPresHandle)i;
 			}
 		}
 	}
 
 	DLOGT("Unable to allocate BMPr");
-	return BMPrNone;
+	return BMPresHandleNone;
 }
 
 /////////////////////////////////////////////////////////////
 
-void InitSpriteGridFromBMP(SpriterHandle sh,const BMPrHandle bh,int bx,int by,const unsigned int cols,const unsigned int rows,const unsigned int cellwidth,const unsigned int cellheight) {
+void InitSpriteGridFromBMP(SpriterHandle sh,const BMPresHandle bh,int bx,int by,const unsigned int cols,const unsigned int rows,const unsigned int cellwidth,const unsigned int cellheight) {
 	unsigned int r,c;
 	int cx,cy;
 
@@ -1206,8 +1206,8 @@ void InitSpriteGridFromBMP(SpriterHandle sh,const BMPrHandle bh,int bx,int by,co
 
 /////////////////////////////////////////////////////////////
 
-BOOL InitBMPrGDIObject(const BMPrHandle h,unsigned int width,unsigned int height,unsigned int flags) {
-	struct BMPres *b = GetBMPr(h);
+BOOL InitBMPrGDIObject(const BMPresHandle h,unsigned int width,unsigned int height,unsigned int flags) {
+	struct BMPres *b = GetBMPres(h);
 
 	if (b) {
 		/* free only if change in dimensions */
@@ -1243,14 +1243,14 @@ BOOL InitBMPrGDIObject(const BMPrHandle h,unsigned int width,unsigned int height
 /////////////////////////////////////////////////////////////
 
 // current GetDC/Release target in functions below
-static BMPrHandle BMPrGDICurrent = BMPrNone;
+static BMPresHandle BMPrGDICurrent = BMPresHandleNone;
 static HDC BMPrGDIbmpDC = (HDC)NULL;
 static HBITMAP BMPrGDIbmpOld = (HBITMAP)NULL;
 
-HDC BMPrGDIObjectGetDC(const BMPrHandle h) {
-	const struct BMPres *b = GetBMPr(h);
+HDC BMPrGDIObjectGetDC(const BMPresHandle h) {
+	const struct BMPres *b = GetBMPres(h);
 
-	if (b && BMPrGDICurrent == BMPrNone && b->bmpObj) {
+	if (b && BMPrGDICurrent == BMPresHandleNone && b->bmpObj) {
 		HDC retDC = CreateCompatibleDC(NULL);
 
 		if (retDC) {
@@ -1280,10 +1280,10 @@ HDC BMPrGDIObjectGetDC(const BMPrHandle h) {
 	return NULL;
 }
 
-void BMPrGDIObjectReleaseDC(const BMPrHandle h) {
-	const struct BMPres *b = GetBMPr(h);
+void BMPrGDIObjectReleaseDC(const BMPresHandle h) {
+	const struct BMPres *b = GetBMPres(h);
 
-	if (b && BMPrGDICurrent != BMPrNone && BMPrGDICurrent == h) {
+	if (b && BMPrGDICurrent != BMPresHandleNone && BMPrGDICurrent == h) {
 		if (BMPrGDIbmpDC) {
 			if (BMPrGDIbmpOld != (HBITMAP)NULL) {
 				SelectObject(BMPrGDIbmpDC,BMPrGDIbmpOld);
@@ -1298,7 +1298,7 @@ void BMPrGDIObjectReleaseDC(const BMPrHandle h) {
 			DeleteDC(BMPrGDIbmpDC);
 			BMPrGDIbmpDC = (HDC)NULL;
 		}
-		BMPrGDICurrent = BMPrNone;
+		BMPrGDICurrent = BMPresHandleNone;
 	}
 	else {
 		DLOGT(__FUNCTION__ " attempt to release #%u res when current is #%u",h,BMPrGDICurrent);
@@ -1307,7 +1307,7 @@ void BMPrGDIObjectReleaseDC(const BMPrHandle h) {
 
 /////////////////////////////////////////////////////////////
 
-void InitBlankBMPr(const BMPrHandle h,unsigned int width,unsigned int height) {
+void InitBlankBMPr(const BMPresHandle h,unsigned int width,unsigned int height) {
 	if (!InitBMPrGDIObject(h,width,height,0)) {
 		DLOGT("Unable to init GDI bitmap for blank BMPr");
 		return;
@@ -1316,7 +1316,7 @@ void InitBlankBMPr(const BMPrHandle h,unsigned int width,unsigned int height) {
 
 /////////////////////////////////////////////////////////////
 
-void LoadBMPrFromBMP(const int fd,struct BMPres *br,const BMPrHandle h) {
+void LoadBMPrFromBMP(const int fd,struct BMPres *br,const BMPresHandle h) {
 	unsigned char *bihraw = NULL; // combined BITMAPINFOHEADER and palette for GDI to use
 	unsigned char *slice = NULL;
 	unsigned int sliceheight;
@@ -1666,7 +1666,7 @@ BOOL png_idat_reader_init(struct png_idat_reader *pr,off_t ofs) {
 
 /////////////////////////////////////////////////////////////
 
-void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPrHandle h) {
+void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPresHandle h) {
 	struct minipng_PLTE_color *plte = NULL;
 	struct png_idat_reader pir = {0};
 	struct minipng_IHDR ihdr = {0};
@@ -2121,8 +2121,8 @@ finish:
 
 /////////////////////////////////////////////////////////////
 
-BOOL LoadBMPr(const BMPrHandle h,const char *p) {
-	struct BMPres *b = GetBMPr(h);
+BOOL LoadBMPr(const BMPresHandle h,const char *p) {
+	struct BMPres *b = GetBMPres(h);
 
 	if (b) {
 		int fd;
@@ -2172,7 +2172,7 @@ void FreeSpriter(const SpriterHandle h) {
 		DLOGT("Freeing sprite #%u res",h);
 		r->flags &= ~(SpriteResFlag_Allocated);
 		r->x = r->y = r->w = r->h = 0;
-		r->bmp = BMPrNone;
+		r->bmp = BMPresHandleNone;
 	}
 }
 
@@ -2194,7 +2194,7 @@ void WindowElementFreeOwnedImage(const WindowElementHandle h) {
 	if (we && (we->flags & WindowElementFlag_OwnsImage)) {
 		if (we->imgRef != ImageRefNone && ImageRefGetType(we->imgRef) == ImageRefTypeBitmap) {
 			DLOGT("Window element #%u owns a bitmap and is freeing it now",h);
-			FreeBMPr((BMPrHandle)ImageRefGetRef(we->imgRef));
+			FreeBMPr((BMPresHandle)ImageRefGetRef(we->imgRef));
 			we->flags &= ~(WindowElementFlag_OwnsImage);
 			we->imgRef = ImageRefNone;
 		}
@@ -2250,13 +2250,13 @@ void DrawWindowElement(HDC hDC,struct WindowElement *we) {
 		HBITMAP bmp = (HBITMAP)NULL;
 
 		if (ImageRefGetType(we->imgRef) == ImageRefTypeBitmap) {
-			const struct BMPres *br = GetBMPr((BMPrHandle)ImageRefGetRef(we->imgRef));
+			const struct BMPres *br = GetBMPres((BMPresHandle)ImageRefGetRef(we->imgRef));
 			if (br && br->bmpObj) bmp = br->bmpObj;
 		}
 		else if (ImageRefGetType(we->imgRef) == ImageRefTypeSprite) {
 			const struct SpriteRes *sr = GetSpriter((SpriterHandle)ImageRefGetRef(we->imgRef));
 			if (sr) {
-				const struct BMPres *br = GetBMPr(sr->bmp);
+				const struct BMPres *br = GetBMPres(sr->bmp);
 				if (br && br->bmpObj) bmp = br->bmpObj;
 			}
 		}
@@ -2468,7 +2468,7 @@ void UpdateWindowElementDimensions(const WindowElementHandle h) {
 
 		if (we->imgRef != ImageRefNone) {
 			if (ImageRefGetType(we->imgRef) == ImageRefTypeBitmap) {
-				const struct BMPres *br = GetBMPr((BMPrHandle)ImageRefGetRef(we->imgRef));
+				const struct BMPres *br = GetBMPres((BMPresHandle)ImageRefGetRef(we->imgRef));
 
 				if (br && br->bmpObj && (br->flags & BMPresFlag_Allocated)) {
 					nw = br->width;
@@ -2478,7 +2478,7 @@ void UpdateWindowElementDimensions(const WindowElementHandle h) {
 			else if (ImageRefGetType(we->imgRef) == ImageRefTypeSprite) {
 				const struct SpriteRes *sr = GetSpriter((SpriterHandle)ImageRefGetRef(we->imgRef));
 
-				if (sr && sr->bmp != BMPrNone && (sr->flags & SpriteResFlag_Allocated)) {
+				if (sr && sr->bmp != BMPresHandleNone && (sr->flags & SpriteResFlag_Allocated)) {
 					nw = sr->w;
 					nh = sr->h;
 					nsx = sr->x;
@@ -2531,10 +2531,10 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 /////////////////////////////////////////////////////////////
 
 // Generic demonstration function---may disappear later
-void DrawTextBMPr(const BMPrHandle h,const FontHandle fh,const char *txt) {
+void DrawTextBMPr(const BMPresHandle h,const FontHandle fh,const char *txt) {
 	const struct FontResource *fr = GetFontResource(fh);
 	const unsigned int txtlen = strlen(txt);
-	struct BMPres *br = GetBMPr(h);
+	struct BMPres *br = GetBMPres(h);
 
 	if (br && fr) {
 		HDC bmpDC = BMPrGDIObjectGetDC(h);
@@ -3461,7 +3461,7 @@ err1:
 	LoadLogPalette("palette.png");
 
 	{
-		BMPrHandle bh = AllocBMPr();
+		BMPresHandle bh = AllocBMPr();
 		SpriterHandle sh = AllocSpriters(12/*cols*/*4/*rows*/);
 
 		if (WndScreenInfo.TotalBitsPerPixel >= 8)
@@ -3482,7 +3482,7 @@ err1:
 
 	{
 		FontHandle fh = AllocFont();
-		BMPrHandle bh = AllocBMPr();
+		BMPresHandle bh = AllocBMPr();
 
 		LoadFontr(fh,/*height (by char)*/-14,/*width (default)*/0,/*flags*/0,"Arial");
 		InitBlankBMPr(bh,320,32);
