@@ -998,9 +998,9 @@ BOOL LoadFontr(const FontHandle fh,int height,int width,unsigned int flags,const
 
 /////////////////////////////////////////////////////////////
 
-void FreeBMPr(const BMPresHandle h);
+void FreeBMPres(const BMPresHandle h);
 
-BOOL InitBMPRes(void) {
+BOOL InitBMPResources(void) {
 	unsigned int i;
 
 	if (!BMPres && BMPresMax != 0) {
@@ -1016,18 +1016,18 @@ BOOL InitBMPRes(void) {
 	return TRUE;
 }
 
-void FreeBMPRes(void) {
+void FreeBMPResources(void) {
 	unsigned int i;
 
 	if (BMPres) {
 		DLOGT("Freeing BMP res");
-		for (i=0;i < BMPresMax;i++) FreeBMPr(i);
+		for (i=0;i < BMPresMax;i++) FreeBMPres(i);
 		free(BMPres);
 		BMPres = NULL;
 	}
 }
 
-void FreeBMPrGDIObject(const BMPresHandle h) {
+void FreeBMPresGDIObject(const BMPresHandle h) {
 	struct BMPres *b = GetBMPres(h);
 
 	if (b && b->bmpObj != (HBITMAP)NULL) {
@@ -1037,11 +1037,11 @@ void FreeBMPrGDIObject(const BMPresHandle h) {
 	}
 }
 
-void FreeBMPr(const BMPresHandle h) {
+void FreeBMPres(const BMPresHandle h) {
 	struct BMPres *b = GetBMPres(h);
 
 	if (b) {
-		FreeBMPrGDIObject(h);
+		FreeBMPresGDIObject(h);
 		if (b->flags & BMPresFlag_Allocated) {
 			DLOGT("Freeing BMP #%u res",h);
 			b->width = b->height = b->flags = 0;
@@ -1154,7 +1154,7 @@ SpriterHandle AllocSpriters(const unsigned int count) {
 
 /////////////////////////////////////////////////////////////
 
-BMPresHandle AllocBMPr(void) {
+BMPresHandle AllocBMPres(void) {
 	if (BMPres) {
 		unsigned int i;
 
@@ -1206,14 +1206,14 @@ void InitSpriteGridFromBMP(SpriterHandle sh,const BMPresHandle bh,int bx,int by,
 
 /////////////////////////////////////////////////////////////
 
-BOOL InitBMPrGDIObject(const BMPresHandle h,unsigned int width,unsigned int height,unsigned int flags) {
+BOOL InitBMPresGDIObject(const BMPresHandle h,unsigned int width,unsigned int height,unsigned int flags) {
 	struct BMPres *b = GetBMPres(h);
 
 	if (b) {
 		/* free only if change in dimensions */
 		if (b->bmpObj != (HBITMAP)NULL && (b->width != width || b->height != height)) {
 			DLOGT("Init GDI BMP object #%u res, width and height changed, freeing bitmap",h);
-			FreeBMPrGDIObject(h);
+			FreeBMPresGDIObject(h);
 		}
 
 		if (b->bmpObj == (HBITMAP)NULL && width > 0 && height > 0) {
@@ -1243,19 +1243,19 @@ BOOL InitBMPrGDIObject(const BMPresHandle h,unsigned int width,unsigned int heig
 /////////////////////////////////////////////////////////////
 
 // current GetDC/Release target in functions below
-static BMPresHandle BMPrGDICurrent = BMPresHandleNone;
-static HDC BMPrGDIbmpDC = (HDC)NULL;
-static HBITMAP BMPrGDIbmpOld = (HBITMAP)NULL;
+static BMPresHandle BMPresGDICurrent = BMPresHandleNone;
+static HDC BMPresGDIbmpDC = (HDC)NULL;
+static HBITMAP BMPresGDIbmpOld = (HBITMAP)NULL;
 
-HDC BMPrGDIObjectGetDC(const BMPresHandle h) {
+HDC BMPresGDIObjectGetDC(const BMPresHandle h) {
 	const struct BMPres *b = GetBMPres(h);
 
-	if (b && BMPrGDICurrent == BMPresHandleNone && b->bmpObj) {
+	if (b && BMPresGDICurrent == BMPresHandleNone && b->bmpObj) {
 		HDC retDC = CreateCompatibleDC(NULL);
 
 		if (retDC) {
-			BMPrGDIbmpOld = (HBITMAP)SelectObject(retDC,b->bmpObj);
-			if (BMPrGDIbmpOld == (HBITMAP)NULL) {
+			BMPresGDIbmpOld = (HBITMAP)SelectObject(retDC,b->bmpObj);
+			if (BMPresGDIbmpOld == (HBITMAP)NULL) {
 				DLOGT("Unable to select bitmap into compatdc");
 				DeleteDC(retDC);
 				return NULL;
@@ -1268,8 +1268,8 @@ HDC BMPrGDIObjectGetDC(const BMPresHandle h) {
 				RealizePalette(retDC);
 			}
 
-			BMPrGDICurrent = h;
-			BMPrGDIbmpDC = retDC;
+			BMPresGDICurrent = h;
+			BMPresGDIbmpDC = retDC;
 			return retDC;
 		}
 		else {
@@ -1280,35 +1280,35 @@ HDC BMPrGDIObjectGetDC(const BMPresHandle h) {
 	return NULL;
 }
 
-void BMPrGDIObjectReleaseDC(const BMPresHandle h) {
+void BMPresGDIObjectReleaseDC(const BMPresHandle h) {
 	const struct BMPres *b = GetBMPres(h);
 
-	if (b && BMPrGDICurrent != BMPresHandleNone && BMPrGDICurrent == h) {
-		if (BMPrGDIbmpDC) {
-			if (BMPrGDIbmpOld != (HBITMAP)NULL) {
-				SelectObject(BMPrGDIbmpDC,BMPrGDIbmpOld);
-				BMPrGDIbmpOld = (HBITMAP)NULL;
+	if (b && BMPresGDICurrent != BMPresHandleNone && BMPresGDICurrent == h) {
+		if (BMPresGDIbmpDC) {
+			if (BMPresGDIbmpOld != (HBITMAP)NULL) {
+				SelectObject(BMPresGDIbmpDC,BMPresGDIbmpOld);
+				BMPresGDIbmpOld = (HBITMAP)NULL;
 			}
 
 			if (WndHanPalette) {
-				if (SelectPalette(BMPrGDIbmpDC,(HPALETTE)GetStockObject(DEFAULT_PALETTE),FALSE) == (HPALETTE)NULL)
+				if (SelectPalette(BMPresGDIbmpDC,(HPALETTE)GetStockObject(DEFAULT_PALETTE),FALSE) == (HPALETTE)NULL)
 					DLOGT("ERROR: Cannot select stock palette into BMP compat DC");
 			}
 
-			DeleteDC(BMPrGDIbmpDC);
-			BMPrGDIbmpDC = (HDC)NULL;
+			DeleteDC(BMPresGDIbmpDC);
+			BMPresGDIbmpDC = (HDC)NULL;
 		}
-		BMPrGDICurrent = BMPresHandleNone;
+		BMPresGDICurrent = BMPresHandleNone;
 	}
 	else {
-		DLOGT(__FUNCTION__ " attempt to release #%u res when current is #%u",h,BMPrGDICurrent);
+		DLOGT(__FUNCTION__ " attempt to release #%u res when current is #%u",h,BMPresGDICurrent);
 	}
 }
 
 /////////////////////////////////////////////////////////////
 
-void InitBlankBMPr(const BMPresHandle h,unsigned int width,unsigned int height) {
-	if (!InitBMPrGDIObject(h,width,height,0)) {
+void InitBlankBMPres(const BMPresHandle h,unsigned int width,unsigned int height) {
+	if (!InitBMPresGDIObject(h,width,height,0)) {
 		DLOGT("Unable to init GDI bitmap for blank BMPr");
 		return;
 	}
@@ -1316,7 +1316,7 @@ void InitBlankBMPr(const BMPresHandle h,unsigned int width,unsigned int height) 
 
 /////////////////////////////////////////////////////////////
 
-void LoadBMPrFromBMP(const int fd,struct BMPres *br,const BMPresHandle h) {
+void LoadBMPresFromBMP(const int fd,struct BMPres *br,const BMPresHandle h) {
 	unsigned char *bihraw = NULL; // combined BITMAPINFOHEADER and palette for GDI to use
 	unsigned char *slice = NULL;
 	unsigned int sliceheight;
@@ -1433,12 +1433,12 @@ void LoadBMPrFromBMP(const int fd,struct BMPres *br,const BMPresHandle h) {
 		goto finish;
 	}
 
-	if (!InitBMPrGDIObject(h,bih.biWidth,bih.biHeight,0)) { /* updates br->width, br->height */
+	if (!InitBMPresGDIObject(h,bih.biWidth,bih.biHeight,0)) { /* updates br->width, br->height */
 		DLOGT("Unable to init GDI bitmap for BMP");
 		goto finish;
 	}
 
-	bmpDC = BMPrGDIObjectGetDC(h);
+	bmpDC = BMPresGDIObjectGetDC(h);
 	if (!bmpDC) {
 		DLOGT("CreateCompatibleDC failed");
 		goto finish;
@@ -1483,7 +1483,7 @@ void LoadBMPrFromBMP(const int fd,struct BMPres *br,const BMPresHandle h) {
 
 finish:
 	if (bmpDC) {
-		BMPrGDIObjectReleaseDC(h);
+		BMPresGDIObjectReleaseDC(h);
 		bmpDC = (HDC)NULL;
 	}
 	if (slice) {
@@ -1666,7 +1666,7 @@ BOOL png_idat_reader_init(struct png_idat_reader *pr,off_t ofs) {
 
 /////////////////////////////////////////////////////////////
 
-void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPresHandle h) {
+void LoadBMPresFromPNG(const int fd,struct BMPres *br,const BMPresHandle h) {
 	struct minipng_PLTE_color *plte = NULL;
 	struct png_idat_reader pir = {0};
 	struct minipng_IHDR ihdr = {0};
@@ -1809,12 +1809,12 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPresHandle h) {
 		}
 	}
 
-	if (!InitBMPrGDIObject(h,ihdr.width,ihdr.height,gdiFlags)) { /* updates br->width, br->height */
+	if (!InitBMPresGDIObject(h,ihdr.width,ihdr.height,gdiFlags)) { /* updates br->width, br->height */
 		DLOGT("Unable to init GDI bitmap for BMP");
 		goto finish;
 	}
 
-	bmpDC = BMPrGDIObjectGetDC(h);
+	bmpDC = BMPresGDIObjectGetDC(h);
 	if (!bmpDC) {
 		DLOGT("CreateCompatibleDC failed");
 		goto finish;
@@ -2090,7 +2090,7 @@ void LoadBMPrFromPNG(const int fd,struct BMPres *br,const BMPresHandle h) {
 finish:
 	png_idat_reader_free(&pir);
 	if (bmpDC) {
-		BMPrGDIObjectReleaseDC(h);
+		BMPresGDIObjectReleaseDC(h);
 		bmpDC = (HDC)NULL;
 	}
 	if (tRNS) {
@@ -2121,7 +2121,7 @@ finish:
 
 /////////////////////////////////////////////////////////////
 
-BOOL LoadBMPr(const BMPresHandle h,const char *p) {
+BOOL LoadBMPres(const BMPresHandle h,const char *p) {
 	struct BMPres *b = GetBMPres(h);
 
 	if (b) {
@@ -2138,11 +2138,11 @@ BOOL LoadBMPr(const BMPresHandle h,const char *p) {
 
 			if (!memcmp(tmp,"BM",2)) {
 				DLOGT("BMP image in %s",p);
-				LoadBMPrFromBMP(fd,b,h);
+				LoadBMPresFromBMP(fd,b,h);
 			}
 			else if (!memcmp(tmp,"\x89PNG\x0D\x0A\x1A\x0A",8)) {
 				DLOGT("PNG image in %s",p);
-				LoadBMPrFromPNG(fd,b,h);
+				LoadBMPresFromPNG(fd,b,h);
 			}
 			else {
 				DLOGT("Unable to identify image type in %s",p);
@@ -2194,7 +2194,7 @@ void WindowElementFreeOwnedImage(const WindowElementHandle h) {
 	if (we && (we->flags & WindowElementFlag_OwnsImage)) {
 		if (we->imgRef != ImageRefNone && ImageRefGetType(we->imgRef) == ImageRefTypeBitmap) {
 			DLOGT("Window element #%u owns a bitmap and is freeing it now",h);
-			FreeBMPr((BMPresHandle)ImageRefGetRef(we->imgRef));
+			FreeBMPres((BMPresHandle)ImageRefGetRef(we->imgRef));
 			we->flags &= ~(WindowElementFlag_OwnsImage);
 			we->imgRef = ImageRefNone;
 		}
@@ -2531,13 +2531,13 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 /////////////////////////////////////////////////////////////
 
 // Generic demonstration function---may disappear later
-void DrawTextBMPr(const BMPresHandle h,const FontHandle fh,const char *txt) {
+void DrawTextBMPres(const BMPresHandle h,const FontHandle fh,const char *txt) {
 	const struct FontResource *fr = GetFontResource(fh);
 	const unsigned int txtlen = strlen(txt);
 	struct BMPres *br = GetBMPres(h);
 
 	if (br && fr) {
-		HDC bmpDC = BMPrGDIObjectGetDC(h);
+		HDC bmpDC = BMPresGDIObjectGetDC(h);
 
 		if (bmpDC) {
 			RECT um;
@@ -2563,7 +2563,7 @@ void DrawTextBMPr(const BMPresHandle h,const FontHandle fh,const char *txt) {
 
 			if (fr->fontObj) SelectObject(bmpDC,fhold);
 
-			BMPrGDIObjectReleaseDC(h);
+			BMPresGDIObjectReleaseDC(h);
 
 			br->flags |= WindowElementFlag_Update | WindowElementFlag_Allocated;
 		}
@@ -2944,11 +2944,11 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		}
 		else if (wparam == 'A') {
 			SetBackgroundColor(RGB(255,128,0));
-			DrawTextBMPr(/*BMPr*/1,/*FontRes*/0,"Hello world");
+			DrawTextBMPres(/*BMPr*/1,/*FontRes*/0,"Hello world");
 		}
 		else if (wparam == 'B') {
 			SetBackgroundColor(RGB(63,63,63));
-			DrawTextBMPr(/*BMPr*/1,/*FontRes*/0,"Hello world");
+			DrawTextBMPres(/*BMPr*/1,/*FontRes*/0,"Hello world");
 		}
 
 		return 0;
@@ -3433,7 +3433,7 @@ err1:
 
 	InitCurrentTime();
 	InitColorPalette();
-	if (!InitBMPRes()) {
+	if (!InitBMPResources()) {
 		DLOGT("Unable to init BMP res");
 		return 1;
 	}
@@ -3461,17 +3461,17 @@ err1:
 	LoadLogPalette("palette.png");
 
 	{
-		BMPresHandle bh = AllocBMPr();
+		BMPresHandle bh = AllocBMPres();
 		SpriterHandle sh = AllocSpriters(12/*cols*/*4/*rows*/);
 
 		if (WndScreenInfo.TotalBitsPerPixel >= 8)
-			LoadBMPr(bh,"sht1_8.png");
+			LoadBMPres(bh,"sht1_8.png");
 		else if (WndScreenInfo.TotalBitsPerPixel >= 4)
-			LoadBMPr(bh,"sht1_4.png");
+			LoadBMPres(bh,"sht1_4.png");
 		else if (WndScreenInfo.TotalBitsPerPixel >= 3)
-			LoadBMPr(bh,"sht1_3.png");
+			LoadBMPres(bh,"sht1_3.png");
 		else
-			LoadBMPr(bh,"sht1_1.png");
+			LoadBMPres(bh,"sht1_1.png");
 
 		SpriteAnimBaseFrame = sh;
 		InitSpriteGridFromBMP(sh/*base sprite*/,bh/*BMP*/,
@@ -3482,11 +3482,11 @@ err1:
 
 	{
 		FontHandle fh = AllocFont();
-		BMPresHandle bh = AllocBMPr();
+		BMPresHandle bh = AllocBMPres();
 
 		LoadFontr(fh,/*height (by char)*/-14,/*width (default)*/0,/*flags*/0,"Arial");
-		InitBlankBMPr(bh,320,32);
-		DrawTextBMPr(/*BMPr*/bh,/*FontRes*/0,"Hello world! This is a text region");
+		InitBlankBMPres(bh,320,32);
+		DrawTextBMPres(/*BMPr*/bh,/*FontRes*/0,"Hello world! This is a text region");
 	}
 
 	SpriteAnimFrame = 0;
@@ -3551,7 +3551,7 @@ err1:
 	FreeIdleTimer();
 	FreeWindowElements();
 	FreeFonts();
-	FreeBMPRes();
+	FreeBMPResources();
 	FreeSpriteRes();
 	FreeColorPalette();
 	FreeBackgroundBrush();
