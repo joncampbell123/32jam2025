@@ -2221,14 +2221,12 @@ WindowElementHandle AllocWindowElement(void) {
 
 void FreeWindowElement(const WindowElementHandle h) {
 	struct WindowElement *we = GetWindowElement(h);
-	if (we) {
-		if (we->flags & WindowElementFlag_Allocated) {
-			DLOGT("Window element #%u freeing",h);
-			ShowWindowElement(h,FALSE);
-			WindowElementFreeOwnedImage(h);
-			we->flags &= ~(WindowElementFlag_Allocated);
-			we->imgRef = ImageRefNone;
-		}
+	if (we && (we->flags & WindowElementFlag_Allocated)) {
+		DLOGT("Window element #%u freeing",h);
+		ShowWindowElement(h,FALSE);
+		WindowElementFreeOwnedImage(h);
+		we->flags &= ~(WindowElementFlag_Allocated);
+		we->imgRef = ImageRefNone;
 	}
 }
 
