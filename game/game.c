@@ -918,10 +918,13 @@ BOOL InitFonts(void) {
 void FreeFontRes(const FontHandle f) {
 	struct FontResource *fr = GetFontResource(f);
 
-	if (fr && fr->fontObj) {
+	if (fr && (fr->fontObj || fr->height == -1/*a way to mark a font allocated without a fontObj*/)) {
 		DLOGT("Freeing font resource #%u",f);
-		DeleteObject(fr->fontObj);
-		fr->fontObj = (HFONT)NULL;
+		if (fr->fontObj) {
+			DeleteObject(fr->fontObj);
+			fr->fontObj = (HFONT)NULL;
+		}
+		fr->height = 0;
 	}
 }
 
@@ -1100,7 +1103,8 @@ FontHandle AllocFont(void) {
 
 		for (i=0;i < FontsMax;i++) {
 			struct FontResource *we = GetFontResourceNRC(i);
-			if (we->fontObj == (HFONT)NULL) {
+			if (we->fontObj == (HFONT)NULL && we->height != -1) {
+				we->height = -1; // a way to mark allocated without creating an HFONT
 				DLOGT("Font #%u allocated",i);
 				return (FontHandle)i;
 			}
@@ -1126,6 +1130,11 @@ SpriterHandle AllocSpriter(const unsigned int count) {
 			}
 			else {
 				if ((++c) >= count) {
+					for (c=0;c < count;c++) {
+						struct SpriteRes *we = GetSpriterNRC(ib+c);
+						we->flags = SpriteResFlag_Allocated;
+						we->bmp = BMPrNone;
+					}
 					DLOGT("Allocated %u sprites starting at #%u",count,ib);
 					return (SpriterHandle)ib;
 				}
@@ -1146,6 +1155,7 @@ BMPrHandle AllocBMPr(void) {
 		for (i=0;i < BMPrMax;i++) {
 			struct BMPres *we = GetBMPrNRC(i);
 			if (!(we->flags & BMPresFlag_Allocated)) {
+				we->flags |= BMPresFlag_Allocated;
 				DLOGT("BMPr #%u allocated",i);
 				return (BMPrHandle)i;
 			}
@@ -2152,8 +2162,9 @@ BOOL LoadBMPr(const BMPrHandle h,const char *p) {
 void FreeSpriter(const SpriterHandle h) {
 	struct SpriteRes *r = GetSpriter(h);
 
-	if (r && r->bmp != BMPrNone) {
+	if (r && (r->flags & SpriteResFlag_Allocated)) {
 		DLOGT("Freeing sprite #%u res",h);
+		r->flags &= ~(SpriteResFlag_Allocated);
 		r->x = r->y = r->w = r->h = 0;
 		r->bmp = BMPrNone;
 	}
@@ -2191,6 +2202,7 @@ WindowElementHandle AllocWindowElement(void) {
 		for (i=0;i < WindowElementMax;i++) {
 			struct WindowElement *we = GetWindowElementNRC(i);
 			if (!(we->flags & WindowElementFlag_Allocated)) {
+				we->flags |= WindowElementFlag_Allocated;
 				DLOGT("Window element #%u allocated",i);
 				return (WindowElementHandle)i;
 			}
@@ -2555,6 +2567,7 @@ void DrawTextBMPr(const BMPrHandle h,const FontHandle fh,const char *txt) {
 /////////////////////////////////////////////////////////////
 
 UINT near SpriteAnimFrame = 0;
+SpriterHandle near SpriteAnimBaseFrame = 0;
 BYTE near MouseCapture = 0;
 WindowElementHandle near MouseDragWinElem = WindowElementHandleNone;
 POINT near MouseDragWinElemOrigin = {0,0};
@@ -3001,7 +3014,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		if (++SpriteAnimFrame >= (12*4))
 			SpriteAnimFrame = 0;
 
-		SetWindowElementContent(0,MAKESPRITEIMAGEREF(SpriteAnimFrame));
+		SetWindowElementContent(0,MAKESPRITEIMAGEREF(SpriteAnimFrame+SpriteAnimBaseFrame));
 		UpdateWindowElements();
 	}
 	else {
@@ -3454,6 +3467,7 @@ err1:
 		else
 			LoadBMPr(bh,"sht1_1.png");
 
+		SpriteAnimBaseFrame = sh;
 		InitSpriteGridFromBMP(sh/*base sprite*/,bh/*BMP*/,
 			-4/*x*/,0/*y*/,
 			12/*cols*/,4/*rows*/,
@@ -3473,7 +3487,7 @@ err1:
 
 	{
 		WindowElementHandle wh = AllocWindowElement();
-		SetWindowElementContent(wh,MAKESPRITEIMAGEREF(SpriteAnimFrame));
+		SetWindowElementContent(wh,MAKESPRITEIMAGEREF(SpriteAnimFrame+SpriteAnimBaseFrame));
 		SetWindowElementPosition(wh,20,20);
 		ShowWindowElement(wh,TRUE);
 	}
