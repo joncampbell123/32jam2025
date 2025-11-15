@@ -2594,34 +2594,65 @@ UINT near IdleTimerId = 0;
 //
 //      This hack is not necessary in Windows 95/NT and we can safely use timeGetTime()
 //      without the additional checks.
-uint64_t near CurrentTimeMS = 0,acCurrentTimeMM = 0,acCurrentTimeWM = 0;
+//
+// NTS: This double checking is disabled for Win386. For whatever reason, the Win386
+//      extender does not like GetTickCount() / GetCurrentTime() and calling those functions
+//      will work ONCE and then later calls will hang the program.
+uint64_t near CurrentTimeMS = 0,acCurrentTimeMM = 0;
+#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
+uint64_t near acCurrentTimeWM = 0;
+#endif
 DWORD near CurrentTimeMM = 0,pCurrentTimeMM = 0; // timeGetTime()
+#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
 DWORD near CurrentTimeWM = 0,pCurrentTimeWM = 0; // GetTickCount()
+#endif
 
 void InitCurrentTime(void) {
 	CurrentTimeMM = pCurrentTimeMM = timeGetTime();
-	CurrentTimeWM = pCurrentTimeWM = GetTickCount();
-	DLOGT("InitCurrentTime mm=%lu wm=%lu",(unsigned long)CurrentTimeMM,(unsigned long)CurrentTimeWM);
+#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
+	CurrentTimeWM = pCurrentTimeWM = GetCurrentTime();
+#endif
+	DLOGT("InitCurrentTime mm=%lu wm=%lu",
+		(unsigned long)CurrentTimeMM,
+#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
+		(unsigned long)CurrentTimeWM
+#else
+		(unsigned long)CurrentTimeMM
+#endif
+	);
 }
 
 void UpdateCurrentTime(void) {
-	int32_t dTimeMM,dTimeWM;
+	int32_t dTimeMM;
+#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
+	int32_t dTimeWM;
 	int64_t d;
+#endif
 
 	CurrentTimeMM = timeGetTime();
-	CurrentTimeWM = GetTickCount();
+#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
+	CurrentTimeWM = GetCurrentTime();
+#endif
 
 	dTimeMM = (int32_t)(CurrentTimeMM - pCurrentTimeMM);
+#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
 	dTimeWM = (int32_t)(CurrentTimeWM - pCurrentTimeWM);
+#endif
 
 	// only allow counting forward!
 	if (dTimeMM > 0l) acCurrentTimeMM += (uint64_t)dTimeMM;
+#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
 	if (dTimeWM > 0l) acCurrentTimeWM += (uint64_t)dTimeWM;
+#endif
 
 	pCurrentTimeMM = CurrentTimeMM;
+#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
 	pCurrentTimeWM = CurrentTimeWM;
+#endif
 
+#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
 	d = (int64_t)(acCurrentTimeWM - acCurrentTimeMM);
+#endif
 
 #if 0//DEBUG
 	DLOGT("UpdateCurrentTime mm=%lu wm=%lu dmm=%ld dwm=%ld amm=%llu dmm=%llu mm-wm=%lld",
@@ -2634,6 +2665,7 @@ void UpdateCurrentTime(void) {
 		(signed long long)d);
 #endif
 
+#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
 	if (d <= -150ll || d >= 150ll) {
 		// too far off!
 		acCurrentTimeMM = acCurrentTimeWM;
@@ -2646,6 +2678,7 @@ void UpdateCurrentTime(void) {
 			DLOGT("UpdateCurrentTime mm timer is a bit too far off from wm timer, nudging adj=%ld",(signed long)adj);
 		}
 	}
+#endif
 }
 
 /////////////////////////////////////////////////////////////
