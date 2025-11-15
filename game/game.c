@@ -2725,6 +2725,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		return 0; /* Success */
 	}
 	else if (message == WM_DESTROY) {
+		DLOGT("WM_DESTROY, it's time to go");
 		FreeColorPalette();
 		PostQuitMessage(0);
 		return 0; /* OK */
@@ -2920,6 +2921,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		return DefWindowProc(hwnd,message,wparam,lparam);
 	}
 	else if (message == WM_COMMAND) {
+		DLOGT("WM_COMMAND id=%u",wparam);
 		switch (wparam) {
 			case IDC_QUIT:
 				PostMessage(hwnd,WM_CLOSE,0,0);
@@ -3563,6 +3565,7 @@ err1:
 	ReleaseMutex(WndLocalAppMutex);
 #endif
 
+	DLOGT("Message pump begins");
 	while (1) {
 		UpdateCurrentTime();
 		if (WndStateFlags & WndState_NotIdle) {
@@ -3578,6 +3581,7 @@ err1:
 			DispatchMessage(&msg);
 		}
 	}
+	DLOGT("Message pump end");
 
 	FreeIdleTimer();
 	FreeWindowElements();
