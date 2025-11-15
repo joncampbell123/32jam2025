@@ -303,6 +303,15 @@ struct BMPres*					BMPr = NULL;
 static const struct BMPres near			BMPrInit = { .bmpObj = (HBITMAP)NULL, .width = 0, .height = 0, .flags = 0 };
 #define BMPrNone				((WORD)(-1))
 
+struct BMPres *GetBMPr(const BMPrHandle h) {
+	if (BMPr && h < BMPrMax) return BMPr + h;
+	return NULL;
+}
+
+static inline struct BMPres *GetBMPrNRC(const BMPrHandle h) {
+	return BMPr + h;
+}
+
 // sprite within bitmap
 struct SpriteRes {
 	BMPrHandle				bmp;
@@ -317,6 +326,10 @@ WORD near					SpriterMax = 64;
 struct SpriteRes*				Spriter = NULL;
 static const struct SpriteRes near		SpriterInit = { .bmp = BMPrNone, .x = 0, .y = 0, .w = 0, .h = 0 };
 #define SpriterNone				((WORD)(-1))
+
+static inline struct SpriteRes *GetSpriterNRC(const SpriterHandle h) {
+	return Spriter + h;
+}
 
 struct SpriteRes *GetSpriter(const SpriterHandle h) {
 	if (Spriter && h < SpriterMax) return Spriter + h;
@@ -984,15 +997,6 @@ BOOL LoadFontr(const FontHandle fh,int height,int width,unsigned int flags,const
 
 void FreeBMPr(const BMPrHandle h);
 
-struct BMPres *GetBMPr(const BMPrHandle h) {
-	if (BMPr && h < BMPrMax) return BMPr + h;
-	return NULL;
-}
-
-static inline struct BMPres *GetBMPrNRC(const BMPrHandle h) {
-	return BMPr + h;
-}
-
 BOOL InitBMPRes(void) {
 	unsigned int i;
 
@@ -1109,6 +1113,32 @@ FontHandle AllocFont(void) {
 
 /////////////////////////////////////////////////////////////
 
+SpriterHandle AllocSpriter(const unsigned int count) {
+	if (Spriter && count) {
+		unsigned int i,ib=0,c=0;
+
+		for (i=0;i < SpriterMax;i++) {
+			struct SpriteRes *we = GetSpriterNRC(i);
+
+			if (we->flags & SpriteResFlag_Allocated) {
+				ib = i + 1; /* then maybe the next slot is open and could be the base of it */
+				c = 0;
+			}
+			else {
+				if ((++c) >= count) {
+					DLOGT("Allocated %u sprites starting at #%u",count,ib);
+					return (SpriterHandle)ib;
+				}
+			}
+		}
+	}
+
+	DLOGT("Unable to allocate Spriter");
+	return SpriterNone;
+}
+
+/////////////////////////////////////////////////////////////
+
 BMPrHandle AllocBMPr(void) {
 	if (BMPr) {
 		unsigned int i;
@@ -1152,7 +1182,7 @@ void InitSpriteGridFromBMP(SpriterHandle sh,const BMPrHandle bh,int bx,int by,co
 				sr->x = (unsigned int)cx;
 				sr->y = (unsigned int)cy;
 				sr->flags = SpriteResFlag_Allocated;
-				DLOGT("Init sprite bmp #%u spride #%u x=%u y=%u w=%u h=%u",bh,sh-1,sr->x,sr->y,sr->w,sr->h);
+				DLOGT("Init sprite bmp #%u sprite #%u x=%u y=%u w=%u h=%u",bh,sh-1,sr->x,sr->y,sr->w,sr->h);
 			}
 		}
 	}
@@ -3413,6 +3443,7 @@ err1:
 
 	{
 		BMPrHandle bh = AllocBMPr();
+		SpriterHandle sh = AllocSpriter(12/*cols*/*4/*rows*/);
 
 		if (WndScreenInfo.TotalBitsPerPixel >= 8)
 			LoadBMPr(bh,"sht1_8.png");
@@ -3423,7 +3454,7 @@ err1:
 		else
 			LoadBMPr(bh,"sht1_1.png");
 
-		InitSpriteGridFromBMP(0/*base sprite*/,bh/*BMP*/,
+		InitSpriteGridFromBMP(sh/*base sprite*/,bh/*BMP*/,
 			-4/*x*/,0/*y*/,
 			12/*cols*/,4/*rows*/,
 			44/*cell width*/,62/*cell height*/);
