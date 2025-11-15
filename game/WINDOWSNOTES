@@ -25,3 +25,8 @@
   You cannot use a named mutex to synchronize across processes like you can in
   Windows 95/NT or later.
 
+- Watcom's Win386 extender works perfectly fine normally, but if you link your program
+  to MMSYSTEM in Windows 3.1, all manner or strange instability and crashes happen,
+  including mysterious hangs merely calling GetTickCount(). Perhaps their thunks and
+  covers don't like the Windows 3.1 multimedia functions.
+

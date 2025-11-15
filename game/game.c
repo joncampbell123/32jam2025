@@ -1,6 +1,9 @@
 #ifndef TARGET_WINDOWS
 # error This is Windows code, not DOS
 #endif
+#ifdef WIN386
+# error This code does not support Watcom Win386
+#endif
 
 #include <windows.h>
 #include <mmsystem.h>
@@ -261,7 +264,7 @@ POINT near			WndCurrentSize = { 0, 0 };
 POINT near			WndScreenSize = { 0, 0 };
 RECT near			WndWorkArea = { 0, 0, 0, 0 };
 
-#if TARGET_MSDOS == 32 && !defined(WIN386)
+#if TARGET_MSDOS == 32
 HANDLE				WndLocalAppMutex = NULL;
 #endif
 
@@ -2594,65 +2597,34 @@ UINT near IdleTimerId = 0;
 //
 //      This hack is not necessary in Windows 95/NT and we can safely use timeGetTime()
 //      without the additional checks.
-//
-// NTS: This double checking is disabled for Win386. For whatever reason, the Win386
-//      extender does not like GetTickCount() / GetCurrentTime() and calling those functions
-//      will work ONCE and then later calls will hang the program.
-uint64_t near CurrentTimeMS = 0,acCurrentTimeMM = 0;
-#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
-uint64_t near acCurrentTimeWM = 0;
-#endif
+uint64_t near CurrentTimeMS = 0,acCurrentTimeMM = 0,acCurrentTimeWM = 0;
 DWORD near CurrentTimeMM = 0,pCurrentTimeMM = 0; // timeGetTime()
-#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
 DWORD near CurrentTimeWM = 0,pCurrentTimeWM = 0; // GetTickCount()
-#endif
 
 void InitCurrentTime(void) {
 	CurrentTimeMM = pCurrentTimeMM = timeGetTime();
-#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
-	CurrentTimeWM = pCurrentTimeWM = GetCurrentTime();
-#endif
-	DLOGT("InitCurrentTime mm=%lu wm=%lu",
-		(unsigned long)CurrentTimeMM,
-#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
-		(unsigned long)CurrentTimeWM
-#else
-		(unsigned long)CurrentTimeMM
-#endif
-	);
+	CurrentTimeWM = pCurrentTimeWM = GetTickCount();
+	DLOGT("InitCurrentTime mm=%lu wm=%lu",(unsigned long)CurrentTimeMM,(unsigned long)CurrentTimeWM);
 }
 
 void UpdateCurrentTime(void) {
-	int32_t dTimeMM;
-#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
-	int32_t dTimeWM;
+	int32_t dTimeMM,dTimeWM;
 	int64_t d;
-#endif
 
 	CurrentTimeMM = timeGetTime();
-#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
-	CurrentTimeWM = GetCurrentTime();
-#endif
+	CurrentTimeWM = GetTickCount();
 
 	dTimeMM = (int32_t)(CurrentTimeMM - pCurrentTimeMM);
-#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
 	dTimeWM = (int32_t)(CurrentTimeWM - pCurrentTimeWM);
-#endif
 
 	// only allow counting forward!
 	if (dTimeMM > 0l) acCurrentTimeMM += (uint64_t)dTimeMM;
-#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
 	if (dTimeWM > 0l) acCurrentTimeWM += (uint64_t)dTimeWM;
-#endif
 
 	pCurrentTimeMM = CurrentTimeMM;
-#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
 	pCurrentTimeWM = CurrentTimeWM;
-#endif
 
-#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
 	d = (int64_t)(acCurrentTimeWM - acCurrentTimeMM);
-#endif
 
 #if 0//DEBUG
 	DLOGT("UpdateCurrentTime mm=%lu wm=%lu dmm=%ld dwm=%ld amm=%llu dmm=%llu mm-wm=%lld",
@@ -2665,7 +2637,6 @@ void UpdateCurrentTime(void) {
 		(signed long long)d);
 #endif
 
-#if !defined(WIN386) // Win386 extender does not like GetCurrentTime()
 	if (d <= -150ll || d >= 150ll) {
 		// too far off!
 		acCurrentTimeMM = acCurrentTimeWM;
@@ -2678,7 +2649,6 @@ void UpdateCurrentTime(void) {
 			DLOGT("UpdateCurrentTime mm timer is a bit too far off from wm timer, nudging adj=%ld",(signed long)adj);
 		}
 	}
-#endif
 }
 
 /////////////////////////////////////////////////////////////
@@ -2716,7 +2686,7 @@ void GoAppActive(void) {
 
 /////////////////////////////////////////////////////////////
 
-#if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
+#if TARGET_MSDOS == 16
 LRESULT PASCAL FAR WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 #else
 LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
@@ -2795,11 +2765,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 	}
 #if WINVER >= 0x30A /* Did not appear until Windows 3.1 */
 	else if (message == WM_WINDOWPOSCHANGING) {
-#if (TARGET_MSDOS == 32 && defined(WIN386))
-		WINDOWPOS FAR *wpc = (WINDOWPOS FAR*)MK_FP32((void*)lparam);
-#else
 		WINDOWPOS FAR *wpc = (WINDOWPOS FAR*)lparam;
-#endif
 
 		/* we must track if the window is minimized or else on Windows 3.1 our minimized icon will
 		 * stay stuck in the upper left hand corner of the screen if fullscreen mode is active */
@@ -2821,11 +2787,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 	}
 #endif
 	else if (message == WM_GETMINMAXINFO) {
-#if (TARGET_MSDOS == 32 && defined(WIN386))
-		MINMAXINFO FAR *mmi = (MINMAXINFO FAR*)MK_FP32((void*)lparam);
-#else
 		MINMAXINFO FAR *mmi = (MINMAXINFO FAR*)lparam;
-#endif
 
 		/* we must track if the window is minimized or else on Windows 3.1 our minimized icon will
 		 * stay stuck in the upper left hand corner of the screen if fullscreen mode is active */
@@ -3084,7 +3046,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		if (debug_log_fd >= 0) {
 			DLOG("=======================================================================");
 			DLOG("BEGIN GAME DEBUG LOG");
-#if TARGET_MSDOS == 32 && !defined(WIN386) // AKA WIN32
+#if TARGET_MSDOS == 32
 			{
 				SYSTEMTIME st;
 				memset(&st,0,sizeof(st));
@@ -3117,7 +3079,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 
 	myInstance = hInstance;
 
-#if TARGET_MSDOS == 32 && !defined(WIN386)
+#if TARGET_MSDOS == 32
 	/* NTS: Mutexes in Windows 3.1 Win32s are local to the application, therefore you
 	 *      cannot synchronize across multiple Win32s applications with mutexes. I'm
 	 *      not even sure if the Win32s system is even paying attention to the name.
@@ -3170,16 +3132,8 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		}
 	}
 	else {
-#if TARGET_MSDOS == 16 || (TARGET_MSDOS == 32 && defined(WIN386))
+#if TARGET_MSDOS == 16
 		if (CheckMultiInstanceFindWindow(TRUE/*mustError*/))
-			return 1;
-#endif
-
-#if defined(WIN386)
-		/* FIXME: Win386 builds will CRASH if multiple instances try to run this way.
-		 *        Somehow, creating a window with a class registered by another Win386 application
-		 *        causes Windows to hang. */
-		if (MessageBox(NULL,"Win386 builds may crash if you run multiple instances. Continue?","",MB_YESNO|MB_ICONEXCLAMATION|MB_DEFBUTTON2) == IDNO)
 			return 1;
 #endif
 	}
@@ -3281,7 +3235,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		 * [ major minor ] */
 		WindowsVersion = ((v >> 8u) & 0xFF) + ((v & 0xFFu) << 8u);
 
-#if TARGET_MSDOS == 32 && !defined(WIN386)
+#if TARGET_MSDOS == 32
 		/* Win32 versions set bit 31 to indicate Windows 95/98/ME and Windows 3.1 Win32s */
 		DOSVersion = 0;
 		if (!(v & 0x80000000u))
@@ -3561,7 +3515,7 @@ err1:
 	if ((WndConfigFlags & WndCFG_Fullscreen) && !(WndStateFlags & WndState_Minimized) && (WndStateFlags & WndState_Active))
 		ShowWindow(hwndMain,SW_MAXIMIZE);
 
-#if TARGET_MSDOS == 32 && !defined(WIN386)
+#if TARGET_MSDOS == 32
 	ReleaseMutex(WndLocalAppMutex);
 #endif
 
