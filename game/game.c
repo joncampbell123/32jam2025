@@ -1117,7 +1117,7 @@ FontHandle AllocFont(void) {
 
 /////////////////////////////////////////////////////////////
 
-SpriterHandle AllocSpriter(const unsigned int count) {
+SpriterHandle AllocSpriters(const unsigned int count) {
 	if (Spriter && count) {
 		unsigned int i,ib=0,c=0;
 
@@ -3462,7 +3462,7 @@ err1:
 
 	{
 		BMPrHandle bh = AllocBMPr();
-		SpriterHandle sh = AllocSpriter(12/*cols*/*4/*rows*/);
+		SpriterHandle sh = AllocSpriters(12/*cols*/*4/*rows*/);
 
 		if (WndScreenInfo.TotalBitsPerPixel >= 8)
 			LoadBMPr(bh,"sht1_8.png");
