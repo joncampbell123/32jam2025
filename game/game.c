@@ -321,18 +321,18 @@ struct SpriteRes {
 
 #define SpriteResFlag_Allocated			0x0001u /* slot is allocated */
 
-typedef WORD					SpriterHandle;
-WORD near					SpriterMax = 64;
-struct SpriteRes*				Spriter = NULL;
-static const struct SpriteRes near		SpriterInit = { .bmp = BMPresHandleNone, .x = 0, .y = 0, .w = 0, .h = 0 };
-#define SpriterNone				((WORD)(-1))
+typedef WORD					SpriteResHandle;
+WORD near					SpriteResMax = 64;
+struct SpriteRes*				SpriteRes = NULL;
+static const struct SpriteRes near		SpriteResInit = { .bmp = BMPresHandleNone, .x = 0, .y = 0, .w = 0, .h = 0 };
+#define SpriteResHandleNone			((WORD)(-1))
 
-static inline struct SpriteRes *GetSpriterNRC(const SpriterHandle h) {
-	return Spriter + h;
+static inline struct SpriteRes *GetSpriteResNRC(const SpriteResHandle h) {
+	return SpriteRes + h;
 }
 
-struct SpriteRes *GetSpriter(const SpriterHandle h) {
-	if (Spriter && h < SpriterMax) return Spriter + h;
+struct SpriteRes *GetSpriteRes(const SpriteResHandle h) {
+	if (SpriteRes && h < SpriteResMax) return SpriteRes + h;
 	return NULL;
 }
 
@@ -1051,17 +1051,17 @@ void FreeBMPres(const BMPresHandle h) {
 
 /////////////////////////////////////////////////////////////
 
-BOOL InitSpriteRes(void) {
+BOOL InitSpriteResources(void) {
 	unsigned int i;
 
-	if (!Spriter && SpriterMax != 0) {
-		DLOGT("Allocating sprite res array, %u max",SpriterMax);
-		Spriter = malloc(SpriterMax * sizeof(struct SpriteRes));
-		if (!Spriter) {
+	if (!SpriteRes && SpriteResMax != 0) {
+		DLOGT("Allocating sprite res array, %u max",SpriteResMax);
+		SpriteRes = malloc(SpriteResMax * sizeof(struct SpriteRes));
+		if (!SpriteRes) {
 			DLOGT("Failed to allocate array");
 			return FALSE;
 		}
-		for (i=0;i < SpriterMax;i++) Spriter[i] = SpriterInit;
+		for (i=0;i < SpriteResMax;i++) SpriteRes[i] = SpriteResInit;
 	}
 
 	return TRUE;
@@ -1089,8 +1089,8 @@ BOOL IsBMPresAlloc(const BMPresHandle h) {
 	return FALSE;
 }
 
-BOOL IsSpriteResAlloc(const SpriterHandle h) {
-	const struct SpriteRes *r = GetSpriter(h);
+BOOL IsSpriteResAlloc(const SpriteResHandle h) {
+	const struct SpriteRes *r = GetSpriteRes(h);
 	if (r && r->bmp != BMPresHandleNone) return TRUE;
 	return FALSE;
 }
@@ -1117,12 +1117,12 @@ FontHandle AllocFont(void) {
 
 /////////////////////////////////////////////////////////////
 
-SpriterHandle AllocSpriters(const unsigned int count) {
-	if (Spriter && count) {
+SpriteResHandle AllocSpriteRes(const unsigned int count) {
+	if (SpriteRes && count) {
 		unsigned int i,ib=0,c=0;
 
-		for (i=0;i < SpriterMax;i++) {
-			struct SpriteRes *we = GetSpriterNRC(i);
+		for (i=0;i < SpriteResMax;i++) {
+			struct SpriteRes *we = GetSpriteResNRC(i);
 
 			if (we->flags & SpriteResFlag_Allocated) {
 				ib = i + 1; /* then maybe the next slot is open and could be the base of it */
@@ -1131,9 +1131,9 @@ SpriterHandle AllocSpriters(const unsigned int count) {
 			else {
 				if ((++c) >= count) {
 					for (c=0;c < count;c++) {
-						struct SpriteRes *we = GetSpriterNRC(ib+c);
+						struct SpriteRes *we = GetSpriteResNRC(ib+c);
 #if GAMEDEBUG
-						if ((ib+c) >= SpriterMax) {
+						if ((ib+c) >= SpriteResMax) {
 							DLOGT("BUG! Out of range sprite index line %d",__LINE__);
 							break;
 						}
@@ -1142,14 +1142,14 @@ SpriterHandle AllocSpriters(const unsigned int count) {
 						we->bmp = BMPresHandleNone;
 					}
 					DLOGT("Allocated %u sprites starting at #%u",count,ib);
-					return (SpriterHandle)ib;
+					return (SpriteResHandle)ib;
 				}
 			}
 		}
 	}
 
 	DLOGT("Unable to allocate Spriter");
-	return SpriterNone;
+	return SpriteResHandleNone;
 }
 
 /////////////////////////////////////////////////////////////
@@ -1174,7 +1174,7 @@ BMPresHandle AllocBMPres(void) {
 
 /////////////////////////////////////////////////////////////
 
-void InitSpriteGridFromBMP(SpriterHandle sh,const BMPresHandle bh,int bx,int by,const unsigned int cols,const unsigned int rows,const unsigned int cellwidth,const unsigned int cellheight) {
+void InitSpriteGridFromBMP(SpriteResHandle sh,const BMPresHandle bh,int bx,int by,const unsigned int cols,const unsigned int rows,const unsigned int cellwidth,const unsigned int cellheight) {
 	unsigned int r,c;
 	int cx,cy;
 
@@ -1183,7 +1183,7 @@ void InitSpriteGridFromBMP(SpriterHandle sh,const BMPresHandle bh,int bx,int by,
 
 	for (r=0;r < rows;r++) {
 		for (c=0;c < cols;c++) {
-			struct SpriteRes *sr = GetSpriter(sh++);
+			struct SpriteRes *sr = GetSpriteRes(sh++);
 
 			if (sr) {
 				sr->bmp = bh;
@@ -2165,8 +2165,8 @@ BOOL LoadBMPres(const BMPresHandle h,const char *p) {
 
 /////////////////////////////////////////////////////////////
 
-void FreeSpriter(const SpriterHandle h) {
-	struct SpriteRes *r = GetSpriter(h);
+void FreeSpriteRes(const SpriteResHandle h) {
+	struct SpriteRes *r = GetSpriteRes(h);
 
 	if (r && (r->flags & SpriteResFlag_Allocated)) {
 		DLOGT("Freeing sprite #%u res",h);
@@ -2176,14 +2176,14 @@ void FreeSpriter(const SpriterHandle h) {
 	}
 }
 
-void FreeSpriteRes(void) {
+void FreeSpriteResources(void) {
 	unsigned int i;
 
-	if (Spriter) {
+	if (SpriteRes) {
 		DLOGT("Freeing sprite res");
-		for (i=0;i < SpriterMax;i++) FreeSpriter(i);
-		free(Spriter);
-		Spriter = NULL;
+		for (i=0;i < SpriteResMax;i++) FreeSpriteRes(i);
+		free(SpriteRes);
+		SpriteRes = NULL;
 	}
 }
 
@@ -2235,7 +2235,7 @@ void FreeWindowElement(const WindowElementHandle h) {
 void FreeWindowElements(void) {
 	unsigned int i;
 
-	if (Spriter) {
+	if (WindowElement) {
 		DLOGT("Freeing window elements");
 		for (i=0;i < WindowElementMax;i++) FreeWindowElement(i);
 		free(WindowElement);
@@ -2254,7 +2254,7 @@ void DrawWindowElement(HDC hDC,struct WindowElement *we) {
 			if (br && br->bmpObj) bmp = br->bmpObj;
 		}
 		else if (ImageRefGetType(we->imgRef) == ImageRefTypeSprite) {
-			const struct SpriteRes *sr = GetSpriter((SpriterHandle)ImageRefGetRef(we->imgRef));
+			const struct SpriteRes *sr = GetSpriteRes((SpriteResHandle)ImageRefGetRef(we->imgRef));
 			if (sr) {
 				const struct BMPres *br = GetBMPres(sr->bmp);
 				if (br && br->bmpObj) bmp = br->bmpObj;
@@ -2476,7 +2476,7 @@ void UpdateWindowElementDimensions(const WindowElementHandle h) {
 				}
 			}
 			else if (ImageRefGetType(we->imgRef) == ImageRefTypeSprite) {
-				const struct SpriteRes *sr = GetSpriter((SpriterHandle)ImageRefGetRef(we->imgRef));
+				const struct SpriteRes *sr = GetSpriteRes((SpriteResHandle)ImageRefGetRef(we->imgRef));
 
 				if (sr && sr->bmp != BMPresHandleNone && (sr->flags & SpriteResFlag_Allocated)) {
 					nw = sr->w;
@@ -2573,7 +2573,7 @@ void DrawTextBMPres(const BMPresHandle h,const FontHandle fh,const char *txt) {
 /////////////////////////////////////////////////////////////
 
 UINT near SpriteAnimFrame = 0;
-SpriterHandle near SpriteAnimBaseFrame = 0;
+SpriteResHandle near SpriteAnimBaseFrame = 0;
 BYTE near MouseCapture = 0;
 WindowElementHandle near MouseDragWinElem = WindowElementHandleNone;
 POINT near MouseDragWinElemOrigin = {0,0};
@@ -3437,7 +3437,7 @@ err1:
 		DLOGT("Unable to init BMP res");
 		return 1;
 	}
-	if (!InitSpriteRes()) {
+	if (!InitSpriteResources()) {
 		DLOGT("Unable to init sprite res");
 		return 1;
 	}
@@ -3462,7 +3462,7 @@ err1:
 
 	{
 		BMPresHandle bh = AllocBMPres();
-		SpriterHandle sh = AllocSpriters(12/*cols*/*4/*rows*/);
+		SpriteResHandle sh = AllocSpriteRes(12/*cols*/*4/*rows*/);
 
 		if (WndScreenInfo.TotalBitsPerPixel >= 8)
 			LoadBMPres(bh,"sht1_8.png");
@@ -3552,7 +3552,7 @@ err1:
 	FreeWindowElements();
 	FreeFonts();
 	FreeBMPResources();
-	FreeSpriteRes();
+	FreeSpriteResources();
 	FreeColorPalette();
 	FreeBackgroundBrush();
 
