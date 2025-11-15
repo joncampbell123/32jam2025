@@ -2190,15 +2190,28 @@ void FreeSpriteResources(void) {
 	}
 }
 
+/////////////////////////////////////////////////////////////
+
+void FreeByImageRef(const ImageRef ir) {
+	if (ir != ImageRefNone) {
+		if (ImageRefGetType(ir) == ImageRefTypeBitmap)
+			FreeBMPres((BMPresHandle)ImageRefGetRef(ir));
+		else if (ImageRefGetType(ir) == ImageRefTypeSprite)
+			FreeSpriteRes((SpriteResHandle)ImageRefGetRef(ir));
+	}
+}
+
+/////////////////////////////////////////////////////////////
+
 void ShowWindowElement(const WindowElementHandle h,const BOOL how);
 
 void WindowElementFreeOwnedImage(const WindowElementHandle h) {
 	struct WindowElement *we = GetWindowElement(h);
 	if (we && (we->flags & WindowElementFlag_OwnsImage)) {
-		if (we->imgRef != ImageRefNone && ImageRefGetType(we->imgRef) == ImageRefTypeBitmap) {
+		we->flags &= ~(WindowElementFlag_OwnsImage);
+		if (we->imgRef != ImageRefNone) {
 			DLOGT("Window element #%u owns a bitmap and is freeing it now",h);
-			FreeBMPres((BMPresHandle)ImageRefGetRef(we->imgRef));
-			we->flags &= ~(WindowElementFlag_OwnsImage);
+			FreeByImageRef(we->imgRef);
 			we->imgRef = ImageRefNone;
 		}
 	}
