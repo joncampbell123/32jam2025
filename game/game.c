@@ -400,20 +400,23 @@ struct FontResource {
 	short int				height,ascent,descent,avwidth,maxwidth;
 };
 
-typedef WORD					FontHandle;
-WORD near					FontsMax = 4;
-struct FontResource*				Fonts = NULL;
+typedef WORD					FontResourceHandle;
+WORD near					FontResourceMax = 4;
+struct FontResource*				FontResource = NULL;
 static const struct FontResource near		FontResourceInit = { .fontObj = (HFONT)NULL, .height = 0, .ascent = 0, .descent = 0, .avwidth = 0, .maxwidth = 0 };
-#define FontHandleNone				((WORD)(-1))
+#define FontResourceHandleNone			((WORD)(-1))
 
-static inline struct FontResource *GetFontResourceNRC(const FontHandle h) {
-	return Fonts + h;
+static inline struct FontResource *GetFontResourceNRC(const FontResourceHandle h) {
+	return FontResource + h;
 }
 
-struct FontResource *GetFontResource(const FontHandle h) {
-	if (Fonts && h < FontsMax) return Fonts + h;
+struct FontResource *GetFontResource(const FontResourceHandle h) {
+	if (FontResource && h < FontResourceMax) return FontResource + h;
 	return NULL;
 }
+
+#define FontResourceFlagBold			0x0001u
+#define FontResourceFlagItalic			0x0002u
 
 /////////////////////////////////////////////////////////////
 
@@ -899,23 +902,23 @@ void LoadLogPalette(const char *p) {
 
 /////////////////////////////////////////////////////////////
 
-BOOL InitFonts(void) {
+BOOL InitFontResources(void) {
 	unsigned int i;
 
-	if (!Fonts && FontsMax != 0) {
-		DLOGT("Allocating font res array, %u max",FontsMax);
-		Fonts = malloc(FontsMax * sizeof(struct FontResource));
-		if (!Fonts) {
+	if (!FontResource && FontResourceMax != 0) {
+		DLOGT("Allocating font res array, %u max",FontResourceMax);
+		FontResource = malloc(FontResourceMax * sizeof(struct FontResource));
+		if (!FontResource) {
 			DLOGT("Failed to allocate array");
 			return FALSE;
 		}
-		for (i=0;i < FontsMax;i++) Fonts[i] = FontResourceInit;
+		for (i=0;i < FontResourceMax;i++) FontResource[i] = FontResourceInit;
 	}
 
 	return TRUE;
 }
 
-void FreeFontRes(const FontHandle f) {
+void FreeFontResource(const FontResourceHandle f) {
 	struct FontResource *fr = GetFontResource(f);
 
 	if (fr && (fr->fontObj || fr->height == -1/*a way to mark a font allocated without a fontObj*/)) {
@@ -928,40 +931,37 @@ void FreeFontRes(const FontHandle f) {
 	}
 }
 
-void FreeFonts(void) {
+void FreeFontResources(void) {
 	unsigned int i;
 
-	if (Fonts) {
+	if (FontResource) {
 		DLOGT("Freeing font res");
-		for (i=0;i < FontsMax;i++) FreeFontRes(i);
-		free(Fonts);
-		Fonts = NULL;
+		for (i=0;i < FontResourceMax;i++) FreeFontResource(i);
+		free(FontResource);
+		FontResource = NULL;
 	}
 }
 
 /////////////////////////////////////////////////////////////
-
-#define FontrFlagBold			0x0001u
-#define FontrFlagItalic			0x0002u
 
 // Windows height rules:
 //   height > 0 describes cell height
 //   height < 0 describes character height
 //   height == 0 picks a default
 //   width == 0 to pick a default width
-BOOL LoadFontr(const FontHandle fh,int height,int width,unsigned int flags,const char *fontName) {
+BOOL LoadFontResource(const FontResourceHandle fh,int height,int width,unsigned int flags,const char *fontName) {
 	struct FontResource *fr = GetFontResource(fh);
 
 	if (fr) {
-		FreeFontRes(fh);
+		FreeFontResource(fh);
 
 		DLOGT("Loading font resource into #%u: height=%u width=%u font=\"%s\"",fh,height,width,fontName);
-		if (flags & FontrFlagBold) DLOGT("Flag: BOLD");
-		if (flags & FontrFlagItalic) DLOGT("Flag: ITALIC");
+		if (flags & FontResourceFlagBold) DLOGT("Flag: BOLD");
+		if (flags & FontResourceFlagItalic) DLOGT("Flag: ITALIC");
 
 		fr->fontObj = CreateFont(height,width,/*escapement*/0,/*orientation*/0,
-			/*weight*/(flags & FontrFlagBold) ? FW_BOLD : FW_NORMAL,
-			/*italic*/(flags & FontrFlagItalic) ? TRUE : FALSE,
+			/*weight*/(flags & FontResourceFlagBold) ? FW_BOLD : FW_NORMAL,
+			/*italic*/(flags & FontResourceFlagItalic) ? TRUE : FALSE,
 			/*underline*/FALSE,
 			/*strikeout*/FALSE,
 			ANSI_CHARSET/*TODO: Flag value to specify SHIFTJIS_CHARSET someday?*/,
@@ -1097,22 +1097,22 @@ BOOL IsSpriteResAlloc(const SpriteResHandle h) {
 
 /////////////////////////////////////////////////////////////
 
-FontHandle AllocFont(void) {
-	if (Fonts) {
+FontResourceHandle AllocFont(void) {
+	if (FontResource) {
 		unsigned int i;
 
-		for (i=0;i < FontsMax;i++) {
+		for (i=0;i < FontResourceMax;i++) {
 			struct FontResource *we = GetFontResourceNRC(i);
 			if (we->fontObj == (HFONT)NULL && we->height != -1) {
 				we->height = -1; // a way to mark allocated without creating an HFONT
 				DLOGT("Font #%u allocated",i);
-				return (FontHandle)i;
+				return (FontResourceHandle)i;
 			}
 		}
 	}
 
 	DLOGT("Unable to allocate font");
-	return FontHandleNone;
+	return FontResourceHandleNone;
 }
 
 /////////////////////////////////////////////////////////////
@@ -2529,7 +2529,7 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 /////////////////////////////////////////////////////////////
 
 // Generic demonstration function---may disappear later
-void DrawTextBMPres(const BMPresHandle h,const FontHandle fh,const char *txt) {
+void DrawTextBMPres(const BMPresHandle h,const FontResourceHandle fh,const char *txt) {
 	const struct FontResource *fr = GetFontResource(fh);
 	const unsigned int txtlen = strlen(txt);
 	struct BMPres *br = GetBMPres(h);
@@ -3447,7 +3447,7 @@ err1:
 		DLOGT("Unable to init background brush");
 		return 1;
 	}
-	if (!InitFonts()) {
+	if (!InitFontResources()) {
 		DLOGT("Unable to init fonts");
 		return 1;
 	}
@@ -3479,10 +3479,10 @@ err1:
 	}
 
 	{
-		FontHandle fh = AllocFont();
+		FontResourceHandle fh = AllocFont();
 		BMPresHandle bh = AllocBMPres();
 
-		LoadFontr(fh,/*height (by char)*/-14,/*width (default)*/0,/*flags*/0,"Arial");
+		LoadFontResource(fh,/*height (by char)*/-14,/*width (default)*/0,/*flags*/0,"Arial");
 		InitBlankBMPres(bh,320,32);
 		DrawTextBMPres(/*BMPr*/bh,/*FontRes*/0,"Hello world! This is a text region");
 	}
@@ -3548,7 +3548,7 @@ err1:
 
 	FreeIdleTimer();
 	FreeWindowElements();
-	FreeFonts();
+	FreeFontResources();
 	FreeBMPResources();
 	FreeSpriteResources();
 	FreeColorPalette();
