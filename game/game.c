@@ -2811,14 +2811,17 @@ struct WindowElementFuncText_Context {
 	FontResourceHandle			font;
 	COLORREF				color;
 	COLORREF				bgcolor;
+	COLORREF				shadowcolor;
 	WORD					flags;
 };
 
 #define WindowElementFuncText_ContextFlags_OwnBGColor		0x0001u
+#define WindowElementFuncText_ContextFlags_ShadowColor		0x0002u
 
 enum {
 	WindowElementFuncText_ForegroundColor = 1u,
-	WindowElementFuncText_BackgroundColor =	2u
+	WindowElementFuncText_BackgroundColor = 2u,
+	WindowElementFuncText_ShadowColor = 3u
 };
 
 static const struct WindowElementFuncText_Context WindowElementFuncText_ContextInit = {
@@ -2826,7 +2829,8 @@ static const struct WindowElementFuncText_Context WindowElementFuncText_ContextI
 	.textlen = 0,
 	.font = FontResourceHandleNone,
 	.color = RGB(255,255,255),
-	.bgcolor = RGB(0,0,0),
+	.bgcolor = NOCOLORREF,
+	.shadowcolor = NOCOLORREF,
 	.flags = 0
 };
 
@@ -2941,9 +2945,6 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 			SetBkMode(bDC,TRANSPARENT);
 			fhold = (HFONT)SelectObject(bDC,fr->fontObj);
 
-			/* NTS: Apparently bright green on monochrome 1bpp displays is not enough to display as white */
-			SetTextColor(bDC,ctx->color);
-
 			/* NTS: Windows 3.1 SDK documentation concerning DrawText makes it sound like, if you're using DT_CALCRECT
 			 *      to decide how to render multi-line text, it only modifies (extends) the base of the rectangle using
 			 *      the width. It says NOTHING about actual Windows 3.1 behavior in which it will also modify the top
@@ -2971,6 +2972,18 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 				tmp.right = cx + we->sx + txtwidth;
 				tmp.bottom = cy + we->sy + txtheight;
 			}
+
+			if (ctx->flags & WindowElementFuncText_ContextFlags_ShadowColor) {
+				RECT t2 = tmp;
+				t2.left += 1;
+				t2.top += 1;
+				t2.right += 1;
+				t2.bottom += 1;
+				SetTextColor(bDC,ctx->shadowcolor);
+				DrawText(bDC,ctx->text,ctx->textlen,&t2,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK);
+			}
+
+			SetTextColor(bDC,ctx->color);
 			DrawText(bDC,ctx->text,ctx->textlen,&tmp,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK);
 
 			SelectObject(bDC,fhold);
@@ -3022,6 +3035,20 @@ void WindowElementFuncText_SetColor(const WindowElementHandle wh,const unsigned 
 				ctx->bgcolor = color;
 			}
 		}
+		else if (what == WindowElementFuncText_ShadowColor) {
+			if (ctx->shadowcolor != color) {
+				DLOGT("Changed window elem #%u text to shadow color #0x%lx",wh,(unsigned long)color);
+				we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+
+				if (color == NOCOLORREF)
+					ctx->flags &= ~WindowElementFuncText_ContextFlags_ShadowColor;
+				else
+					ctx->flags |= WindowElementFuncText_ContextFlags_ShadowColor;
+
+				ctx->shadowcolor = color;
+			}
+		}
+
 	}
 }
 
