@@ -62,6 +62,9 @@
 // Init GDI bmp
 #define GDIWantTransparencyMask			0x0001u
 
+// COLORREF "no color"
+#define NOCOLORREF				(0xFFFFFFFFul)
+
 struct WndStyle_t {
 	DWORD			style;
 	DWORD			styleEx;
@@ -2806,12 +2809,20 @@ struct WindowElementFuncText_Context {
 	char*					text;
 	WORD					textlen;
 	FontResourceHandle			font;
+	COLORREF				color;
+	COLORREF				bgcolor;
+	WORD					flags;
 };
+
+#define WindowElementFuncText_ContextFlags_OwnBGColor		0x0001u
 
 static const struct WindowElementFuncText_Context WindowElementFuncText_ContextInit = {
 	.text = NULL,
 	.textlen = 0,
-	.font = FontResourceHandleNone
+	.font = FontResourceHandleNone,
+	.color = RGB(255,255,255),
+	.bgcolor = RGB(0,0,0),
+	.flags = 0
 };
 
 void WindowElementFuncText_free(const WindowElementHandle wh,struct WindowElement *we,void *_ctx) {
@@ -2839,7 +2850,8 @@ void WindowElementFuncText_notify(const WindowElementHandle wh,struct WindowElem
 		 *      from a solid color, therefore there is no way to tell if the color is actually solid or dithered
 		 *      to screen, therefore we must always assume a need to re-render (sigh). No, GetObject() does not
 		 *      help either. */
-		if (WndBkBrush && (WndScreenInfo.Flags & WndScreenInfoFlag_DitherColors)) we->flags |= WindowElementFlag_ReRender;
+		if (WndBkBrush && (WndScreenInfo.Flags & WndScreenInfoFlag_DitherColors) && !(ctx->flags & WindowElementFuncText_ContextFlags_OwnBGColor))
+			we->flags |= WindowElementFlag_ReRender;
 	}
 }
 
@@ -2878,7 +2890,7 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 	 *       solid colors with dithering or not, this code should only do this hack if the display driver will
 	 *       do that, else, this code should not, and the notify function above us should not trigger rerender
 	 *       on move either. */
-	if (WndScreenInfo.Flags & WndScreenInfoFlag_DitherColors) {
+	if ((WndScreenInfo.Flags & WndScreenInfoFlag_DitherColors) && !(ctx->flags & WindowElementFuncText_ContextFlags_OwnBGColor)) {
 		InitBMPresGDIObject(bh,we->w + 8,we->h + 8,0);
 		we->sx = we->x % 8;
 		we->sy = we->y % 8;
@@ -2895,13 +2907,27 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 		RECT um;
 
 		bDC = BMPresGDIObjectGetDC(bh);
+		SetBkColor(bDC,ctx->bgcolor);
 
 		um.left = 0;
 		um.top = 0;
 		um.right = we->w + we->sx;
 		um.bottom = we->h + we->sy;
 
-		DrawBackgroundSub(bDC,&um);
+		if (ctx->flags & WindowElementFuncText_ContextFlags_OwnBGColor) {
+			HBRUSH bb = CreateSolidBrush(ctx->bgcolor);
+			if (bb) {
+				HPEN op = (HPEN)SelectObject(bDC,GetStockObject(NULL_PEN));
+				HBRUSH ob = (HBRUSH)SelectObject(bDC,bb);
+				Rectangle(bDC,um.left,um.top,um.right+1,um.bottom+1);
+				SelectObject(bDC,(HGDIOBJ)ob);
+				SelectObject(bDC,(HGDIOBJ)op);
+			}
+			DeleteObject(bb);
+		}
+		else {
+			DrawBackgroundSub(bDC,&um);
+		}
 
 		if (ctx->text && ctx->textlen && fr && fr->fontObj) {
 			HFONT fhold;
@@ -2911,10 +2937,7 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 			fhold = (HFONT)SelectObject(bDC,fr->fontObj);
 
 			/* NTS: Apparently bright green on monochrome 1bpp displays is not enough to display as white */
-			if (WndScreenInfo.TotalBitsPerPixel >= 4)
-				SetTextColor(bDC,RGB(0,255,0));
-			else
-				SetTextColor(bDC,RGB(255,255,255));
+			SetTextColor(bDC,ctx->color);
 
 			/* NTS: Windows 3.1 SDK documentation concerning DrawText makes it sound like, if you're using DT_CALCRECT
 			 *      to decide how to render multi-line text, it only modifies (extends) the base of the rectangle using
@@ -2964,6 +2987,36 @@ void WindowElementFuncText_SetFont(const WindowElementHandle wh,const FontResour
 			DLOGT("Changed window elem #%u text to font #%u",wh,fh);
 			we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
 			ctx->font = fh;
+		}
+	}
+}
+
+void WindowElementFuncText_SetColor(const WindowElementHandle wh,const COLORREF color) {
+	struct WindowElement *we = GetWindowElement(wh);
+
+	if (we && we->func == WindowElementFuncText && we->funcctx) {
+		struct WindowElementFuncText_Context *ctx = (struct WindowElementFuncText_Context *)(we->funcctx);
+		if (ctx->color != color) {
+			DLOGT("Changed window elem #%u text to color #0x%lx",wh,(unsigned long)color);
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+			ctx->color = color;
+		}
+	}
+}
+
+void WindowElementFuncText_SetBgColor(const WindowElementHandle wh,const COLORREF bgcolor) {
+	struct WindowElement *we = GetWindowElement(wh);
+
+	if (we && we->func == WindowElementFuncText && we->funcctx) {
+		struct WindowElementFuncText_Context *ctx = (struct WindowElementFuncText_Context *)(we->funcctx);
+		if (ctx->bgcolor != bgcolor) {
+			DLOGT("Changed window elem #%u text to bgcolor #0x%lx",wh,(unsigned long)bgcolor);
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+			if (bgcolor == NOCOLORREF)
+				ctx->flags &= ~WindowElementFuncText_ContextFlags_OwnBGColor;
+			else
+				ctx->flags |= WindowElementFuncText_ContextFlags_OwnBGColor;
+			ctx->bgcolor = bgcolor;
 		}
 	}
 }
