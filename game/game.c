@@ -2816,6 +2816,11 @@ struct WindowElementFuncText_Context {
 
 #define WindowElementFuncText_ContextFlags_OwnBGColor		0x0001u
 
+enum {
+	WindowElementFuncText_ForegroundColor = 1u,
+	WindowElementFuncText_BackgroundColor =	2u
+};
+
 static const struct WindowElementFuncText_Context WindowElementFuncText_ContextInit = {
 	.text = NULL,
 	.textlen = 0,
@@ -2991,32 +2996,31 @@ void WindowElementFuncText_SetFont(const WindowElementHandle wh,const FontResour
 	}
 }
 
-void WindowElementFuncText_SetColor(const WindowElementHandle wh,const COLORREF color) {
+void WindowElementFuncText_SetColor(const WindowElementHandle wh,const unsigned int what,const COLORREF color) {
 	struct WindowElement *we = GetWindowElement(wh);
 
 	if (we && we->func == WindowElementFuncText && we->funcctx) {
 		struct WindowElementFuncText_Context *ctx = (struct WindowElementFuncText_Context *)(we->funcctx);
-		if (ctx->color != color) {
-			DLOGT("Changed window elem #%u text to color #0x%lx",wh,(unsigned long)color);
-			we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
-			ctx->color = color;
+
+		if (what == WindowElementFuncText_ForegroundColor) {
+			if (ctx->color != color) {
+				DLOGT("Changed window elem #%u text to color #0x%lx",wh,(unsigned long)color);
+				we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+				ctx->color = color;
+			}
 		}
-	}
-}
+		else if (what == WindowElementFuncText_BackgroundColor) {
+			if (ctx->bgcolor != color) {
+				DLOGT("Changed window elem #%u text to background color #0x%lx",wh,(unsigned long)color);
+				we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
 
-void WindowElementFuncText_SetBgColor(const WindowElementHandle wh,const COLORREF bgcolor) {
-	struct WindowElement *we = GetWindowElement(wh);
+				if (color == NOCOLORREF)
+					ctx->flags &= ~WindowElementFuncText_ContextFlags_OwnBGColor;
+				else
+					ctx->flags |= WindowElementFuncText_ContextFlags_OwnBGColor;
 
-	if (we && we->func == WindowElementFuncText && we->funcctx) {
-		struct WindowElementFuncText_Context *ctx = (struct WindowElementFuncText_Context *)(we->funcctx);
-		if (ctx->bgcolor != bgcolor) {
-			DLOGT("Changed window elem #%u text to bgcolor #0x%lx",wh,(unsigned long)bgcolor);
-			we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
-			if (bgcolor == NOCOLORREF)
-				ctx->flags &= ~WindowElementFuncText_ContextFlags_OwnBGColor;
-			else
-				ctx->flags |= WindowElementFuncText_ContextFlags_OwnBGColor;
-			ctx->bgcolor = bgcolor;
+				ctx->bgcolor = color;
+			}
 		}
 	}
 }
