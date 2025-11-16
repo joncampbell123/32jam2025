@@ -2834,10 +2834,15 @@ void WindowElementFuncText_notify(const WindowElementHandle wh,struct WindowElem
 	(void)we;
 
 	if (msg == WindowElementNotifyRepositionMsg) {
-		if (WndBkBrush) { /* if the window background is a pattern brush, we need to redraw (TODO: But only if pattern brush) */
-			DLOGT("%s window background #%u uses pattern brush, rendering on move",__FUNCTION__,wh);
-			we->flags |= WindowElementFlag_ReRender;
-		}
+		/* NTS: Windows 3.1 does not consider the dithered color pattern from CreateSolidBrush anything different
+		 *      from a solid color, therefore there is no way to tell if the color is actually solid or dithered
+		 *      to screen, therefore we must always assume a need to re-render (sigh). No, GetObject() does not
+		 *      help either.
+		 *
+		 * TODO: Maybe we can guess by whether RC_PALETTE is set, by the GDI device bits per pixel, whether the
+		 *       GDI display reports 15/16bpp or higher, etc. RC_PALETTE is not sufficient becuase the 16-color
+		 *       VGA driver does not report a color palette but also dithers. */
+		if (WndBkBrush && TRUE/*TODO*/) we->flags |= WindowElementFlag_ReRender;
 	}
 }
 
@@ -2859,7 +2864,33 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 		bh = (BMPresHandle)ImageRefGetRef(we->imgRef);
 	}
 
-	InitBMPresGDIObject(bh,we->w,we->h,0);
+	/* HACK: CreateSolidBrush() in 256-color mode or below does not actually create a "solid color" brush,
+	 *       but rather will generate a brush with a dither pattern to approximate the color. It acts like
+	 *       a pattern brush, even though GDI functions like GetObject() still act as if it's a solid color
+	 *       with no indication of pattern rendering at all.
+	 *
+	 *       Because it's not a pattern brush, functions like SetBrushOrg() have no effect and cannot be
+	 *       used to realign the background brush in OUR region to match the background!
+	 *
+	 *       So the hack here is to make the backing HBITMAP 8 pixels wider and taller, and then render
+	 *       our stuff at x % 8,y % 8 within it and direct the Window Element rendering to draw that subregion
+	 *       to match. The dither pattern brushes made by Windows appear to be 8x8 pattern brushes, like any
+	 *       pattern brush, that's why it's modulo 8.
+	 *
+	 *       Of course, once this program can determine whether the Windows display driver will approximate
+	 *       solid colors with dithering or not, this code should only do this hack if the display driver will
+	 *       do that, else, this code should not, and the notify function above us should not trigger rerender
+	 *       on move either. */
+	if (TRUE/*TODO*/) {
+		InitBMPresGDIObject(bh,we->w + 8,we->h + 8,0);
+		we->sx = we->x % 8;
+		we->sy = we->y % 8;
+	}
+	else {
+		InitBMPresGDIObject(bh,we->w,we->h,0);
+		we->sx = 0;
+		we->sy = 0;
+	}
 
 	{
 		const struct FontResource *fr = GetFontResource(ctx->font);
@@ -2870,8 +2901,8 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 
 		um.left = 0;
 		um.top = 0;
-		um.right = we->w;
-		um.bottom = we->h;
+		um.right = we->w + we->sx;
+		um.bottom = we->h + we->sy;
 
 		DrawBackgroundSub(bDC,&um);
 
@@ -2899,7 +2930,9 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 			 *      which not only uses DirectX/DirectDraw but meticulously checks EVERY return pointer and HRESULT very
 			 *      carefully for dumbass surprises. */
 
-			tmp = um;
+			tmp.top = 0;
+			tmp.left = 0;
+			tmp.right = we->w;
 			tmp.bottom = 1;
 			DrawText(bDC,ctx->text,ctx->textlen,&tmp,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK|DT_CALCRECT);
 
@@ -2908,10 +2941,10 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 				const int txtheight = tmp.bottom - tmp.top;
 				const int cx = (we->w - txtwidth) / 2;
 				const int cy = (we->h - txtheight) / 2;
-				tmp.left = cx;
-				tmp.top = cy;
-				tmp.right = cx + txtwidth;
-				tmp.bottom = cy + txtheight;
+				tmp.left = cx + we->sx;
+				tmp.top = cy + we->sy;
+				tmp.right = cx + we->sx + txtwidth;
+				tmp.bottom = cy + we->sy + txtheight;
 			}
 			DrawText(bDC,ctx->text,ctx->textlen,&tmp,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK);
 
