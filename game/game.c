@@ -209,6 +209,7 @@ struct WndScreenInfo_t {
 
 #define WndScreenInfoFlag_Palette	0x00000001u
 #define WndScreenInfoFlag_BitmapBig	0x00000002u /* supports >= 64KB bitmaps */
+#define WndScreenInfoFlag_DitherColors	0x00000004u /* 256-color or lower: CreateSolidBrush() returns a dither pattern */
 
 // NTS: Please make this AS UNIQUE AS POSSIBLE to your game. You could use UUIDGEN and make this a GUID if uninspired or busy, even.
 const char near			WndProcClass[] = "GAME32JAM2025";
@@ -2837,12 +2838,8 @@ void WindowElementFuncText_notify(const WindowElementHandle wh,struct WindowElem
 		/* NTS: Windows 3.1 does not consider the dithered color pattern from CreateSolidBrush anything different
 		 *      from a solid color, therefore there is no way to tell if the color is actually solid or dithered
 		 *      to screen, therefore we must always assume a need to re-render (sigh). No, GetObject() does not
-		 *      help either.
-		 *
-		 * TODO: Maybe we can guess by whether RC_PALETTE is set, by the GDI device bits per pixel, whether the
-		 *       GDI display reports 15/16bpp or higher, etc. RC_PALETTE is not sufficient becuase the 16-color
-		 *       VGA driver does not report a color palette but also dithers. */
-		if (WndBkBrush && TRUE/*TODO*/) we->flags |= WindowElementFlag_ReRender;
+		 *      help either. */
+		if (WndBkBrush && (WndScreenInfo.Flags & WndScreenInfoFlag_DitherColors)) we->flags |= WindowElementFlag_ReRender;
 	}
 }
 
@@ -2881,7 +2878,7 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 	 *       solid colors with dithering or not, this code should only do this hack if the display driver will
 	 *       do that, else, this code should not, and the notify function above us should not trigger rerender
 	 *       on move either. */
-	if (TRUE/*TODO*/) {
+	if (WndScreenInfo.Flags & WndScreenInfoFlag_DitherColors) {
 		InitBMPresGDIObject(bh,we->w + 8,we->h + 8,0);
 		we->sx = we->x % 8;
 		we->sy = we->y % 8;
@@ -3490,6 +3487,11 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		}
 		if (t & RC_BITMAP64) WndScreenInfo.Flags |= WndScreenInfoFlag_BitmapBig;
 
+		/* assume GDI color dither approximation if it reports a color palette or
+		 * the bit depth is less than 16 (less than highcolor/truecolor) */
+		if (WndScreenInfo.BitsPerPixel < 16 || (WndScreenInfo.Flags & WndScreenInfoFlag_Palette))
+			WndScreenInfo.Flags |= WndScreenInfoFlag_DitherColors;
+
 		DLOGT("GDI screen info:");
 		DLOGT("  Bits Per Pixel: %u",WndScreenInfo.BitsPerPixel);
 		DLOGT("  Bitplanes: %u",WndScreenInfo.BitPlanes);
@@ -3503,6 +3505,7 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 		DLOGT("  Big Bitmaps (64K or larger): %u",WndScreenInfo.Flags & WndScreenInfoFlag_BitmapBig ? 1 : 0);
 		DLOGT("  RC_BITBLT (required): %u",(t & RC_BITBLT) ? 1 : 0);
 		DLOGT("  RC_DI_BITMAP (required): %u",(t & RC_DI_BITMAP) ? 1 : 0);
+		DLOGT("  Solid colors are approximated (dither pattern): %u",WndScreenInfo.Flags & WndScreenInfoFlag_DitherColors ? 1 : 0);
 
 		w = RC_BITBLT | RC_DI_BITMAP;
 		if ((t&w) != w) {
@@ -3528,6 +3531,8 @@ int PASCAL WinMain(HINSTANCE hInstance,HINSTANCE hPrevInstance,LPSTR lpCmdLine,i
 				w += sprintf(w," PAL");
 			if (WndScreenInfo.Flags & WndScreenInfoFlag_BitmapBig)
 				w += sprintf(w," BMPBIG");
+			if (WndScreenInfo.Flags & WndScreenInfoFlag_DitherColors)
+				w += sprintf(w," DITHERCOLORS");
 			MessageBox(NULL,tmp,"DEBUG ScreenInfo",MB_OK);
 		}
 #endif
