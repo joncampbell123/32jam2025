@@ -2834,8 +2834,8 @@ static const struct WindowElementFuncText_Context WindowElementFuncText_ContextI
 	.color = RGB(255,255,255),
 	.bgcolor = NOCOLORREF,
 	.shadowcolor = NOCOLORREF,
-	.shadowdepths = 0,
-	.shadowdepthe = 0,
+	.shadowdepths = 1,
+	.shadowdepthe = 1,
 	.flags = 0
 };
 
