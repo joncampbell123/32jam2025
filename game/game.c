@@ -3018,7 +3018,7 @@ void WindowElementFuncText_SetFont(const WindowElementHandle wh,const FontResour
 	}
 }
 
-void WindowElementFuncText_SetColor(const WindowElementHandle wh,const unsigned int what,const COLORREF color) {
+void WindowElementFuncText_SetParamI(const WindowElementHandle wh,const unsigned int what,const COLORREF color) {
 	struct WindowElement *we = GetWindowElement(wh);
 
 	if (we && we->func == WindowElementFuncText && we->funcctx) {
