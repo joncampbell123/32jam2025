@@ -2812,6 +2812,8 @@ struct WindowElementFuncText_Context {
 	COLORREF				color;
 	COLORREF				bgcolor;
 	COLORREF				shadowcolor;
+	BYTE					shadowdepths;
+	BYTE					shadowdepthe;
 	WORD					flags;
 };
 
@@ -2821,7 +2823,8 @@ struct WindowElementFuncText_Context {
 enum {
 	WindowElementFuncText_ForegroundColor = 1u,
 	WindowElementFuncText_BackgroundColor = 2u,
-	WindowElementFuncText_ShadowColor = 3u
+	WindowElementFuncText_ShadowColor = 3u,
+	WindowElementFuncText_ShadowDepth = 4u
 };
 
 static const struct WindowElementFuncText_Context WindowElementFuncText_ContextInit = {
@@ -2831,6 +2834,8 @@ static const struct WindowElementFuncText_Context WindowElementFuncText_ContextI
 	.color = RGB(255,255,255),
 	.bgcolor = NOCOLORREF,
 	.shadowcolor = NOCOLORREF,
+	.shadowdepths = 0,
+	.shadowdepthe = 0,
 	.flags = 0
 };
 
@@ -2974,13 +2979,17 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 			}
 
 			if (ctx->flags & WindowElementFuncText_ContextFlags_ShadowColor) {
-				RECT t2 = tmp;
-				t2.left += 1;
-				t2.top += 1;
-				t2.right += 1;
-				t2.bottom += 1;
-				SetTextColor(bDC,ctx->shadowcolor);
-				DrawText(bDC,ctx->text,ctx->textlen,&t2,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK);
+				unsigned int i;
+
+				for (i=ctx->shadowdepths;i<=ctx->shadowdepthe;i++) {
+					RECT t2 = tmp;
+					t2.left += (int)i;
+					t2.top += (int)i;
+					t2.right += (int)i;
+					t2.bottom += (int)i;
+					SetTextColor(bDC,ctx->shadowcolor);
+					DrawText(bDC,ctx->text,ctx->textlen,&t2,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK);
+				}
 			}
 
 			SetTextColor(bDC,ctx->color);
@@ -3048,7 +3057,17 @@ void WindowElementFuncText_SetColor(const WindowElementHandle wh,const unsigned 
 				ctx->shadowcolor = color;
 			}
 		}
+		else if (what == WindowElementFuncText_ShadowDepth) {
+			BYTE s = (BYTE)color,e = (BYTE)(color >> 8u);
+			if (e < s) e = s;
 
+			if (ctx->shadowdepths != s || ctx->shadowdepthe != e) {
+				DLOGT("Changed window elem #%u text to shadow depth #%u-%u",wh,s,e);
+				we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+				ctx->shadowdepths = s;
+				ctx->shadowdepthe = e;
+			}
+		}
 	}
 }
 
