@@ -369,7 +369,7 @@ struct WindowElement {
 	int					x,y; /* signed, to allow partially offscreen if that's what you want */
 	unsigned int				w,h;
 	unsigned int				sx,sy; /* source x,y coordinates of bitmap */
-	BYTE					flags;
+	WORD					flags;
 	BYTE					scale; /* integer scale - 1 */
 	BYTE					func;
 	void*					funcctx;
@@ -391,6 +391,7 @@ enum {
 #define WindowElementFlag_NoAutoSize		0x0020u /* do not auto resize window element on content change */
 #define WindowElementFlag_OwnsImage		0x0040u /* this window element owns the imageRef (must be bitmap), and will free it automatically */
 #define WindowElementFlag_ReRender		0x0080u /* window element needs to re-render contents (function update function) */
+#define WindowElementFlag_RendersBackground	0x0100u /* window function uses window background in rendering */
 
 typedef WORD					WindowElementHandle;
 WORD near					WindowElementMax = 8;
@@ -690,6 +691,18 @@ void FreeColorPalette(void) {
 
 /////////////////////////////////////////////////////////////
 
+void NotifyWindowElementsThatRenderBackground(void) {
+	if (WindowElement) {
+		unsigned int i;
+
+		for (i=0;i < WindowElementMax;i++) {
+			struct WindowElement *we = GetWindowElementNRC(i);
+			if (we->flags & WindowElementFlag_RendersBackground)
+				we->flags |= WindowElementFlag_ReRender | WindowElementFlag_Update;
+		}
+	}
+}
+
 BOOL InitBackgroundBrush(void) {
 	if (!WndBkBrush) {
 		WndBkBrush = CreateSolidBrush(WndBkColor);
@@ -711,6 +724,7 @@ void SetBackgroundColor(COLORREF x) {
 		FreeBackgroundBrush();
 		WndBkColor = x;
 		InitBackgroundBrush();
+		NotifyWindowElementsThatRenderBackground();
 		InvalidateRect(hwndMain,NULL,TRUE);
 	}
 }
@@ -2332,8 +2346,8 @@ void FreeWindowElement(const WindowElementHandle h) {
 		ShowWindowElement(h,FALSE);
 		WindowElementFreeFunction(h);
 		WindowElementFreeOwnedImage(h);
-		we->flags &= ~(WindowElementFlag_Allocated);
 		we->imgRef = ImageRefNone;
+		we->flags = 0;
 	}
 }
 
@@ -2820,11 +2834,10 @@ void WindowElementFuncText_notify(const WindowElementHandle wh,struct WindowElem
 	(void)we;
 
 	if (msg == WindowElementNotifyRepositionMsg) {
-#if 0//TODO
 		if (WndBkBrush) { /* if the window background is a pattern brush, we need to redraw (TODO: But only if pattern brush) */
+			DLOGT("%s window background #%u uses pattern brush, rendering on move",__FUNCTION__,wh);
 			we->flags |= WindowElementFlag_ReRender;
 		}
-#endif
 	}
 }
 
@@ -2840,7 +2853,7 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 		bh = AllocBMPres();
 		if (bh == BMPresHandleNone) return;
 		we->imgRef = MAKEBMPIMAGEREF(bh);
-		we->flags |= WindowElementFlag_OwnsImage;
+		we->flags |= WindowElementFlag_OwnsImage | WindowElementFlag_NoAutoSize | WindowElementFlag_RendersBackground;
 	}
 	else {
 		bh = (BMPresHandle)ImageRefGetRef(we->imgRef);
