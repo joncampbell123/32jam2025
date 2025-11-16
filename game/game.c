@@ -2812,8 +2812,7 @@ struct WindowElementFuncText_Context {
 	COLORREF				color;
 	COLORREF				bgcolor;
 	COLORREF				shadowcolor;
-	BYTE					shadowdepths;
-	BYTE					shadowdepthe;
+	BYTE					shadowdepth;
 	WORD					flags;
 };
 
@@ -2834,8 +2833,7 @@ static const struct WindowElementFuncText_Context WindowElementFuncText_ContextI
 	.color = RGB(255,255,255),
 	.bgcolor = NOCOLORREF,
 	.shadowcolor = NOCOLORREF,
-	.shadowdepths = 1,
-	.shadowdepthe = 1,
+	.shadowdepth = 1,
 	.flags = 0
 };
 
@@ -2979,17 +2977,14 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 			}
 
 			if (ctx->flags & WindowElementFuncText_ContextFlags_ShadowColor) {
-				unsigned int i;
+				RECT t2 = tmp;
 
-				for (i=ctx->shadowdepths;i<=ctx->shadowdepthe;i++) {
-					RECT t2 = tmp;
-					t2.left += (int)i;
-					t2.top += (int)i;
-					t2.right += (int)i;
-					t2.bottom += (int)i;
-					SetTextColor(bDC,ctx->shadowcolor);
-					DrawText(bDC,ctx->text,ctx->textlen,&t2,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK);
-				}
+				t2.left += (int)ctx->shadowdepth;
+				t2.top += (int)ctx->shadowdepth;
+				t2.right += (int)ctx->shadowdepth;
+				t2.bottom += (int)ctx->shadowdepth;
+				SetTextColor(bDC,ctx->shadowcolor);
+				DrawText(bDC,ctx->text,ctx->textlen,&t2,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK);
 			}
 
 			SetTextColor(bDC,ctx->color);
@@ -3058,14 +3053,13 @@ void WindowElementFuncText_SetParamI(const WindowElementHandle wh,const unsigned
 			}
 		}
 		else if (what == WindowElementFuncText_ShadowDepth) {
-			BYTE s = (BYTE)color,e = (BYTE)(color >> 8u);
-			if (e < s) e = s;
+			BYTE s = (BYTE)color;
+			if (s < 1) s = 1;
 
-			if (ctx->shadowdepths != s || ctx->shadowdepthe != e) {
-				DLOGT("Changed window elem #%u text to shadow depth #%u-%u",wh,s,e);
+			if (ctx->shadowdepth != s) {
+				DLOGT("Changed window elem #%u text to shadow depth #%u",wh,s);
 				we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
-				ctx->shadowdepths = s;
-				ctx->shadowdepthe = e;
+				ctx->shadowdepth = s;
 			}
 		}
 	}
