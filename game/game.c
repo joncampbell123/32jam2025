@@ -371,6 +371,16 @@ struct WindowElement {
 	unsigned int				sx,sy; /* source x,y coordinates of bitmap */
 	BYTE					flags;
 	BYTE					scale; /* integer scale - 1 */
+	BYTE					func;
+	void*					funcctx;
+};
+
+enum {
+	WindowElementFuncNone = 0xFFu,
+
+	WindowElementFuncText = 0x00u,
+
+	WindowElementFunc_Max
 };
 
 #define WindowElementFlag_Allocated		0x0001u /* window element is allocated */
@@ -380,11 +390,12 @@ struct WindowElement {
 #define WindowElementFlag_Overlapped		0x0010u /* window element is overlapped by another */
 #define WindowElementFlag_NoAutoSize		0x0020u /* do not auto resize window element on content change */
 #define WindowElementFlag_OwnsImage		0x0040u /* this window element owns the imageRef (must be bitmap), and will free it automatically */
+#define WindowElementFlag_ReRender		0x0080u /* window element needs to re-render contents (function update function) */
 
 typedef WORD					WindowElementHandle;
 WORD near					WindowElementMax = 8;
 struct WindowElement*				WindowElement = NULL;
-static const struct WindowElement near		WindowElementInit = { .imgRef = ImageRefNone, .x = 0, .y = 0, .w = 0, .h = 0, .flags = 0, .scale = 0 };
+static const struct WindowElement near		WindowElementInit = { .imgRef = ImageRefNone, .x = 0, .y = 0, .w = 0, .h = 0, .flags = 0, .scale = 0, .func = WindowElementFuncNone, .funcctx = 0 };
 #define WindowElementHandleNone			((WORD)(-1))
 
 static inline struct WindowElement *GetWindowElementNRC(const WindowElementHandle h) {
@@ -395,6 +406,23 @@ struct WindowElement *GetWindowElement(const WindowElementHandle h) {
 	if (WindowElement && h < WindowElementMax) return WindowElement + h;
 	return NULL;
 }
+
+/////////////////////////////////////////////////////////////
+
+typedef BYTE WindowElementFunctionHandle;
+
+struct WindowElementFunction {
+	WORD					ctxStructSize; // how much to allocate for context struct
+	const void*				ctxStructInit; // what to init it with
+	void					(*init)(const WindowElementHandle wh,struct WindowElement *we,void *ctx);
+	void					(*free)(const WindowElementHandle wh,struct WindowElement *we,void *ctx);
+	void					(*notify)(const WindowElementHandle wh,struct WindowElement *we,void *ctx,const unsigned int msg);
+	void					(*render)(const WindowElementHandle wh,struct WindowElement *we,void *ctx);
+};
+
+#define WindowElementNotifyRepositionMsg	(1u)
+#define WindowElementNotifyResizeMsg		(2u)
+#define WindowElementNotifyChangeScaleMsg	(3u)
 
 /////////////////////////////////////////////////////////////
 
@@ -2203,6 +2231,13 @@ void FreeByImageRef(const ImageRef ir) {
 
 /////////////////////////////////////////////////////////////
 
+extern const struct WindowElementFunction WindowElementFunctionArray[WindowElementFunc_Max];
+
+const struct WindowElementFunction *GetWindowElementFunction(const WindowElementFunctionHandle wfh) {
+	if (wfh < WindowElementFunc_Max) return WindowElementFunctionArray + wfh;
+	return NULL;
+}
+
 void ShowWindowElement(const WindowElementHandle h,const BOOL how);
 
 void WindowElementFreeOwnedImage(const WindowElementHandle h) {
@@ -2217,6 +2252,60 @@ void WindowElementFreeOwnedImage(const WindowElementHandle h) {
 	}
 }
 
+void WindowElementInitFunction(const WindowElementHandle h,const WindowElementFunctionHandle wfh) {
+	struct WindowElement *we = GetWindowElement(h);
+	if (we && we->func == WindowElementFuncNone && wfh < WindowElementFunc_Max) {
+		const struct WindowElementFunction *wf = GetWindowElementFunction(wfh);
+
+		DLOGT("Window element #%u initializing function %u assigned to it",h,wfh);
+
+		if (wf) {
+			if (wf->ctxStructSize != 0u) {
+				we->funcctx = malloc(wf->ctxStructSize);
+				if (!we->funcctx) {
+					DLOGT("ERROR: Cannot allocate context, function not assigned");
+					return;
+				}
+
+				if (wf->ctxStructInit) memcpy(we->funcctx,wf->ctxStructInit,wf->ctxStructSize);
+			}
+			else {
+				we->funcctx = NULL;
+			}
+
+			we->func = wfh;
+			if (wf->init) wf->init(h,we,we->funcctx);
+		}
+	}
+}
+
+void WindowElementFreeFunction(const WindowElementHandle h) {
+	struct WindowElement *we = GetWindowElement(h);
+	if (we && we->func != WindowElementFuncNone) {
+		const struct WindowElementFunction *wf = GetWindowElementFunction(we->func);
+
+		DLOGT("Window element #%u freeing function %u assigned to it",h,we->func);
+
+		if (wf) {
+			if (wf->free) wf->free(h,we,we->funcctx);
+			if (we->funcctx) {
+				free(we->funcctx);
+				we->funcctx = NULL;
+			}
+		}
+
+		we->func = WindowElementFuncNone;
+	}
+}
+
+void WindowElementSetFunction(const WindowElementHandle h,const WindowElementFunctionHandle wfh) {
+	struct WindowElement *we = GetWindowElement(h);
+	if (we && we->func != wfh) {
+		WindowElementFreeFunction(h);
+		WindowElementInitFunction(h,wfh);
+	}
+}
+
 WindowElementHandle AllocWindowElement(void) {
 	if (WindowElement) {
 		unsigned int i;
@@ -2225,6 +2314,7 @@ WindowElementHandle AllocWindowElement(void) {
 			struct WindowElement *we = GetWindowElementNRC(i);
 			if (!(we->flags & WindowElementFlag_Allocated)) {
 				we->flags |= WindowElementFlag_Allocated;
+				we->imgRef = ImageRefNone;
 				DLOGT("Window element #%u allocated",i);
 				return (WindowElementHandle)i;
 			}
@@ -2240,6 +2330,7 @@ void FreeWindowElement(const WindowElementHandle h) {
 	if (we && (we->flags & WindowElementFlag_Allocated)) {
 		DLOGT("Window element #%u freeing",h);
 		ShowWindowElement(h,FALSE);
+		WindowElementFreeFunction(h);
 		WindowElementFreeOwnedImage(h);
 		we->flags &= ~(WindowElementFlag_Allocated);
 		we->imgRef = ImageRefNone;
@@ -2379,6 +2470,12 @@ void UpdateWindowElementsHDCWithClipRegion(HDC hDC,HRGN rgn,RECT *rgnRect) {
 						if (cr) CombineRgn(orgn,orgn,cr,RGN_OR);
 						DeleteObject(cr);
 					}
+
+					if (we->func != WindowElementFuncNone && (we->flags & WindowElementFlag_ReRender)) {
+						const struct WindowElementFunction *wf = GetWindowElementFunction(we->func);
+						we->flags &= ~(WindowElementFlag_ReRender);
+						if (wf && wf->render) wf->render(i,we,we->funcctx);
+					}
 				}
 				else {
 					we->flags &= ~WindowElementFlag_Overlapped;
@@ -2462,22 +2559,50 @@ WindowElementHandle WindowElementFromPoint(int x,int y) {
 	return WindowElementHandleNone;
 }
 
-void SetWindowElementPosition(const WindowElementHandle h,int x,int y) {
-	struct WindowElement *we = GetWindowElement(h);
+void SetWindowElementPosition(const WindowElementHandle wh,int x,int y) {
+	struct WindowElement *we = GetWindowElement(wh);
 
 	if (we) {
-		if (we->w && we->h && (we->x != x || we->y != y))
+		if (we->x != x || we->y != y) {
+			if (we->w && we->h)
+				we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate | WindowElementFlag_Allocated;
+
+			we->x = x;
+			we->y = y;
+
+			if (we->func != WindowElementFuncNone) {
+				const struct WindowElementFunction *wf = GetWindowElementFunction(we->func);
+				if (wf && wf->notify) wf->notify(wh,we,we->funcctx,WindowElementNotifyRepositionMsg);
+			}
+		}
+	}
+}
+
+void SetWindowElementSize(const WindowElementHandle wh,unsigned int w,unsigned int h) {
+	struct WindowElement *we = GetWindowElement(wh);
+
+	if (we) {
+		if (we->w != w || we->h != h) {
 			we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate | WindowElementFlag_Allocated;
 
-		we->x = x;
-		we->y = y;
+			we->w = w;
+			we->h = h;
+
+			if (we->func != WindowElementFuncNone) {
+				const struct WindowElementFunction *wf = GetWindowElementFunction(we->func);
+				if (wf && wf->notify) {
+					we->flags |= WindowElementFlag_ReRender;
+					wf->notify(wh,we,we->funcctx,WindowElementNotifyResizeMsg);
+				}
+			}
+		}
 	}
 }
 
 void UpdateWindowElementDimensions(const WindowElementHandle h) {
 	struct WindowElement *we = GetWindowElement(h);
 
-	if (we) {
+	if (we && !(we->flags & WindowElementFlag_NoAutoSize)) {
 		unsigned int nw = 0,nh = 0,nsx = 0,nsy = 0;
 
 		if (we->imgRef != ImageRefNone) {
@@ -2514,13 +2639,10 @@ void UpdateWindowElementDimensions(const WindowElementHandle h) {
 
 		/* if the region changed size, need to redraw background AND update the element */
 		if (we->w != nw || we->h != nh) {
-			if (!(we->flags & WindowElementFlag_NoAutoSize)) {
-				we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate | WindowElementFlag_Allocated;
-				we->w = nw;
-				we->h = nh;
-			}
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_BkUpdate | WindowElementFlag_Allocated;
+			we->w = nw;
+			we->h = nh;
 		}
-
 	}
 }
 
@@ -2530,57 +2652,23 @@ void SetWindowElementScale(const WindowElementHandle h,const unsigned int scale)
 		we->scale = scale - 1u;
 		we->flags |= WindowElementFlag_Update | WindowElementFlag_Allocated;
 		UpdateWindowElementDimensions(h);
+
+		if (we->func != WindowElementFuncNone) {
+			const struct WindowElementFunction *wf = GetWindowElementFunction(we->func);
+			if (wf && wf->notify) {
+				we->flags |= WindowElementFlag_ReRender;
+				wf->notify(h,we,we->funcctx,WindowElementNotifyChangeScaleMsg);
+			}
+		}
 	}
 }
 
 void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 	struct WindowElement *we = GetWindowElement(h);
-	if (we && we->imgRef != ir) {
+	if (we && we->imgRef != ir && we->func == WindowElementFuncNone) {
 		we->imgRef = ir;
 		we->flags |= WindowElementFlag_Update | WindowElementFlag_Allocated;
 		UpdateWindowElementDimensions(h);
-	}
-}
-
-/////////////////////////////////////////////////////////////
-
-// Generic demonstration function---may disappear later
-void DrawTextBMPres(const BMPresHandle h,const FontResourceHandle fh,const char *txt) {
-	const struct FontResource *fr = GetFontResource(fh);
-	const unsigned int txtlen = strlen(txt);
-	struct BMPres *br = GetBMPres(h);
-
-	if (br && fr) {
-		HDC bmpDC = BMPresGDIObjectGetDC(h);
-
-		if (bmpDC) {
-			RECT um;
-			HFONT fhold;
-
-			if (fr->fontObj) fhold = (HFONT)SelectObject(bmpDC,fr->fontObj);
-
-			um.left = um.top = 0;
-			um.right = br->width;
-			um.bottom = br->height;
-			DrawBackgroundSub(bmpDC,&um);
-
-			SetBkMode(bmpDC,TRANSPARENT);
-			SetTextAlign(bmpDC,TA_CENTER|TA_TOP);
-
-			/* NTS: Apparently bright green on monochrome 1bpp displays is not enough to display as white */
-			if (WndScreenInfo.TotalBitsPerPixel >= 4)
-				SetTextColor(bmpDC,RGB(0,255,0));
-			else
-				SetTextColor(bmpDC,RGB(255,255,255));
-
-			TextOut(bmpDC,br->width/2,(br->height - fr->height)/2,txt,txtlen);
-
-			if (fr->fontObj) SelectObject(bmpDC,fhold);
-
-			BMPresGDIObjectReleaseDC(h);
-
-			br->flags |= WindowElementFlag_Update | WindowElementFlag_Allocated;
-		}
 	}
 }
 
@@ -2696,6 +2784,178 @@ void GoAppActive(void) {
 	WndStateFlags |= WndState_NotIdle;
 	FreeIdleTimer();
 }
+
+/////////////////////////////////////////////////////////////
+
+struct WindowElementFuncText_Context {
+	char*					text;
+	WORD					textlen;
+	FontResourceHandle			font;
+};
+
+static const struct WindowElementFuncText_Context WindowElementFuncText_ContextInit = {
+	.text = NULL,
+	.textlen = 0,
+	.font = FontResourceHandleNone
+};
+
+void WindowElementFuncText_free(const WindowElementHandle wh,struct WindowElement *we,void *_ctx) {
+	struct WindowElementFuncText_Context *ctx = (struct WindowElementFuncText_Context *)_ctx;
+	DLOGT("%s windowelement=%u",__FUNCTION__,wh);
+
+	(void)ctx;
+	(void)we;
+
+	if (ctx->text) {
+		free(ctx->text);
+		ctx->text = NULL;
+	}
+}
+
+void WindowElementFuncText_notify(const WindowElementHandle wh,struct WindowElement *we,void *_ctx,const unsigned int msg) {
+	struct WindowElementFuncText_Context *ctx = (struct WindowElementFuncText_Context *)_ctx;
+	DLOGT("%s windowelement=%u msg=%u",__FUNCTION__,wh,msg);
+
+	(void)ctx;
+	(void)we;
+
+	if (msg == WindowElementNotifyRepositionMsg) {
+#if 0//TODO
+		if (WndBkBrush) { /* if the window background is a pattern brush, we need to redraw (TODO: But only if pattern brush) */
+			we->flags |= WindowElementFlag_ReRender;
+		}
+#endif
+	}
+}
+
+void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElement *we,void *_ctx) {
+	struct WindowElementFuncText_Context *ctx = (struct WindowElementFuncText_Context *)_ctx;
+	BMPresHandle bh;
+
+	DLOGT("%s windowelement=%u",__FUNCTION__,wh);
+
+	(void)ctx;
+
+	if (we->imgRef == ImageRefNone) {
+		bh = AllocBMPres();
+		if (bh == BMPresHandleNone) return;
+		we->imgRef = MAKEBMPIMAGEREF(bh);
+		we->flags |= WindowElementFlag_OwnsImage;
+	}
+	else {
+		bh = (BMPresHandle)ImageRefGetRef(we->imgRef);
+	}
+
+	InitBMPresGDIObject(bh,we->w,we->h,0);
+
+	{
+		const struct FontResource *fr = GetFontResource(ctx->font);
+		HDC bDC;
+		RECT um;
+
+		bDC = BMPresGDIObjectGetDC(bh);
+
+		um.left = 0;
+		um.top = 0;
+		um.right = we->w;
+		um.bottom = we->h;
+
+		DrawBackgroundSub(bDC,&um);
+
+		if (ctx->text && ctx->textlen && fr && fr->fontObj) {
+			HFONT fhold;
+			RECT tmp;
+
+			SetBkMode(bDC,TRANSPARENT);
+			fhold = (HFONT)SelectObject(bDC,fr->fontObj);
+
+			/* NTS: Apparently bright green on monochrome 1bpp displays is not enough to display as white */
+			if (WndScreenInfo.TotalBitsPerPixel >= 4)
+				SetTextColor(bDC,RGB(0,255,0));
+			else
+				SetTextColor(bDC,RGB(255,255,255));
+
+			/* NTS: Windows 3.1 SDK documentation concerning DrawText makes it sound like, if you're using DT_CALCRECT
+			 *      to decide how to render multi-line text, it only modifies (extends) the base of the rectangle using
+			 *      the width. It says NOTHING about actual Windows 3.1 behavior in which it will also modify the top
+			 *      AND bottom of the rectangle AND the left and right sides too!
+			 *
+			 *      Feh. Learning to program Microsoft Windows since the 1990s has given me the API overchecking paranoia
+			 *      I have to this day because of these API surprises and failure to document things as they actually are.
+			 *      For a good example of this, you should see a Windows 95/98 game I wrote for a high school project
+			 *      which not only uses DirectX/DirectDraw but meticulously checks EVERY return pointer and HRESULT very
+			 *      carefully for dumbass surprises. */
+
+			tmp = um;
+			tmp.bottom = 1;
+			DrawText(bDC,ctx->text,ctx->textlen,&tmp,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK|DT_CALCRECT);
+
+			{
+				const int txtwidth = tmp.right - tmp.left;
+				const int txtheight = tmp.bottom - tmp.top;
+				const int cx = (we->w - txtwidth) / 2;
+				const int cy = (we->h - txtheight) / 2;
+				tmp.left = cx;
+				tmp.top = cy;
+				tmp.right = cx + txtwidth;
+				tmp.bottom = cy + txtheight;
+			}
+			DrawText(bDC,ctx->text,ctx->textlen,&tmp,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK);
+
+			SelectObject(bDC,fhold);
+		}
+
+		BMPresGDIObjectReleaseDC(bh);
+	}
+}
+
+/////////////////////////////////////////////////////////////
+
+void WindowElementFuncText_SetFont(const WindowElementHandle wh,const FontResourceHandle fh) {
+	struct WindowElement *we = GetWindowElement(wh);
+	struct FontResource *fr = GetFontResource(fh);
+
+	if (we && fr && we->func == WindowElementFuncText && we->funcctx) {
+		struct WindowElementFuncText_Context *ctx = (struct WindowElementFuncText_Context *)(we->funcctx);
+		if (ctx->font != fh) {
+			DLOGT("Changed window elem #%u text to font #%u",wh,fh);
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+			ctx->font = fh;
+		}
+	}
+}
+
+void WindowElementFuncText_SetText(const WindowElementHandle wh,const char *txt) {
+	struct WindowElement *we = GetWindowElement(wh);
+
+	if (we && we->func == WindowElementFuncText && we->funcctx) {
+		struct WindowElementFuncText_Context *ctx = (struct WindowElementFuncText_Context *)(we->funcctx);
+		if (ctx->text) {
+			DLOGT("Changed window elem #%u text free",wh);
+			free(ctx->text);
+			ctx->text = NULL;
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+		}
+		if (txt && *txt != 0) {
+			DLOGT("Changed window elem #%u text alloc to '%s'",wh,txt);
+			ctx->text = strdup(txt);
+			ctx->textlen = strlen(txt);
+			we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+		}
+	}
+}
+
+/////////////////////////////////////////////////////////////
+
+const struct WindowElementFunction WindowElementFunctionArray[WindowElementFunc_Max] = {
+	[WindowElementFuncText] = {
+		.ctxStructSize = sizeof(struct WindowElementFuncText_Context),
+		.ctxStructInit = (const void*)(&WindowElementFuncText_ContextInit),
+		.free = WindowElementFuncText_free,
+		.notify = WindowElementFuncText_notify,
+		.render = WindowElementFuncText_render
+	}
+};
 
 /////////////////////////////////////////////////////////////
 
@@ -2952,11 +3212,9 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		}
 		else if (wparam == 'A') {
 			SetBackgroundColor(RGB(255,128,0));
-			DrawTextBMPres(/*BMPr*/1,/*FontRes*/0,"Hello world");
 		}
 		else if (wparam == 'B') {
 			SetBackgroundColor(RGB(63,63,63));
-			DrawTextBMPres(/*BMPr*/1,/*FontRes*/0,"Hello world");
 		}
 
 		return 0;
@@ -3480,15 +3738,6 @@ err1:
 			44/*cell width*/,62/*cell height*/);
 	}
 
-	{
-		FontResourceHandle fh = AllocFont();
-		BMPresHandle bh = AllocBMPres();
-
-		LoadFontResource(fh,/*height (by char)*/-14,/*width (default)*/0,/*flags*/0,"Arial");
-		InitBlankBMPres(bh,320,32);
-		DrawTextBMPres(/*BMPr*/bh,/*FontRes*/0,"Hello world! This is a text region");
-	}
-
 	SpriteAnimFrame = 0;
 
 	{
@@ -3506,9 +3755,17 @@ err1:
 	}
 
 	{
+		FontResourceHandle fh = AllocFont();
 		WindowElementHandle wh = AllocWindowElement();
-		SetWindowElementContent(wh,MAKEBMPIMAGEREF(1));
+		WindowElementSetFunction(wh,WindowElementFuncText);
+
+		LoadFontResource(fh,/*height (by char)*/-14,/*width (default)*/0,/*flags*/0,"Arial");
+
+		WindowElementFuncText_SetFont(wh,fh);
+		WindowElementFuncText_SetText(wh,"Hello world\nHow are you?");
+
 		SetWindowElementPosition(wh,20,210);
+		SetWindowElementSize(wh,320,40);
 		ShowWindowElement(wh,TRUE);
 	}
 
