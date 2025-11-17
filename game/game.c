@@ -282,8 +282,9 @@ struct WndScreenInfo_t near	WndScreenInfo = { 0, 0, 0, 0, 0, 0 };
 struct WndGraphicsCaps_t near	WndGraphicsCaps = { 0 };
 
 // background brush
-HBRUSH				WndBkBrush = (HBRUSH)NULL;
-COLORREF			WndBkColor = RGB(0,0,0);
+HBRUSH near			WndBkBrush = (HBRUSH)NULL;
+COLORREF near			WndBkColor = RGB(0,0,0);
+BOOL near			WndBkBrushPattern = FALSE;
 
 #if WINVER < 0x400
 /* Windows 3.x compensation for off by 1 (or 2) bugs in AdjustWindowRect */
@@ -711,6 +712,13 @@ BOOL InitBackgroundBrush(void) {
 	if (!WndBkBrush) {
 		WndBkBrush = CreateSolidBrush(WndBkColor);
 		if (!WndBkBrush) return FALSE;
+
+		WndBkBrushPattern = FALSE;
+		if (WndScreenInfo.Flags & WndScreenInfoFlag_DitherColors) {
+			/* unless the color is solid black or white, assume it may make a dither pattern */
+			if (WndBkColor != RGB(0,0,0) && WndBkColor != RGB(255,255,255))
+				WndBkBrushPattern = TRUE;
+		}
 	}
 
 	return TRUE;
@@ -2881,7 +2889,7 @@ void WindowElementFuncText_notify(const WindowElementHandle wh,struct WindowElem
 		 *      from a solid color, therefore there is no way to tell if the color is actually solid or dithered
 		 *      to screen, therefore we must always assume a need to re-render (sigh). No, GetObject() does not
 		 *      help either. */
-		if (WndBkBrush && (WndScreenInfo.Flags & WndScreenInfoFlag_DitherColors) && !(ctx->flags & WindowElementFuncText_ContextFlags_OwnBGColor))
+		if (WndBkBrush && WndBkBrushPattern && !(ctx->flags & WindowElementFuncText_ContextFlags_OwnBGColor))
 			we->flags |= WindowElementFlag_ReRender;
 	}
 }
@@ -2931,7 +2939,7 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 			DeleteObject(bb);
 		}
 		else {
-			if (WndBkBrush) {
+			if (WndBkBrush && WndBkBrushPattern) {
 				/* make the pattern brush in the bitmap match the pattern brush of the window background */
 				/* NTS: The Windows 3.1 SDK is wrong. You do NOT have to limit the value to a number from 0 to 7 inclusive.
 				 *      Windows itself doesn't limit the number, as evident from the return value of GetBrushOrg(). */
