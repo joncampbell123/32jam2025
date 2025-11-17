@@ -54,7 +54,7 @@
 #define WndState_NotIdle		0x00000010u /* if set, PeekMessage() and manage game, else GetMessage() and use idle timer */
 
 // WndGraphicsCaps.flags
-#define WndGraphicsCaps_Flags_DIBTopDown	0x00000001u /* Windows 95/NT4 top-down DIBs are supported */
+#define WndGraphicsCaps_Flags_DIBTopDown			0x00000001u /* Windows 95/NT4 top-down DIBs are supported */
 
 // WindowsVersionFlags
 #define WindowsVersionFlags_NT			0x00000001u /* Windows NT */
@@ -2443,14 +2443,8 @@ void DrawBackgroundSub(HDC hDC,RECT* updateRect) {
 //      to set the region to update to the clip region, and then excluse from the region
 //      the rectangular area of each window element. What WM_PAINT does, for example.
 void DrawBackground(HDC hDC,RECT* updateRect) {
-	if (WndBkBrush) {
+	if (WndBkBrush)
 		UnrealizeObject(WndBkBrush);
-#if TARGET_MSDOS == 32
-		SetBrushOrgEx(hDC,0,0,NULL);
-#else
-		SetBrushOrg(hDC,0,0);
-#endif
-	}
 
 	DrawBackgroundSub(hDC,updateRect);
 	WndStateFlags &= ~WndState_NeedBkRedraw;
@@ -2921,10 +2915,11 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 			DeleteObject(bb);
 		}
 		else {
-			int bx = we->x % 8,by = we->y % 8;
+			int bx = (-we->x) % 8,by = (-we->y) % 8;
 			if (bx < 0) bx += 8; if (by < 0) by += 8; // negative modulo == negative result, compensate
 
 			if (WndBkBrush) {
+				/* make the pattern brush in the bitmap match the pattern brush of the window background */
 				UnrealizeObject(WndBkBrush);
 #if TARGET_MSDOS == 32
 				SetBrushOrgEx(bDC,bx,by,NULL);
@@ -3350,6 +3345,9 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		}
 		else if (wparam == 'B') {
 			SetBackgroundColor(RGB(63,63,63));
+		}
+		else if (wparam == 'C') {
+			SetBackgroundColor(RGB(0,4,0));
 		}
 
 		return 0;
