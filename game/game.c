@@ -2885,33 +2885,7 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 		bh = (BMPresHandle)ImageRefGetRef(we->imgRef);
 	}
 
-	/* HACK: CreateSolidBrush() in 256-color mode or below does not actually create a "solid color" brush,
-	 *       but rather will generate a brush with a dither pattern to approximate the color. It acts like
-	 *       a pattern brush, even though GDI functions like GetObject() still act as if it's a solid color
-	 *       with no indication of pattern rendering at all.
-	 *
-	 *       Because it's not a pattern brush, functions like SetBrushOrg() have no effect and cannot be
-	 *       used to realign the background brush in OUR region to match the background!
-	 *
-	 *       So the hack here is to make the backing HBITMAP 8 pixels wider and taller, and then render
-	 *       our stuff at x % 8,y % 8 within it and direct the Window Element rendering to draw that subregion
-	 *       to match. The dither pattern brushes made by Windows appear to be 8x8 pattern brushes, like any
-	 *       pattern brush, that's why it's modulo 8.
-	 *
-	 *       Of course, once this program can determine whether the Windows display driver will approximate
-	 *       solid colors with dithering or not, this code should only do this hack if the display driver will
-	 *       do that, else, this code should not, and the notify function above us should not trigger rerender
-	 *       on move either. */
-	if ((WndScreenInfo.Flags & WndScreenInfoFlag_DitherColors) && !(ctx->flags & WindowElementFuncText_ContextFlags_OwnBGColor)) {
-		InitBMPresGDIObject(bh,we->w + 8,we->h + 8,0);
-		we->sx = we->x % 8;
-		we->sy = we->y % 8;
-	}
-	else {
-		InitBMPresGDIObject(bh,we->w,we->h,0);
-		we->sx = 0;
-		we->sy = 0;
-	}
+	InitBMPresGDIObject(bh,we->w,we->h,0);
 
 	{
 		const struct FontResource *fr = GetFontResource(ctx->font);
@@ -2923,8 +2897,8 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 
 		um.left = 0;
 		um.top = 0;
-		um.right = we->w + we->sx;
-		um.bottom = we->h + we->sy;
+		um.right = we->w;
+		um.bottom = we->h;
 
 		if (ctx->flags & WindowElementFuncText_ContextFlags_OwnBGColor) {
 			HBRUSH bb = CreateSolidBrush(ctx->bgcolor);
@@ -2938,6 +2912,15 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 			DeleteObject(bb);
 		}
 		else {
+			int bx = we->x % 8,by = we->y % 8;
+			if (bx < 0) bx += 8; if (by < 0) by += 8; // negative modulo == negative result, compensate
+
+			UnrealizeObject(WndBkBrush);
+#if TARGET_MSDOS == 32
+			SetBrushOrgEx(bDC,bx,by,NULL);
+#else
+			SetBrushOrg(bDC,bx,by);
+#endif
 			DrawBackgroundSub(bDC,&um);
 		}
 
@@ -2970,10 +2953,10 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 				const int txtheight = tmp.bottom - tmp.top;
 				const int cx = (we->w - txtwidth) / 2;
 				const int cy = (we->h - txtheight) / 2;
-				tmp.left = cx + we->sx;
-				tmp.top = cy + we->sy;
-				tmp.right = cx + we->sx + txtwidth;
-				tmp.bottom = cy + we->sy + txtheight;
+				tmp.left = cx;
+				tmp.top = cy;
+				tmp.right = cx + txtwidth;
+				tmp.bottom = cy + txtheight;
 			}
 
 			if (ctx->flags & WindowElementFuncText_ContextFlags_ShadowColor) {
