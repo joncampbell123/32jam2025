@@ -30,3 +30,15 @@
   including mysterious hangs merely calling GetTickCount(). Perhaps their thunks and
   covers don't like the Windows 3.1 multimedia functions.
 
+- SetBrushOrg works as expected on a memory device context, but for any device context
+  going to the screen, whether the screen DC or the DC of the window client area,
+  SetBrushOrg sets the brush origin relative to the upper left corner of the screen,
+  NOT the upper left corner of your client area! However Windows does help here as well.
+  If you call UnrealizeBrush and do NOT call SetBrushOrg(), then select the brush into
+  your client area DC, Windows will automatically set the brush origin such that the
+  upper left corner of the pattern brush corresponds to the upper left corner of your
+  client area. You can confirm this by selecting the brush, then calling GetBrushOrg()
+  to read the brush origin. By the way, the return value of GetBrushOrg() is proof
+  that for SetBrushOrg you do not actually have to limit the x and y coordinates to
+  a value from 0 to 7 inclusive, despite what the Windows 3.1 SDK says.
+

@@ -2443,6 +2443,22 @@ void DrawBackgroundSub(HDC hDC,RECT* updateRect) {
 //      to set the region to update to the clip region, and then excluse from the region
 //      the rectangular area of each window element. What WM_PAINT does, for example.
 void DrawBackground(HDC hDC,RECT* updateRect) {
+	/* A note about using SetBrushOrg on a device context referring to the screen in any way,
+	 * including the device context returned by GetDC() to the client area of the window.
+	 *
+	 * If you use SetBrushOrg on a memory device context, it behaves exactly as you would
+	 * expect. Howver if you use SetBrushOrg on the DC of your window's client area, you
+	 * would get unexpected results because the brush origin is always relative to the
+	 * upper left corner of the screen, NOT the upper left corner of your client area!
+	 * SetBrushOrg(0,0) on your client area will actually render a pattern brush that
+	 * will change when drawn according to the position of your window on the screen!
+	 *
+	 * If you unrealize the brush and do not call SetBrushOrg(), it seems Windows will
+	 * automatically set the brush origin for you such that (0,0) in the pattern
+	 * corresponds to the upper left corner of your client area. You can confirm this
+	 * by unrealizing the brush, then selecting it, then calling GetBrushOrg() to read
+	 * the brush origin. The result will be the screen coordinates of the upper left
+	 * corner of your client area. */
 	if (WndBkBrush)
 		UnrealizeObject(WndBkBrush);
 
@@ -2915,16 +2931,15 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 			DeleteObject(bb);
 		}
 		else {
-			int bx = (-we->x) % 8,by = (-we->y) % 8;
-			if (bx < 0) bx += 8; if (by < 0) by += 8; // negative modulo == negative result, compensate
-
 			if (WndBkBrush) {
 				/* make the pattern brush in the bitmap match the pattern brush of the window background */
+				/* NTS: The Windows 3.1 SDK is wrong. You do NOT have to limit the value to a number from 0 to 7 inclusive.
+				 *      Windows itself doesn't limit the number, as evident from the return value of GetBrushOrg(). */
 				UnrealizeObject(WndBkBrush);
 #if TARGET_MSDOS == 32
-				SetBrushOrgEx(bDC,bx,by,NULL);
+				SetBrushOrgEx(bDC,-we->x,-we->y,NULL);
 #else
-				SetBrushOrg(bDC,bx,by);
+				SetBrushOrg(bDC,-we->x,-we->y);
 #endif
 			}
 
