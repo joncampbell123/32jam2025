@@ -2443,6 +2443,15 @@ void DrawBackgroundSub(HDC hDC,RECT* updateRect) {
 //      to set the region to update to the clip region, and then excluse from the region
 //      the rectangular area of each window element. What WM_PAINT does, for example.
 void DrawBackground(HDC hDC,RECT* updateRect) {
+	if (WndBkBrush) {
+		UnrealizeObject(WndBkBrush);
+#if TARGET_MSDOS == 32
+		SetBrushOrgEx(hDC,0,0,NULL);
+#else
+		SetBrushOrg(hDC,0,0);
+#endif
+	}
+
 	DrawBackgroundSub(hDC,updateRect);
 	WndStateFlags &= ~WndState_NeedBkRedraw;
 }
@@ -2915,12 +2924,15 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 			int bx = we->x % 8,by = we->y % 8;
 			if (bx < 0) bx += 8; if (by < 0) by += 8; // negative modulo == negative result, compensate
 
-			UnrealizeObject(WndBkBrush);
+			if (WndBkBrush) {
+				UnrealizeObject(WndBkBrush);
 #if TARGET_MSDOS == 32
-			SetBrushOrgEx(bDC,bx,by,NULL);
+				SetBrushOrgEx(bDC,bx,by,NULL);
 #else
-			SetBrushOrg(bDC,bx,by);
+				SetBrushOrg(bDC,bx,by);
 #endif
+			}
+
 			DrawBackgroundSub(bDC,&um);
 		}
 
