@@ -2839,18 +2839,21 @@ struct WindowElementFuncText_Context {
 	COLORREF				color;
 	COLORREF				bgcolor;
 	COLORREF				shadowcolor;
+	COLORREF				outlinecolor;
 	BYTE					shadowdepth;
 	WORD					flags;
 };
 
 #define WindowElementFuncText_ContextFlags_OwnBGColor		0x0001u
 #define WindowElementFuncText_ContextFlags_ShadowColor		0x0002u
+#define WindowElementFuncText_ContextFlags_OutlineColor		0x0004u
 
 enum {
 	WindowElementFuncText_ForegroundColor = 1u,
 	WindowElementFuncText_BackgroundColor = 2u,
 	WindowElementFuncText_ShadowColor = 3u,
-	WindowElementFuncText_ShadowDepth = 4u
+	WindowElementFuncText_ShadowDepth = 4u,
+	WindowElementFuncText_OutlineColor = 5u
 };
 
 static const struct WindowElementFuncText_Context WindowElementFuncText_ContextInit = {
@@ -2893,6 +2896,14 @@ void WindowElementFuncText_notify(const WindowElementHandle wh,struct WindowElem
 			we->flags |= WindowElementFlag_ReRender;
 	}
 }
+
+static const signed char TextOutlineDiamond[5*2] = {
+	-1, 0,
+	 0,-1,
+	 1, 0,
+	 0, 1,
+	 0, 0
+};
 
 void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElement *we,void *_ctx) {
 	struct WindowElementFuncText_Context *ctx = (struct WindowElementFuncText_Context *)_ctx;
@@ -2989,7 +3000,34 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 				tmp.bottom = cy + txtheight;
 			}
 
-			if (ctx->flags & WindowElementFuncText_ContextFlags_ShadowColor) {
+			if (ctx->flags & WindowElementFuncText_ContextFlags_OutlineColor) {
+				unsigned int i;
+
+				if (ctx->flags & WindowElementFuncText_ContextFlags_ShadowColor) {
+					SetTextColor(bDC,ctx->shadowcolor);
+					for (i=0;i < 5;i++) {
+						RECT t2 = tmp;
+
+						t2.left += (int)TextOutlineDiamond[i*2 + 0] + (int)ctx->shadowdepth;
+						t2.top += (int)TextOutlineDiamond[i*2 + 1] + (int)ctx->shadowdepth;
+						t2.right += (int)TextOutlineDiamond[i*2 + 0] + (int)ctx->shadowdepth;
+						t2.bottom += (int)TextOutlineDiamond[i*2 + 1] + (int)ctx->shadowdepth;
+						DrawText(bDC,ctx->text,ctx->textlen,&t2,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK);
+					}
+				}
+
+				SetTextColor(bDC,ctx->outlinecolor);
+				for (i=0;i < 4;i++) {
+					RECT t2 = tmp;
+
+					t2.left += (int)TextOutlineDiamond[i*2 + 0];
+					t2.top += (int)TextOutlineDiamond[i*2 + 1];
+					t2.right += (int)TextOutlineDiamond[i*2 + 0];
+					t2.bottom += (int)TextOutlineDiamond[i*2 + 1];
+					DrawText(bDC,ctx->text,ctx->textlen,&t2,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK);
+				}
+			}
+			else if (ctx->flags & WindowElementFuncText_ContextFlags_ShadowColor) {
 				RECT t2 = tmp;
 
 				t2.left += (int)ctx->shadowdepth;
@@ -3073,6 +3111,19 @@ void WindowElementFuncText_SetParamI(const WindowElementHandle wh,const unsigned
 				DLOGT("Changed window elem #%u text to shadow depth #%u",wh,s);
 				we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
 				ctx->shadowdepth = s;
+			}
+		}
+		else if (what == WindowElementFuncText_OutlineColor) {
+			if (ctx->outlinecolor != color) {
+				DLOGT("Changed window elem #%u text to outline color #0x%lx",wh,(unsigned long)color);
+				we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+
+				if (color == NOCOLORREF)
+					ctx->flags &= ~WindowElementFuncText_ContextFlags_OutlineColor;
+				else
+					ctx->flags |= WindowElementFuncText_ContextFlags_OutlineColor;
+
+				ctx->outlinecolor = color;
 			}
 		}
 	}
