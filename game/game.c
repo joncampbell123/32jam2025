@@ -3986,12 +3986,10 @@ err1:
 
 		WindowElementFuncText_SetFont(wh,fh);
 		WindowElementFuncText_SetText(wh,"Hello world\nHow are you?");
-#if 1//TESTING
 		WindowElementFuncText_SetParamI(wh,WindowElementFuncText_ForegroundColor,RGB(255,255,255));
-		//WindowElementFuncText_SetParamI(wh,WindowElementFuncText_BackgroundColor,RGB(8,8,8));
+		WindowElementFuncText_SetParamI(wh,WindowElementFuncText_BackgroundColor,RGB(0,0,0));
 		WindowElementFuncText_SetParamI(wh,WindowElementFuncText_ShadowColor,RGB(0,0,128));
 		WindowElementFuncText_SetParamI(wh,WindowElementFuncText_OutlineColor,RGB(0,128,128));
-#endif
 
 		SetWindowElementPosition(wh,20,210);
 		SetWindowElementSize(wh,320,40);
