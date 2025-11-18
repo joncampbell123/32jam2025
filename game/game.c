@@ -2832,16 +2832,20 @@ void GoAppActive(void) {
 
 /////////////////////////////////////////////////////////////
 
-struct WindowElementFuncText_Context {
-	char*					text;
-	WORD					textlen;
+struct WindowElementFuncText_ContextTextState {
 	FontResourceHandle			font;
 	COLORREF				color;
 	COLORREF				bgcolor;
 	COLORREF				shadowcolor;
 	COLORREF				outlinecolor;
-	BYTE					shadowdepth;
 	WORD					flags;
+};
+
+struct WindowElementFuncText_Context {
+	char*							text;
+	WORD							textlen;
+	struct WindowElementFuncText_ContextTextState		textstate;
+	BYTE							shadowdepth;
 };
 
 #define WindowElementFuncText_ContextFlags_OwnBGColor		0x0001u
@@ -2859,12 +2863,15 @@ enum {
 static const struct WindowElementFuncText_Context WindowElementFuncText_ContextInit = {
 	.text = NULL,
 	.textlen = 0,
-	.font = FontResourceHandleNone,
-	.color = RGB(255,255,255),
-	.bgcolor = NOCOLORREF,
-	.shadowcolor = NOCOLORREF,
+	.textstate = {
+		.font = FontResourceHandleNone,
+		.color = RGB(255,255,255),
+		.bgcolor = NOCOLORREF,
+		.shadowcolor = NOCOLORREF,
+		.outlinecolor = NOCOLORREF,
+		.flags = 0
+	},
 	.shadowdepth = 1,
-	.flags = 0
 };
 
 void WindowElementFuncText_free(const WindowElementHandle wh,struct WindowElement *we,void *_ctx) {
@@ -2892,7 +2899,7 @@ void WindowElementFuncText_notify(const WindowElementHandle wh,struct WindowElem
 		 *      from a solid color, therefore there is no way to tell if the color is actually solid or dithered
 		 *      to screen, therefore we must always assume a need to re-render (sigh). No, GetObject() does not
 		 *      help either. */
-		if (WndBkBrush && WndBkBrushPattern && !(ctx->flags & WindowElementFuncText_ContextFlags_OwnBGColor))
+		if (WndBkBrush && WndBkBrushPattern && !(ctx->textstate.flags & WindowElementFuncText_ContextFlags_OwnBGColor))
 			we->flags |= WindowElementFlag_ReRender;
 	}
 }
@@ -2926,20 +2933,20 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 	InitBMPresGDIObject(bh,we->w,we->h,0);
 
 	{
-		const struct FontResource *fr = GetFontResource(ctx->font);
+		const struct FontResource *fr = GetFontResource(ctx->textstate.font);
 		HDC bDC;
 		RECT um;
 
 		bDC = BMPresGDIObjectGetDC(bh);
-		SetBkColor(bDC,ctx->bgcolor);
+		SetBkColor(bDC,ctx->textstate.bgcolor);
 
 		um.left = 0;
 		um.top = 0;
 		um.right = we->w;
 		um.bottom = we->h;
 
-		if (ctx->flags & WindowElementFuncText_ContextFlags_OwnBGColor) {
-			HBRUSH bb = CreateSolidBrush(ctx->bgcolor);
+		if (ctx->textstate.flags & WindowElementFuncText_ContextFlags_OwnBGColor) {
+			HBRUSH bb = CreateSolidBrush(ctx->textstate.bgcolor);
 			if (bb) {
 				HPEN op = (HPEN)SelectObject(bDC,GetStockObject(NULL_PEN));
 				HBRUSH ob = (HBRUSH)SelectObject(bDC,bb);
@@ -3000,11 +3007,11 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 				tmp.bottom = cy + txtheight;
 			}
 
-			if (ctx->flags & WindowElementFuncText_ContextFlags_OutlineColor) {
+			if (ctx->textstate.flags & WindowElementFuncText_ContextFlags_OutlineColor) {
 				unsigned int i;
 
-				if (ctx->flags & WindowElementFuncText_ContextFlags_ShadowColor) {
-					SetTextColor(bDC,ctx->shadowcolor);
+				if (ctx->textstate.flags & WindowElementFuncText_ContextFlags_ShadowColor) {
+					SetTextColor(bDC,ctx->textstate.shadowcolor);
 					for (i=0;i < 5;i++) {
 						RECT t2 = tmp;
 
@@ -3016,7 +3023,7 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 					}
 				}
 
-				SetTextColor(bDC,ctx->outlinecolor);
+				SetTextColor(bDC,ctx->textstate.outlinecolor);
 				for (i=0;i < 4;i++) {
 					RECT t2 = tmp;
 
@@ -3027,18 +3034,18 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 					DrawText(bDC,ctx->text,ctx->textlen,&t2,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK);
 				}
 			}
-			else if (ctx->flags & WindowElementFuncText_ContextFlags_ShadowColor) {
+			else if (ctx->textstate.flags & WindowElementFuncText_ContextFlags_ShadowColor) {
 				RECT t2 = tmp;
 
 				t2.left += (int)ctx->shadowdepth;
 				t2.top += (int)ctx->shadowdepth;
 				t2.right += (int)ctx->shadowdepth;
 				t2.bottom += (int)ctx->shadowdepth;
-				SetTextColor(bDC,ctx->shadowcolor);
+				SetTextColor(bDC,ctx->textstate.shadowcolor);
 				DrawText(bDC,ctx->text,ctx->textlen,&t2,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK);
 			}
 
-			SetTextColor(bDC,ctx->color);
+			SetTextColor(bDC,ctx->textstate.color);
 			DrawText(bDC,ctx->text,ctx->textlen,&tmp,DT_CENTER|DT_NOPREFIX|DT_WORDBREAK);
 
 			SelectObject(bDC,fhold);
@@ -3056,10 +3063,10 @@ void WindowElementFuncText_SetFont(const WindowElementHandle wh,const FontResour
 
 	if (we && fr && we->func == WindowElementFuncText && we->funcctx) {
 		struct WindowElementFuncText_Context *ctx = (struct WindowElementFuncText_Context *)(we->funcctx);
-		if (ctx->font != fh) {
+		if (ctx->textstate.font != fh) {
 			DLOGT("Changed window elem #%u text to font #%u",wh,fh);
 			we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
-			ctx->font = fh;
+			ctx->textstate.font = fh;
 		}
 	}
 }
@@ -3071,36 +3078,36 @@ void WindowElementFuncText_SetParamI(const WindowElementHandle wh,const unsigned
 		struct WindowElementFuncText_Context *ctx = (struct WindowElementFuncText_Context *)(we->funcctx);
 
 		if (what == WindowElementFuncText_ForegroundColor) {
-			if (ctx->color != color) {
+			if (ctx->textstate.color != color) {
 				DLOGT("Changed window elem #%u text to color #0x%lx",wh,(unsigned long)color);
 				we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
-				ctx->color = color;
+				ctx->textstate.color = color;
 			}
 		}
 		else if (what == WindowElementFuncText_BackgroundColor) {
-			if (ctx->bgcolor != color) {
+			if (ctx->textstate.bgcolor != color) {
 				DLOGT("Changed window elem #%u text to background color #0x%lx",wh,(unsigned long)color);
 				we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
 
 				if (color == NOCOLORREF)
-					ctx->flags &= ~WindowElementFuncText_ContextFlags_OwnBGColor;
+					ctx->textstate.flags &= ~WindowElementFuncText_ContextFlags_OwnBGColor;
 				else
-					ctx->flags |= WindowElementFuncText_ContextFlags_OwnBGColor;
+					ctx->textstate.flags |= WindowElementFuncText_ContextFlags_OwnBGColor;
 
-				ctx->bgcolor = color;
+				ctx->textstate.bgcolor = color;
 			}
 		}
 		else if (what == WindowElementFuncText_ShadowColor) {
-			if (ctx->shadowcolor != color) {
+			if (ctx->textstate.shadowcolor != color) {
 				DLOGT("Changed window elem #%u text to shadow color #0x%lx",wh,(unsigned long)color);
 				we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
 
 				if (color == NOCOLORREF)
-					ctx->flags &= ~WindowElementFuncText_ContextFlags_ShadowColor;
+					ctx->textstate.flags &= ~WindowElementFuncText_ContextFlags_ShadowColor;
 				else
-					ctx->flags |= WindowElementFuncText_ContextFlags_ShadowColor;
+					ctx->textstate.flags |= WindowElementFuncText_ContextFlags_ShadowColor;
 
-				ctx->shadowcolor = color;
+				ctx->textstate.shadowcolor = color;
 			}
 		}
 		else if (what == WindowElementFuncText_ShadowDepth) {
@@ -3114,16 +3121,16 @@ void WindowElementFuncText_SetParamI(const WindowElementHandle wh,const unsigned
 			}
 		}
 		else if (what == WindowElementFuncText_OutlineColor) {
-			if (ctx->outlinecolor != color) {
+			if (ctx->textstate.outlinecolor != color) {
 				DLOGT("Changed window elem #%u text to outline color #0x%lx",wh,(unsigned long)color);
 				we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
 
 				if (color == NOCOLORREF)
-					ctx->flags &= ~WindowElementFuncText_ContextFlags_OutlineColor;
+					ctx->textstate.flags &= ~WindowElementFuncText_ContextFlags_OutlineColor;
 				else
-					ctx->flags |= WindowElementFuncText_ContextFlags_OutlineColor;
+					ctx->textstate.flags |= WindowElementFuncText_ContextFlags_OutlineColor;
 
-				ctx->outlinecolor = color;
+				ctx->textstate.outlinecolor = color;
 			}
 		}
 	}
@@ -3978,6 +3985,12 @@ err1:
 
 		WindowElementFuncText_SetFont(wh,fh);
 		WindowElementFuncText_SetText(wh,"Hello world\nHow are you?");
+#if 0//TESTING
+		WindowElementFuncText_SetParamI(wh,WindowElementFuncText_ForegroundColor,RGB(255,255,255));
+		WindowElementFuncText_SetParamI(wh,WindowElementFuncText_BackgroundColor,RGB(0,0,0));
+		WindowElementFuncText_SetParamI(wh,WindowElementFuncText_ShadowColor,RGB(0,0,128));
+		WindowElementFuncText_SetParamI(wh,WindowElementFuncText_OutlineColor,RGB(0,128,128));
+#endif
 
 		SetWindowElementPosition(wh,20,210);
 		SetWindowElementSize(wh,320,40);
