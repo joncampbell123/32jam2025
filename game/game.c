@@ -2848,9 +2848,10 @@ struct WindowElementFuncText_Context {
 	BYTE							shadowdepth;
 };
 
-#define WindowElementFuncText_ContextFlags_OwnBGColor		0x0001u
-#define WindowElementFuncText_ContextFlags_ShadowColor		0x0002u
-#define WindowElementFuncText_ContextFlags_OutlineColor		0x0004u
+#define WindowElementFuncText_ContextFlags_BackgroundColor	0x0001u
+#define WindowElementFuncText_ContextFlags_ForegroundColor	0x0002u
+#define WindowElementFuncText_ContextFlags_ShadowColor		0x0004u
+#define WindowElementFuncText_ContextFlags_OutlineColor		0x0008u
 
 enum {
 	WindowElementFuncText_ForegroundColor = 1u,
@@ -2871,7 +2872,7 @@ static const struct WindowElementFuncText_Context WindowElementFuncText_ContextI
 		.outlinecolor = NOCOLORREF,
 		.flags = 0
 	},
-	.shadowdepth = 1,
+	.shadowdepth = 1
 };
 
 void WindowElementFuncText_free(const WindowElementHandle wh,struct WindowElement *we,void *_ctx) {
@@ -2899,7 +2900,7 @@ void WindowElementFuncText_notify(const WindowElementHandle wh,struct WindowElem
 		 *      from a solid color, therefore there is no way to tell if the color is actually solid or dithered
 		 *      to screen, therefore we must always assume a need to re-render (sigh). No, GetObject() does not
 		 *      help either. */
-		if (WndBkBrush && WndBkBrushPattern && !(ctx->textstate.flags & WindowElementFuncText_ContextFlags_OwnBGColor))
+		if (WndBkBrush && WndBkBrushPattern && !(ctx->textstate.flags & WindowElementFuncText_ContextFlags_BackgroundColor))
 			we->flags |= WindowElementFlag_ReRender;
 	}
 }
@@ -2945,7 +2946,7 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 		um.right = we->w;
 		um.bottom = we->h;
 
-		if (ctx->textstate.flags & WindowElementFuncText_ContextFlags_OwnBGColor) {
+		if (ctx->textstate.flags & WindowElementFuncText_ContextFlags_BackgroundColor) {
 			HBRUSH bb = CreateSolidBrush(ctx->textstate.bgcolor);
 			if (bb) {
 				HPEN op = (HPEN)SelectObject(bDC,GetStockObject(NULL_PEN));
@@ -3090,9 +3091,9 @@ void WindowElementFuncText_SetParamI(const WindowElementHandle wh,const unsigned
 				we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
 
 				if (color == NOCOLORREF)
-					ctx->textstate.flags &= ~WindowElementFuncText_ContextFlags_OwnBGColor;
+					ctx->textstate.flags &= ~WindowElementFuncText_ContextFlags_BackgroundColor;
 				else
-					ctx->textstate.flags |= WindowElementFuncText_ContextFlags_OwnBGColor;
+					ctx->textstate.flags |= WindowElementFuncText_ContextFlags_BackgroundColor;
 
 				ctx->textstate.bgcolor = color;
 			}
@@ -3985,9 +3986,9 @@ err1:
 
 		WindowElementFuncText_SetFont(wh,fh);
 		WindowElementFuncText_SetText(wh,"Hello world\nHow are you?");
-#if 0//TESTING
+#if 1//TESTING
 		WindowElementFuncText_SetParamI(wh,WindowElementFuncText_ForegroundColor,RGB(255,255,255));
-		WindowElementFuncText_SetParamI(wh,WindowElementFuncText_BackgroundColor,RGB(0,0,0));
+		//WindowElementFuncText_SetParamI(wh,WindowElementFuncText_BackgroundColor,RGB(8,8,8));
 		WindowElementFuncText_SetParamI(wh,WindowElementFuncText_ShadowColor,RGB(0,0,128));
 		WindowElementFuncText_SetParamI(wh,WindowElementFuncText_OutlineColor,RGB(0,128,128));
 #endif
