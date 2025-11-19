@@ -3179,6 +3179,8 @@ struct WindowElementFuncSpriteComp_Context {
 	COLORREF							bgcolor;
 };
 
+#define WindowElementFuncSpriteComp_ContextFlags_BackgroundColor		0x0001u
+
 static const struct WindowElementFuncSpriteComp_ContextSprite WindowElementFuncSpriteComp_ContextSpriteInit = {
 	.imgRef = ImageRefNone,
 	.x = -32000,
@@ -3192,7 +3194,7 @@ static const struct WindowElementFuncSpriteComp_ContextSprite WindowElementFuncS
 static const struct WindowElementFuncSpriteComp_Context WindowElementFuncSpriteComp_ContextInit = {
 	.sprite_alloc = 32,
 	.sprite_render = 0,
-	.flags = 0,
+	.flags = WindowElementFuncSpriteComp_ContextFlags_BackgroundColor,
 	.sprite = NULL,
 	.bgcolor = NOCOLORREF
 };
@@ -3262,31 +3264,33 @@ void WindowElementFuncSpriteComp_render(const WindowElementHandle wh,struct Wind
 		um.right = we->w;
 		um.bottom = we->h;
 
-		if (ctx->bgcolor != NOCOLORREF) {
-			HBRUSH bb = CreateSolidBrush(ctx->bgcolor);
-			if (bb) {
-				HPEN op = (HPEN)SelectObject(bDC,GetStockObject(NULL_PEN));
-				HBRUSH ob = (HBRUSH)SelectObject(bDC,bb);
-				Rectangle(bDC,um.left,um.top,um.right+1,um.bottom+1);
-				SelectObject(bDC,(HGDIOBJ)ob);
-				SelectObject(bDC,(HGDIOBJ)op);
-				DeleteObject(bb);
+		if (ctx->flags & WindowElementFuncSpriteComp_ContextFlags_BackgroundColor) {
+			if (ctx->bgcolor != NOCOLORREF) {
+				HBRUSH bb = CreateSolidBrush(ctx->bgcolor);
+				if (bb) {
+					HPEN op = (HPEN)SelectObject(bDC,GetStockObject(NULL_PEN));
+					HBRUSH ob = (HBRUSH)SelectObject(bDC,bb);
+					Rectangle(bDC,um.left,um.top,um.right+1,um.bottom+1);
+					SelectObject(bDC,(HGDIOBJ)ob);
+					SelectObject(bDC,(HGDIOBJ)op);
+					DeleteObject(bb);
+				}
 			}
-		}
-		else {
-			if (WndBkBrush && WndBkBrushPattern) {
-				/* make the pattern brush in the bitmap match the pattern brush of the window background */
-				/* NTS: The Windows 3.1 SDK is wrong. You do NOT have to limit the value to a number from 0 to 7 inclusive.
-				 *      Windows itself doesn't limit the number, as evident from the return value of GetBrushOrg(). */
-				UnrealizeObject(WndBkBrush);
+			else {
+				if (WndBkBrush && WndBkBrushPattern) {
+					/* make the pattern brush in the bitmap match the pattern brush of the window background */
+					/* NTS: The Windows 3.1 SDK is wrong. You do NOT have to limit the value to a number from 0 to 7 inclusive.
+					 *      Windows itself doesn't limit the number, as evident from the return value of GetBrushOrg(). */
+					UnrealizeObject(WndBkBrush);
 #if TARGET_MSDOS == 32
-				SetBrushOrgEx(bDC,-we->x,-we->y,NULL);
+					SetBrushOrgEx(bDC,-we->x,-we->y,NULL);
 #else
-				SetBrushOrg(bDC,-we->x,-we->y);
+					SetBrushOrg(bDC,-we->x,-we->y);
 #endif
-			}
+				}
 
-			DrawBackgroundSub(bDC,&um);
+				DrawBackgroundSub(bDC,&um);
+			}
 		}
 
 		BMPresGDIObjectReleaseDC(bh);
@@ -4109,7 +4113,7 @@ err1:
 	{
 		WindowElementHandle wh = AllocWindowElement();
 		SetWindowElementContent(wh,MAKESPRITEIMAGEREF(SpriteAnimFrame+SpriteAnimBaseFrame));
-		SetWindowElementPosition(wh,20,20);
+		SetWindowElementPosition(wh,0,220);
 		ShowWindowElement(wh,TRUE);
 	}
 
