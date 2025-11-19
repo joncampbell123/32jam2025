@@ -3176,6 +3176,7 @@ struct WindowElementFuncSpriteComp_Context {
 	BYTE								sprite_render; // render up to
 	BYTE								flags;
 	struct WindowElementFuncSpriteComp_ContextSprite*		sprite;
+	COLORREF							bgcolor;
 };
 
 static const struct WindowElementFuncSpriteComp_ContextSprite WindowElementFuncSpriteComp_ContextSpriteInit = {
@@ -3192,7 +3193,8 @@ static const struct WindowElementFuncSpriteComp_Context WindowElementFuncSpriteC
 	.sprite_alloc = 32,
 	.sprite_render = 0,
 	.flags = 0,
-	.sprite = NULL
+	.sprite = NULL,
+	.bgcolor = NOCOLORREF
 };
 
 void WindowElementFuncSpriteComp_free(const WindowElementHandle wh,struct WindowElement *we,void *_ctx) {
@@ -3260,19 +3262,32 @@ void WindowElementFuncSpriteComp_render(const WindowElementHandle wh,struct Wind
 		um.right = we->w;
 		um.bottom = we->h;
 
-		if (WndBkBrush && WndBkBrushPattern) {
-			/* make the pattern brush in the bitmap match the pattern brush of the window background */
-			/* NTS: The Windows 3.1 SDK is wrong. You do NOT have to limit the value to a number from 0 to 7 inclusive.
-			 *      Windows itself doesn't limit the number, as evident from the return value of GetBrushOrg(). */
-			UnrealizeObject(WndBkBrush);
-#if TARGET_MSDOS == 32
-			SetBrushOrgEx(bDC,-we->x,-we->y,NULL);
-#else
-			SetBrushOrg(bDC,-we->x,-we->y);
-#endif
+		if (ctx->bgcolor != NOCOLORREF) {
+			HBRUSH bb = CreateSolidBrush(ctx->bgcolor);
+			if (bb) {
+				HPEN op = (HPEN)SelectObject(bDC,GetStockObject(NULL_PEN));
+				HBRUSH ob = (HBRUSH)SelectObject(bDC,bb);
+				Rectangle(bDC,um.left,um.top,um.right+1,um.bottom+1);
+				SelectObject(bDC,(HGDIOBJ)ob);
+				SelectObject(bDC,(HGDIOBJ)op);
+			}
+			DeleteObject(bb);
 		}
+		else {
+			if (WndBkBrush && WndBkBrushPattern) {
+				/* make the pattern brush in the bitmap match the pattern brush of the window background */
+				/* NTS: The Windows 3.1 SDK is wrong. You do NOT have to limit the value to a number from 0 to 7 inclusive.
+				 *      Windows itself doesn't limit the number, as evident from the return value of GetBrushOrg(). */
+				UnrealizeObject(WndBkBrush);
+#if TARGET_MSDOS == 32
+				SetBrushOrgEx(bDC,-we->x,-we->y,NULL);
+#else
+				SetBrushOrg(bDC,-we->x,-we->y);
+#endif
+			}
 
-		DrawBackgroundSub(bDC,&um);
+			DrawBackgroundSub(bDC,&um);
+		}
 
 		BMPresGDIObjectReleaseDC(bh);
 	}
