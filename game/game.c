@@ -2721,7 +2721,9 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 /////////////////////////////////////////////////////////////
 
 UINT near SpriteAnimFrame = 0;
+WindowElementHandle SpriteAnimWindowElement = WindowElementHandleNone;
 SpriteResHandle near SpriteAnimBaseFrame = 0;
+
 BYTE near MouseCapture = 0;
 WindowElementHandle near MouseDragWinElem = WindowElementHandleNone;
 POINT near MouseDragWinElemOrigin = {0,0};
@@ -3648,7 +3650,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 		if (++SpriteAnimFrame >= (12*4))
 			SpriteAnimFrame = 0;
 
-		SetWindowElementContent(0,MAKESPRITEIMAGEREF(SpriteAnimFrame+SpriteAnimBaseFrame));
+		SetWindowElementContent(SpriteAnimWindowElement,MAKESPRITEIMAGEREF(SpriteAnimFrame+SpriteAnimBaseFrame));
 		UpdateWindowElements();
 	}
 	else {
@@ -4111,22 +4113,6 @@ err1:
 	SpriteAnimFrame = 0;
 
 	{
-		WindowElementHandle wh = AllocWindowElement();
-		SetWindowElementContent(wh,MAKESPRITEIMAGEREF(SpriteAnimFrame+SpriteAnimBaseFrame));
-		SetWindowElementPosition(wh,0,220);
-		ShowWindowElement(wh,TRUE);
-	}
-
-	{
-		WindowElementHandle wh = AllocWindowElement();
-		WindowElementSetFunction(wh,WindowElementFuncSpriteComp);
-
-		SetWindowElementPosition(wh,0,0);
-		SetWindowElementSize(wh,320,210);
-		ShowWindowElement(wh,TRUE);
-	}
-
-	{
 		FontResourceHandle fh = AllocFont();
 		WindowElementHandle wh = AllocWindowElement();
 		WindowElementSetFunction(wh,WindowElementFuncText);
@@ -4142,6 +4128,22 @@ err1:
 
 		SetWindowElementPosition(wh,0,210);
 		SetWindowElementSize(wh,320,40);
+		ShowWindowElement(wh,TRUE);
+	}
+
+	{
+		WindowElementHandle wh = SpriteAnimWindowElement = AllocWindowElement();
+		SetWindowElementContent(wh,MAKESPRITEIMAGEREF(SpriteAnimFrame+SpriteAnimBaseFrame));
+		SetWindowElementPosition(wh,0,210);
+		ShowWindowElement(wh,TRUE);
+	}
+
+	{
+		WindowElementHandle wh = AllocWindowElement();
+		WindowElementSetFunction(wh,WindowElementFuncSpriteComp);
+
+		SetWindowElementPosition(wh,0,0);
+		SetWindowElementSize(wh,320,210);
 		ShowWindowElement(wh,TRUE);
 	}
 
