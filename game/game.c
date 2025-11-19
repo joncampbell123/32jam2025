@@ -384,6 +384,7 @@ enum {
 	WindowElementFuncNone = 0xFFu,
 
 	WindowElementFuncText = 0x00u,
+	WindowElementFuncSpriteComp = 0x01u,
 
 	WindowElementFunc_Max
 };
@@ -2903,6 +2904,9 @@ void WindowElementFuncText_notify(const WindowElementHandle wh,struct WindowElem
 		if (WndBkBrush && WndBkBrushPattern && !(ctx->textstate.flags & WindowElementFuncText_ContextFlags_BackgroundColor))
 			we->flags |= WindowElementFlag_ReRender;
 	}
+	else if (msg == WindowElementNotifyResizeMsg) {
+		we->flags |= WindowElementFlag_ReRender;
+	}
 }
 
 static const signed char TextOutlineDiamond[5*2] = {
@@ -3159,6 +3163,123 @@ void WindowElementFuncText_SetText(const WindowElementHandle wh,const char *txt)
 
 /////////////////////////////////////////////////////////////
 
+struct WindowElementFuncSpriteComp_ContextSprite {
+	ImageRef				imgRef;
+	short int				x,y;
+	unsigned short int			w,h;
+	BYTE					flags;
+	BYTE					state;
+};
+
+struct WindowElementFuncSpriteComp_Context {
+	BYTE								sprite_alloc; // allocate this much
+	BYTE								sprite_render; // render up to
+	BYTE								flags;
+	struct WindowElementFuncSpriteComp_ContextSprite*		sprite;
+};
+
+static const struct WindowElementFuncSpriteComp_ContextSprite WindowElementFuncSpriteComp_ContextSpriteInit = {
+	.imgRef = ImageRefNone,
+	.x = -32000,
+	.y = -32000,
+	.w = 0,
+	.h = 0,
+	.flags = 0,
+	.state = 0
+};
+
+static const struct WindowElementFuncSpriteComp_Context WindowElementFuncSpriteComp_ContextInit = {
+	.sprite_alloc = 32,
+	.sprite_render = 0,
+	.flags = 0,
+	.sprite = NULL
+};
+
+void WindowElementFuncSpriteComp_free(const WindowElementHandle wh,struct WindowElement *we,void *_ctx) {
+	struct WindowElementFuncSpriteComp_Context *ctx = (struct WindowElementFuncSpriteComp_Context *)_ctx;
+	DLOGT("%s windowelement=%u",__FUNCTION__,wh);
+
+	(void)ctx;
+	(void)we;
+
+	if (ctx->sprite) {
+		free(ctx->sprite);
+		ctx->sprite = NULL;
+	}
+}
+
+void WindowElementFuncSpriteComp_notify(const WindowElementHandle wh,struct WindowElement *we,void *_ctx,const unsigned int msg) {
+	struct WindowElementFuncSpriteComp_Context *ctx = (struct WindowElementFuncSpriteComp_Context *)_ctx;
+	DLOGT("%s windowelement=%u msg=%u",__FUNCTION__,wh,msg);
+
+	(void)ctx;
+	(void)we;
+
+	if (msg == WindowElementNotifyRepositionMsg) {
+		/* NTS: Windows 3.1 does not consider the dithered color pattern from CreateSolidBrush anything different
+		 *      from a solid color, therefore there is no way to tell if the color is actually solid or dithered
+		 *      to screen, therefore we must always assume a need to re-render (sigh). No, GetObject() does not
+		 *      help either. */
+		if (WndBkBrush && WndBkBrushPattern)
+			we->flags |= WindowElementFlag_ReRender;
+	}
+	else if (msg == WindowElementNotifyResizeMsg) {
+		we->flags |= WindowElementFlag_ReRender;
+	}
+}
+
+void WindowElementFuncSpriteComp_render(const WindowElementHandle wh,struct WindowElement *we,void *_ctx) {
+	struct WindowElementFuncSpriteComp_Context *ctx = (struct WindowElementFuncSpriteComp_Context *)_ctx;
+	BMPresHandle bh;
+
+	DLOGT("%s windowelement=%u",__FUNCTION__,wh);
+
+	(void)ctx;
+	(void)we;
+
+	if (we->imgRef == ImageRefNone) {
+		bh = AllocBMPres();
+		if (bh == BMPresHandleNone) return;
+		we->imgRef = MAKEBMPIMAGEREF(bh);
+		we->flags |= WindowElementFlag_OwnsImage | WindowElementFlag_NoAutoSize | WindowElementFlag_RendersBackground;
+	}
+	else {
+		bh = (BMPresHandle)ImageRefGetRef(we->imgRef);
+	}
+
+	InitBMPresGDIObject(bh,we->w,we->h,0);
+
+	{
+		HDC bDC;
+		RECT um;
+
+		bDC = BMPresGDIObjectGetDC(bh);
+
+		um.left = 0;
+		um.top = 0;
+		um.right = we->w;
+		um.bottom = we->h;
+
+		if (WndBkBrush && WndBkBrushPattern) {
+			/* make the pattern brush in the bitmap match the pattern brush of the window background */
+			/* NTS: The Windows 3.1 SDK is wrong. You do NOT have to limit the value to a number from 0 to 7 inclusive.
+			 *      Windows itself doesn't limit the number, as evident from the return value of GetBrushOrg(). */
+			UnrealizeObject(WndBkBrush);
+#if TARGET_MSDOS == 32
+			SetBrushOrgEx(bDC,-we->x,-we->y,NULL);
+#else
+			SetBrushOrg(bDC,-we->x,-we->y);
+#endif
+		}
+
+		DrawBackgroundSub(bDC,&um);
+
+		BMPresGDIObjectReleaseDC(bh);
+	}
+}
+
+/////////////////////////////////////////////////////////////
+
 const struct WindowElementFunction WindowElementFunctionArray[WindowElementFunc_Max] = {
 	[WindowElementFuncText] = {
 		.ctxStructSize = sizeof(struct WindowElementFuncText_Context),
@@ -3166,6 +3287,13 @@ const struct WindowElementFunction WindowElementFunctionArray[WindowElementFunc_
 		.free = WindowElementFuncText_free,
 		.notify = WindowElementFuncText_notify,
 		.render = WindowElementFuncText_render
+	},
+	[WindowElementFuncSpriteComp] = {
+		.ctxStructSize = sizeof(struct WindowElementFuncSpriteComp_Context),
+		.ctxStructInit = (const void*)(&WindowElementFuncSpriteComp_ContextInit),
+		.free = WindowElementFuncSpriteComp_free,
+		.notify = WindowElementFuncSpriteComp_notify,
+		.render = WindowElementFuncSpriteComp_render
 	}
 };
 
@@ -3972,8 +4100,10 @@ err1:
 
 	{
 		WindowElementHandle wh = AllocWindowElement();
-		SetWindowElementContent(wh,MAKEBMPIMAGEREF(0));
-		SetWindowElementPosition(wh,120 + 20 + 20,20);
+		WindowElementSetFunction(wh,WindowElementFuncSpriteComp);
+
+		SetWindowElementPosition(wh,0,0);
+		SetWindowElementSize(wh,320,210);
 		ShowWindowElement(wh,TRUE);
 	}
 
@@ -3991,7 +4121,7 @@ err1:
 		WindowElementFuncText_SetParamI(wh,WindowElementFuncText_ShadowColor,RGB(0,0,128));
 		WindowElementFuncText_SetParamI(wh,WindowElementFuncText_OutlineColor,RGB(0,128,128));
 
-		SetWindowElementPosition(wh,20,210);
+		SetWindowElementPosition(wh,0,210);
 		SetWindowElementSize(wh,320,40);
 		ShowWindowElement(wh,TRUE);
 	}
