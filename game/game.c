@@ -2958,8 +2958,8 @@ void WindowElementFuncText_render(const WindowElementHandle wh,struct WindowElem
 				Rectangle(bDC,um.left,um.top,um.right+1,um.bottom+1);
 				SelectObject(bDC,(HGDIOBJ)ob);
 				SelectObject(bDC,(HGDIOBJ)op);
+				DeleteObject(bb);
 			}
-			DeleteObject(bb);
 		}
 		else {
 			if (WndBkBrush && WndBkBrushPattern) {
@@ -3270,8 +3270,8 @@ void WindowElementFuncSpriteComp_render(const WindowElementHandle wh,struct Wind
 				Rectangle(bDC,um.left,um.top,um.right+1,um.bottom+1);
 				SelectObject(bDC,(HGDIOBJ)ob);
 				SelectObject(bDC,(HGDIOBJ)op);
+				DeleteObject(bb);
 			}
-			DeleteObject(bb);
 		}
 		else {
 			if (WndBkBrush && WndBkBrushPattern) {
