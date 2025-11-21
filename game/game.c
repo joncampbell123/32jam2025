@@ -3173,6 +3173,12 @@ struct WindowElementFuncSpriteComp_ContextSprite {
 	BYTE					state;
 };
 
+#define WindowElementFuncSpriteComp_ContextSpriteFlags_Allocated		0x0001u
+#define WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled			0x0002u
+#define WindowElementFuncSpriteComp_ContextSpriteFlags_IgnoreMask		0x0004u
+#define WindowElementFuncSpriteComp_ContextSpriteFlags_HFlip			0x0008u
+#define WindowElementFuncSpriteComp_ContextSpriteFlags_VFlip			0x0010u
+
 struct WindowElementFuncSpriteComp_Context {
 	BYTE								sprite_alloc; // allocate this much
 	BYTE								sprite_render; // render up to
@@ -3194,12 +3200,206 @@ static const struct WindowElementFuncSpriteComp_ContextSprite WindowElementFuncS
 };
 
 static const struct WindowElementFuncSpriteComp_Context WindowElementFuncSpriteComp_ContextInit = {
-	.sprite_alloc = 32,
+	.sprite_alloc = 0,
 	.sprite_render = 0,
 	.flags = WindowElementFuncSpriteComp_ContextFlags_BackgroundColor,
 	.sprite = NULL,
 	.bgcolor = NOCOLORREF
 };
+
+BOOL WindowElementFuncSpriteComp_ResizeSpriteList_Internal(struct WindowElementFuncSpriteComp_Context *ctx,const unsigned int len) {
+	unsigned int i;
+
+	/* sprite allocation/count is a BYTE value, avoid overflow.
+	 * There is no reason at this time to have more than 255 sprites on screen */
+	if (len > 255u) {
+		DLOGT("%s: attempted to resize sprite list to %u, beyond limit of 255",__FUNCTION__,len);
+		return FALSE;
+	}
+
+	DLOGT("%s: resizing sprite list from %u to %u",__FUNCTION__,ctx->sprite_alloc,len);
+
+	if (ctx->sprite) {
+		if (len == 0) {
+			DLOGT("%s: that means to free the sprite list completely",__FUNCTION__);
+			free((void*)ctx->sprite);
+			ctx->sprite_alloc = 0;
+			ctx->sprite = NULL;
+		}
+		else if (ctx->sprite_alloc != len) {
+			const unsigned int olen = ctx->sprite_alloc;
+			void *np = realloc((void*)ctx->sprite,sizeof(struct WindowElementFuncSpriteComp_ContextSprite) * len);
+			if (!np) {
+				DLOGT("%s: realloc failed",__FUNCTION__);
+				return FALSE;
+			}
+			ctx->sprite = (struct WindowElementFuncSpriteComp_ContextSprite*)np;
+			ctx->sprite_alloc = len;
+
+			for (i=olen;i < len;i++)
+				ctx->sprite[i] = WindowElementFuncSpriteComp_ContextSpriteInit;
+		}
+	}
+	else {
+		if (len == 0) {
+			DLOGT("%s: sprite list not allocated, not allocating (len == 0)",__FUNCTION__);
+			return TRUE;
+		}
+
+		ctx->sprite = (struct WindowElementFuncSpriteComp_ContextSprite*)malloc(sizeof(struct WindowElementFuncSpriteComp_ContextSprite) * len);
+		if (!ctx->sprite) {
+			DLOGT("%s: malloc failed",__FUNCTION__);
+			return FALSE;
+		}
+		ctx->sprite_alloc = len;
+
+		for (i=0;i < len;i++)
+			ctx->sprite[i] = WindowElementFuncSpriteComp_ContextSpriteInit;
+	}
+
+	if (ctx->sprite_render > ctx->sprite_alloc)
+		ctx->sprite_render = ctx->sprite_alloc;
+
+	return TRUE;
+}
+
+BOOL WindowElementFuncSpriteComp_ResizeSpriteList(const WindowElementHandle wh,const unsigned int len) {
+	struct WindowElement *we = GetWindowElement(wh);
+	if (we && we->func == WindowElementFuncSpriteComp && we->funcctx) {
+		struct WindowElementFuncSpriteComp_Context *ctx = (struct WindowElementFuncSpriteComp_Context *)(we->funcctx);
+		return WindowElementFuncSpriteComp_ResizeSpriteList_Internal(ctx,len);
+	}
+
+	return FALSE;
+}
+
+void WindowElementFuncSpriteComp_HideTheRestSprites(const WindowElementHandle wh,const unsigned int idx) {
+	struct WindowElement *we = GetWindowElement(wh);
+	if (we && we->func == WindowElementFuncSpriteComp && we->funcctx) {
+		struct WindowElementFuncSpriteComp_Context *ctx = (struct WindowElementFuncSpriteComp_Context *)(we->funcctx);
+		unsigned int i;
+
+		if (ctx->sprite && idx <= ctx->sprite_alloc) {
+			for (i=idx;i<ctx->sprite_render;i++) {
+				struct WindowElementFuncSpriteComp_ContextSprite* spr = ctx->sprite + i;
+				spr->flags &= ~WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled;
+			}
+			ctx->sprite_render = idx;
+		}
+	}
+}
+
+void WindowElementFuncSpriteComp_ResetSprite(const WindowElementHandle wh,const unsigned int idx) {
+	struct WindowElement *we = GetWindowElement(wh);
+	if (we && we->func == WindowElementFuncSpriteComp && we->funcctx) {
+		struct WindowElementFuncSpriteComp_Context *ctx = (struct WindowElementFuncSpriteComp_Context *)(we->funcctx);
+
+		if (ctx->sprite && idx < ctx->sprite_alloc) {
+			struct WindowElementFuncSpriteComp_ContextSprite* spr = ctx->sprite + idx;
+			*spr = WindowElementFuncSpriteComp_ContextSpriteInit;
+		}
+	}
+}
+
+void WindowElementFuncSpriteComp_SetSpriteState(const WindowElementHandle wh,const unsigned int idx,const unsigned int flags,unsigned int flagchg) {
+	struct WindowElement *we = GetWindowElement(wh);
+	if (we && we->func == WindowElementFuncSpriteComp && we->funcctx) {
+		struct WindowElementFuncSpriteComp_Context *ctx = (struct WindowElementFuncSpriteComp_Context *)(we->funcctx);
+
+		if (flagchg == 0) {
+			flagchg =
+				WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled|
+				WindowElementFuncSpriteComp_ContextSpriteFlags_IgnoreMask|
+				WindowElementFuncSpriteComp_ContextSpriteFlags_HFlip|
+				WindowElementFuncSpriteComp_ContextSpriteFlags_VFlip;
+		}
+
+		if (ctx->sprite && idx < ctx->sprite_alloc) {
+			struct WindowElementFuncSpriteComp_ContextSprite* spr = ctx->sprite + idx;
+			unsigned int chgflg = (spr->flags ^ flags) & flagchg;
+
+			if (chgflg) {
+				spr->flags ^= chgflg;
+				if (spr->flags & WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled) {
+					if (ctx->sprite_render <= idx) ctx->sprite_render = idx + 1u;
+
+					if (chgflg & (
+						WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled|
+						WindowElementFuncSpriteComp_ContextSpriteFlags_IgnoreMask|
+						WindowElementFuncSpriteComp_ContextSpriteFlags_HFlip|
+						WindowElementFuncSpriteComp_ContextSpriteFlags_VFlip))
+						we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+				}
+				else {
+					if ((idx+1u) == ctx->sprite_render) ctx->sprite_render--;
+					if (chgflg & WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled)
+						we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+				}
+			}
+		}
+	}
+}
+
+void WindowElementFuncSpriteComp_SetSpritePosition(const WindowElementHandle wh,const unsigned int idx,int x,int y) {
+	struct WindowElement *we = GetWindowElement(wh);
+	if (we && we->func == WindowElementFuncSpriteComp && we->funcctx) {
+		struct WindowElementFuncSpriteComp_Context *ctx = (struct WindowElementFuncSpriteComp_Context *)(we->funcctx);
+		if (ctx->sprite && idx < ctx->sprite_alloc) {
+			struct WindowElementFuncSpriteComp_ContextSprite* spr = ctx->sprite + idx;
+
+			if (spr->x != x || spr->y != y) {
+				spr->x = x;
+				spr->y = y;
+
+				if (spr->flags & WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled)
+					we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+			}
+		}
+	}
+}
+
+void WindowElementFuncSpriteComp_SetSpriteImage(const WindowElementHandle wh,const unsigned int idx,const ImageRef imgRef) {
+	struct WindowElement *we = GetWindowElement(wh);
+	if (we && we->func == WindowElementFuncSpriteComp && we->funcctx) {
+		struct WindowElementFuncSpriteComp_Context *ctx = (struct WindowElementFuncSpriteComp_Context *)(we->funcctx);
+		if (ctx->sprite && idx < ctx->sprite_alloc) {
+			struct WindowElementFuncSpriteComp_ContextSprite* spr = ctx->sprite + idx;
+
+			if (spr->imgRef != imgRef) {
+				spr->imgRef = imgRef;
+
+				spr->w = spr->h = 0;
+				if (ImageRefGetType(imgRef) == ImageRefTypeBitmap) {
+					struct BMPres *br = GetBMPres((BMPresHandle)ImageRefGetRef(imgRef));
+					if (br) {
+						spr->w = br->width;
+						spr->h = br->height;
+					}
+				}
+				else if (ImageRefGetType(imgRef) == ImageRefTypeSprite) {
+					struct SpriteRes *sr = GetSpriteRes((BMPresHandle)ImageRefGetRef(imgRef));
+					if (sr) {
+						spr->w = sr->w;
+						spr->h = sr->h;
+					}
+				}
+
+				if (spr->flags & WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled)
+					we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+			}
+		}
+	}
+}
+
+void WindowElementFuncSpriteComp_init(const WindowElementHandle wh,struct WindowElement *we,void *_ctx) {
+	struct WindowElementFuncSpriteComp_Context *ctx = (struct WindowElementFuncSpriteComp_Context *)_ctx;
+	DLOGT("%s windowelement=%u",__FUNCTION__,wh);
+
+	(void)ctx;
+	(void)we;
+
+	WindowElementFuncSpriteComp_ResizeSpriteList_Internal(ctx,32);
+}
 
 void WindowElementFuncSpriteComp_free(const WindowElementHandle wh,struct WindowElement *we,void *_ctx) {
 	struct WindowElementFuncSpriteComp_Context *ctx = (struct WindowElementFuncSpriteComp_Context *)_ctx;
@@ -3208,10 +3408,7 @@ void WindowElementFuncSpriteComp_free(const WindowElementHandle wh,struct Window
 	(void)ctx;
 	(void)we;
 
-	if (ctx->sprite) {
-		free(ctx->sprite);
-		ctx->sprite = NULL;
-	}
+	WindowElementFuncSpriteComp_ResizeSpriteList_Internal(ctx,0);
 }
 
 void WindowElementFuncSpriteComp_notify(const WindowElementHandle wh,struct WindowElement *we,void *_ctx,const unsigned int msg) {
@@ -3312,6 +3509,7 @@ const struct WindowElementFunction WindowElementFunctionArray[WindowElementFunc_
 	[WindowElementFuncSpriteComp] = {
 		.ctxStructSize = sizeof(struct WindowElementFuncSpriteComp_Context),
 		.ctxStructInit = (const void*)(&WindowElementFuncSpriteComp_ContextInit),
+		.init = WindowElementFuncSpriteComp_init,
 		.free = WindowElementFuncSpriteComp_free,
 		.notify = WindowElementFuncSpriteComp_notify,
 		.render = WindowElementFuncSpriteComp_render
