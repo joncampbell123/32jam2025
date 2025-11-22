@@ -3453,10 +3453,12 @@ void WindowElementFuncSpriteComp_render(const WindowElementHandle wh,struct Wind
 	InitBMPresGDIObject(bh,we->w,we->h,0);
 
 	{
-		HDC bDC;
+		unsigned int i;
+		HDC bDC,sbDC;
 		RECT um;
 
 		bDC = BMPresGDIObjectGetDC(bh);
+		sbDC = CreateCompatibleDC(bDC);
 
 		um.left = 0;
 		um.top = 0;
@@ -3492,6 +3494,57 @@ void WindowElementFuncSpriteComp_render(const WindowElementHandle wh,struct Wind
 			}
 		}
 
+		if (ctx->sprite) {
+			for (i=0;i < ctx->sprite_render;i++) {
+				struct WindowElementFuncSpriteComp_ContextSprite* spr = ctx->sprite + i;
+
+				if ((spr->flags & WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled) && spr->imgRef != ImageRefNone) {
+					unsigned int sx=0,sy=0,msy=0,w=spr->w,h=spr->h;
+					HBITMAP bmp = (HBITMAP)NULL;
+					unsigned int bmpflags = 0;
+					int x=spr->x,y=spr->y;
+
+					if (ImageRefGetType(spr->imgRef) == ImageRefTypeBitmap) {
+						struct BMPres *br = GetBMPres((BMPresHandle)ImageRefGetRef(spr->imgRef));
+						if (br) {
+							bmpflags=br->flags;
+							bmp=br->bmpObj;
+						}
+					}
+					else if (ImageRefGetType(spr->imgRef) == ImageRefTypeSprite) {
+						struct SpriteRes *sr = GetSpriteRes((BMPresHandle)ImageRefGetRef(spr->imgRef));
+						if (sr) {
+							sx=sr->x;
+							sy=sr->y;
+							if (sr->bmp != BMPresHandleNone) {
+								struct BMPres *br = GetBMPres((BMPresHandle)ImageRefGetRef(spr->imgRef));
+								if (br) {
+									bmpflags=br->flags;
+									bmp=br->bmpObj;
+									msy=sy+br->height;
+								}
+							}
+						}
+					}
+
+					if (bmp != (HBITMAP)NULL && w != 0u && h != 0u) {
+						HBITMAP ob = (HBITMAP)SelectObject(sbDC,bmp);
+
+						if (bmpflags & BMPresFlag_TransparencyMask) {
+							BitBlt(bDC,x,y,w,h,sbDC,sx,msy,SRCAND);
+							BitBlt(bDC,x,y,w,h,sbDC,sx,sy,SRCPAINT);
+						}
+						else {
+							BitBlt(bDC,x,y,w,h,sbDC,sx,sy,SRCCOPY);
+						}
+
+						SelectObject(sbDC,ob);
+					}
+				}
+			}
+		}
+
+		DeleteObject(sbDC);
 		BMPresGDIObjectReleaseDC(bh);
 	}
 }
@@ -4339,6 +4392,10 @@ err1:
 	{
 		WindowElementHandle wh = AllocWindowElement();
 		WindowElementSetFunction(wh,WindowElementFuncSpriteComp);
+
+		WindowElementFuncSpriteComp_SetSpriteImage(wh,0,MAKESPRITEIMAGEREF(SpriteAnimFrame));
+		WindowElementFuncSpriteComp_SetSpritePosition(wh,0,32,32);
+		WindowElementFuncSpriteComp_SetSpriteState(wh,0,WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled,0);
 
 		SetWindowElementPosition(wh,0,0);
 		SetWindowElementSize(wh,320,210);
