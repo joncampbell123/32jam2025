@@ -2725,6 +2725,13 @@ WindowElementHandle SpriteAnimWindowElement = WindowElementHandleNone;
 WindowElementHandle SpriteCompositionWindowElement = WindowElementHandleNone;
 SpriteResHandle near SpriteAnimBaseFrame = 0;
 
+struct SpriteCompositionSprite_t {
+	int	x,y;
+	BYTE	d;
+};
+
+struct SpriteCompositionSprite_t SpriteCompositionSprite1;
+
 BYTE near MouseCapture = 0;
 WindowElementHandle near MouseDragWinElem = WindowElementHandleNone;
 POINT near MouseDragWinElemOrigin = {0,0};
@@ -3913,7 +3920,39 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			SpriteAnimFrame = 0;
 
 		SetWindowElementContent(SpriteAnimWindowElement,MAKESPRITEIMAGEREF(SpriteAnimFrame+SpriteAnimBaseFrame));
-		WindowElementFuncSpriteComp_SetSpriteImage(SpriteCompositionWindowElement,0,MAKESPRITEIMAGEREF(SpriteAnimFrame+SpriteAnimBaseFrame));
+
+		{
+			switch (SpriteCompositionSprite1.d) {
+				case 0:
+					SpriteCompositionSprite1.y -= 12;
+					if (SpriteCompositionSprite1.y <= 5) {
+						SpriteCompositionSprite1.d = 1;
+					}
+					break;
+				case 1:
+					SpriteCompositionSprite1.x += 12;
+					if (SpriteCompositionSprite1.x >= 270) {
+						SpriteCompositionSprite1.d = 2;
+					}
+					break;
+				case 2:
+					SpriteCompositionSprite1.y += 12;
+					if (SpriteCompositionSprite1.y >= 150) {
+						SpriteCompositionSprite1.d = 3;
+					}
+					break;
+				case 3:
+					SpriteCompositionSprite1.x -= 12;
+					if (SpriteCompositionSprite1.x <= 5) {
+						SpriteCompositionSprite1.d = 0;
+					}
+					break;
+			}
+
+			WindowElementFuncSpriteComp_SetSpritePosition(SpriteCompositionWindowElement,0,SpriteCompositionSprite1.x,SpriteCompositionSprite1.y);
+			WindowElementFuncSpriteComp_SetSpriteImage(SpriteCompositionWindowElement,0,MAKESPRITEIMAGEREF(SpriteAnimFrame+SpriteAnimBaseFrame));
+		}
+
 		UpdateWindowElements();
 	}
 	else {
@@ -4405,8 +4444,11 @@ err1:
 		WindowElementHandle wh = SpriteCompositionWindowElement = AllocWindowElement();
 		WindowElementSetFunction(wh,WindowElementFuncSpriteComp);
 
+		SpriteCompositionSprite1.x = 32;
+		SpriteCompositionSprite1.y = 32;
+		SpriteCompositionSprite1.d = 1; /* to the right */
 		WindowElementFuncSpriteComp_SetSpriteImage(wh,0,MAKESPRITEIMAGEREF(SpriteAnimFrame+SpriteAnimBaseFrame));
-		WindowElementFuncSpriteComp_SetSpritePosition(wh,0,32,32);
+		WindowElementFuncSpriteComp_SetSpritePosition(wh,0,SpriteCompositionSprite1.x,SpriteCompositionSprite1.y);
 		WindowElementFuncSpriteComp_SetSpriteState(wh,0,WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled,0);
 
 		SetWindowElementPosition(wh,0,0);
