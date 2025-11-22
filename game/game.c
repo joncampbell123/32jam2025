@@ -2722,6 +2722,7 @@ void SetWindowElementContent(const WindowElementHandle h,const ImageRef ir) {
 
 UINT near SpriteAnimFrame = 0;
 WindowElementHandle SpriteAnimWindowElement = WindowElementHandleNone;
+WindowElementHandle SpriteCompositionWindowElement = WindowElementHandleNone;
 SpriteResHandle near SpriteAnimBaseFrame = 0;
 
 BYTE near MouseCapture = 0;
@@ -3527,7 +3528,7 @@ void WindowElementFuncSpriteComp_render(const WindowElementHandle wh,struct Wind
 							sx=sr->x;
 							sy=sr->y;
 							if (sr->bmp != BMPresHandleNone) {
-								struct BMPres *br = GetBMPres((BMPresHandle)ImageRefGetRef(spr->imgRef));
+								struct BMPres *br = GetBMPres((BMPresHandle)ImageRefGetRef(sr->bmp));
 								if (br) {
 									bmpflags=br->flags;
 									bmp=br->bmpObj;
@@ -3912,6 +3913,7 @@ LRESULT WINAPI WndProc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam) {
 			SpriteAnimFrame = 0;
 
 		SetWindowElementContent(SpriteAnimWindowElement,MAKESPRITEIMAGEREF(SpriteAnimFrame+SpriteAnimBaseFrame));
+		WindowElementFuncSpriteComp_SetSpriteImage(SpriteCompositionWindowElement,0,MAKESPRITEIMAGEREF(SpriteAnimFrame+SpriteAnimBaseFrame));
 		UpdateWindowElements();
 	}
 	else {
@@ -4400,10 +4402,10 @@ err1:
 	}
 
 	{
-		WindowElementHandle wh = AllocWindowElement();
+		WindowElementHandle wh = SpriteCompositionWindowElement = AllocWindowElement();
 		WindowElementSetFunction(wh,WindowElementFuncSpriteComp);
 
-		WindowElementFuncSpriteComp_SetSpriteImage(wh,0,MAKESPRITEIMAGEREF(SpriteAnimFrame));
+		WindowElementFuncSpriteComp_SetSpriteImage(wh,0,MAKESPRITEIMAGEREF(SpriteAnimFrame+SpriteAnimBaseFrame));
 		WindowElementFuncSpriteComp_SetSpritePosition(wh,0,32,32);
 		WindowElementFuncSpriteComp_SetSpriteState(wh,0,WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled,0);
 
