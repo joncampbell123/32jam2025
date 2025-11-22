@@ -3296,6 +3296,10 @@ void WindowElementFuncSpriteComp_ResetSprite(const WindowElementHandle wh,const 
 
 		if (ctx->sprite && idx < ctx->sprite_alloc) {
 			struct WindowElementFuncSpriteComp_ContextSprite* spr = ctx->sprite + idx;
+
+			if (spr->flags & WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled)
+				we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+
 			*spr = WindowElementFuncSpriteComp_ContextSpriteInit;
 		}
 	}
@@ -3335,6 +3339,8 @@ void WindowElementFuncSpriteComp_SetSpriteState(const WindowElementHandle wh,con
 					if (chgflg & WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled)
 						we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
 				}
+
+				spr->flags |= WindowElementFuncSpriteComp_ContextSpriteFlags_Allocated;
 			}
 		}
 	}
@@ -3353,6 +3359,8 @@ void WindowElementFuncSpriteComp_SetSpritePosition(const WindowElementHandle wh,
 
 				if (spr->flags & WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled)
 					we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+
+				spr->flags |= WindowElementFuncSpriteComp_ContextSpriteFlags_Allocated;
 			}
 		}
 	}
@@ -3386,6 +3394,8 @@ void WindowElementFuncSpriteComp_SetSpriteImage(const WindowElementHandle wh,con
 
 				if (spr->flags & WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled)
 					we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
+
+				spr->flags |= WindowElementFuncSpriteComp_ContextSpriteFlags_Allocated;
 			}
 		}
 	}
