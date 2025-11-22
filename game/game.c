@@ -3184,8 +3184,6 @@ struct WindowElementFuncSpriteComp_ContextSprite {
 #define WindowElementFuncSpriteComp_ContextSpriteFlags_Allocated		0x0001u
 #define WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled			0x0002u
 #define WindowElementFuncSpriteComp_ContextSpriteFlags_IgnoreMask		0x0004u
-#define WindowElementFuncSpriteComp_ContextSpriteFlags_HFlip			0x0008u
-#define WindowElementFuncSpriteComp_ContextSpriteFlags_VFlip			0x0010u
 
 struct WindowElementFuncSpriteComp_Context {
 	BYTE								sprite_alloc; // allocate this much
@@ -3321,9 +3319,7 @@ void WindowElementFuncSpriteComp_SetSpriteState(const WindowElementHandle wh,con
 		if (flagchg == 0) {
 			flagchg =
 				WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled|
-				WindowElementFuncSpriteComp_ContextSpriteFlags_IgnoreMask|
-				WindowElementFuncSpriteComp_ContextSpriteFlags_HFlip|
-				WindowElementFuncSpriteComp_ContextSpriteFlags_VFlip;
+				WindowElementFuncSpriteComp_ContextSpriteFlags_IgnoreMask;
 		}
 
 		if (ctx->sprite && idx < ctx->sprite_alloc) {
@@ -3337,9 +3333,7 @@ void WindowElementFuncSpriteComp_SetSpriteState(const WindowElementHandle wh,con
 
 					if (chgflg & (
 						WindowElementFuncSpriteComp_ContextSpriteFlags_Enabled|
-						WindowElementFuncSpriteComp_ContextSpriteFlags_IgnoreMask|
-						WindowElementFuncSpriteComp_ContextSpriteFlags_HFlip|
-						WindowElementFuncSpriteComp_ContextSpriteFlags_VFlip))
+						WindowElementFuncSpriteComp_ContextSpriteFlags_IgnoreMask))
 						we->flags |= WindowElementFlag_Update | WindowElementFlag_ReRender;
 				}
 				else {
